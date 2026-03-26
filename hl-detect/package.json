@@ -1,0 +1,17 @@
+{
+  "name": "hl-detect",
+  "version": "0.1.0",
+  "description": "Linguistic manipulation pattern detection library. Hoffman Lenses Initiative.",
+  "main": "src/hl-detect.js",
+  "scripts": {
+    "test": "node test/hl-detect.test.js"
+  },
+  "keywords": ["manipulation", "detection", "behavioral", "language", "privacy"],
+  "author": "Hoffman Lenses Initiative",
+  "license": "MIT",
+  "homepage": "https://hoffmanlenses.org",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HoffmanLensesInitiative/hoffman-core"
+  }
+}
