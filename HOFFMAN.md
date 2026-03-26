@@ -671,3 +671,30 @@ for size/accuracy tradeoff when that stage arrives
 *"They deserved better than to be engagement metrics."*
 
 *HOFFMAN.md is a living document.* *It grows with every cycle.* *It remembers everything.*
+
+### Cycle 1 -- hl-detect v0.1.0 (March 2026)
+**Agent:** Claude (Anthropic)
+**Director:** Norm Robichaud
+**Actions taken:**
+- Built hl-detect v0.1.0 -- standalone manipulation detection library
+- 7 patterns implemented: suppression_framing, false_urgency, incomplete_hook, outrage_engineering, false_authority, tribal_activation, engagement_directive
+- Built 61-test test suite covering detection, false positives, calibration, performance, batch, and session analysis
+- All 61 tests passing
+
+**What worked:**
+- All 7 patterns detecting correctly on target examples
+- Zero false positives on factual news, academic writing, personal posts, product reviews
+- Processes 1000 words in under 100ms
+- Works in Node.js and browser environments
+- UMD module format -- usable everywhere
+
+**What needed fixing during cycle:**
+- Short text confidence penalty was too aggressive (< 30 chars) -- reduced threshold to < 15 chars
+- "mainstream media" compound phrase not matched by single-word regex -- added compound phrase variant
+- "changes everything" pattern required "this" prefix -- removed prefix requirement
+
+**Open questions answered this cycle:**
+- Confidence threshold: 0.6 default is correct -- short text penalty adjusted to < 15 chars
+- Synchronous vs async: synchronous for v0.1 confirmed -- fast enough, simpler
+
+**Next cycle target:** Universal extension -- wrap hl-detect in a browser extension that runs on every page, every website. Replace the Facebook-specific extension v0.1.0.
