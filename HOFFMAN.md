@@ -740,3 +740,114 @@ for size/accuracy tradeoff when that stage arrives
 - Test on more sites: CNN, Reddit, X, YouTube, shopping sites
 - Consider annotation being less visually dominant -- more ambient, less alarming
 - Session export feature -- download session as JSON/CSV
+
+
+---
+
+## PART 10 -- AGENT ORGANIZATION
+
+### Structure
+
+```
+DIRECTOR (Norm Robichaud)
+    |
+    |-- SUPERVISOR: BUILD         (HOFFMAN_BUILD.md)
+    |       |-- hl-detect agent
+    |       |-- Extension agent
+    |       |-- Website agent
+    |       |-- BMID API agent
+    |
+    |-- SUPERVISOR: INTELLIGENCE  (HOFFMAN_INTEL.md)
+    |       |-- Database agent
+    |       |-- Publisher research agent
+    |       |-- Pattern documentation agent
+    |
+    |-- SUPERVISOR: INVESTIGATION (HOFFMAN_INVESTIGATE.md)
+    |       |-- Deep research agents (rabbit holes)
+    |       |-- Legal/court record agent
+    |       |-- Academic literature agent
+    |       |-- Corporate ownership agent
+    |
+    |-- SUPERVISOR: ADVOCACY      (HOFFMAN_ADVOCATE.md)
+            |-- White paper agent
+            |-- Family outreach agent
+            |-- Press agent
+            |-- Legislative monitoring agent
+```
+
+### Supervisor documents
+- HOFFMAN_BUILD.md -- build queue, current state, build log
+- HOFFMAN_INTEL.md -- intelligence queue, BMID status, research targets
+- HOFFMAN_INVESTIGATE.md -- investigation queue, rabbit hole findings
+- HOFFMAN_ADVOCATE.md -- outreach queue, family contacts, press contacts
+
+### Communication protocol
+- Agents read their supervisor document before acting
+- Agents write results back to their supervisor document
+- Supervisors write summaries to HOFFMAN.md (this document)
+- Director reads HOFFMAN.md, makes decisions, redirects as needed
+- Nothing is lost -- every cycle is recorded
+
+---
+
+## PART 11 -- BMID ARCHITECTURE
+
+### What it is
+The Behavioral Manipulation Intelligence Database.
+An open intelligence repository documenting the supply chain of
+online manipulation: who does it, how they do it, where they lead
+people, and what harm has resulted.
+
+### Schema location
+hoffman-core/BMID_SCHEMA.md
+
+### API location
+hoffman-core/bmid-api/
+
+### Status
+- Schema: COMPLETE
+- API: v0.1 BUILT AND TESTED
+- Database: initialized with first record (Meta Platforms / Molly Russell)
+- Endpoints: health, fisherman, bait, explain, pattern, search, session
+
+### First record
+Fisherman: Meta Platforms (facebook.com)
+Catch: Molly Russell, age 14, UK, 2017
+Evidence: UK Coroner ruling September 2022
+Intelligence level: full (fisherman + motive + catch + evidence)
+
+### The "Why is this here?" pipeline
+Extension detects pattern -> sends domain + patterns to /api/v1/explain
+-> API returns fisherman record + motives + catch summary
+-> Claude generates plain language explanation from structured data
+-> User sees: not a generic pattern description but specific intelligence
+   about this publisher, their documented business model, and documented harm
+
+---
+
+### Cycle 3 -- Agent organization + BMID (March 2026)
+**Agent:** Claude (Anthropic)
+**Director:** Norm Robichaud
+**Actions taken:**
+- Built four supervisor documents: BUILD, INTEL, INVESTIGATE, ADVOCATE
+- Built BMID API v0.1 (Python/Flask/SQLite)
+  - 7 endpoints: health, fisherman, bait, explain, pattern, search, session
+  - Full schema implemented matching BMID_SCHEMA.md
+  - Seeded first fisherman record: Meta Platforms
+  - Seeded first catch record: Molly Russell (UK Coroner 2022)
+  - All endpoints tested and passing
+- Updated HOFFMAN.md with agent organization and BMID architecture
+
+**What works:**
+- BMID API starts, initializes database, seeds first record
+- GET /api/v1/fisherman/facebook.com returns full record with motives and catches
+- GET /api/v1/explain returns intelligence_level: full for facebook.com
+- Search endpoint returning results
+- Session endpoint ready to accept extension data
+
+**Next cycle targets:**
+- Deploy BMID API to hoffmanlenses.org (or separate subdomain)
+- Wire "Why is this here?" button in extension to /api/v1/explain
+- Intelligence agents begin populating Meta Platforms record fully
+- Investigation agents begin deep file on Meta (Frances Haugen, Molly Russell)
+- Session export feature in extension popup

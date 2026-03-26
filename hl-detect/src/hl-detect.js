@@ -83,7 +83,7 @@
           /you\s+won'?t\s+believe/,
           /what\s+happened\s+next/,
           /the\s+reason\s+(will|that)\s+(shock|surprise|amaze|horrify|blow)/,
-          /\bfind\s+out\s+(why|what|how|who)\b/,
+          /\bfind\s+out\s+(why|what|how|who)\b(?!\s+wrong|\s+much|\s+well|\s+long|\s+many|\s+far|\s+good|\s+bad|\s+little|\s+big)/,
           /\bchanges\s+everything\b/,
           /nobody\s+(expected|saw\s+this\s+coming|is\s+talking\s+about\s+this)/,
           /the\s+(truth|secret|real\s+reason|shocking\s+truth)\s+about/,

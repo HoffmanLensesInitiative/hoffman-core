@@ -384,6 +384,24 @@ test('session analysis returns aggregate stats', function() {
 });
 
 // ============================================================
+// REAL-WORLD FALSE POSITIVE REGRESSION TESTS
+// Added from live testing -- must never regress
+// ============================================================
+
+test('no false positive: conversational implication (Dr Nick)', function() {
+  var text = "Unfortunately, by the time people find out how wrong they treated you it'll be too late. Especially if you're tired of being treated as if your life is irrelevant and insignificant, I have two words for those people and it's not God bless. - Dr. Nick";
+  assertNoDetect(text, 'incomplete_hook', 'Conversational implication should not flag as incomplete hook');
+});
+
+test('no false positive: find out how in conversational context', function() {
+  assertNoDetect('I find out how much things cost before I buy them', 'incomplete_hook');
+});
+
+test('no false positive: find out how wrong', function() {
+  assertNoDetect('People will find out how wrong you were about this', 'incomplete_hook');
+});
+
+// ============================================================
 // RESULTS
 // ============================================================
 
