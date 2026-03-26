@@ -698,3 +698,45 @@ for size/accuracy tradeoff when that stage arrives
 - Synchronous vs async: synchronous for v0.1 confirmed -- fast enough, simpler
 
 **Next cycle target:** Universal extension -- wrap hl-detect in a browser extension that runs on every page, every website. Replace the Facebook-specific extension v0.1.0.
+
+### Cycle 2 -- Universal Extension v0.2.0 (March 2026)
+**Agent:** Claude (Anthropic)
+**Director:** Norm Robichaud
+**Actions taken:**
+- Built universal extension v0.2.0 -- runs on every website, not just Facebook
+- Replaced all platform-specific adapters with universal reader.js
+- Integrated hl-detect v0.1.0 as the core detection engine
+- Built new background worker, overlay renderer, and popup panel
+- Manifest updated to <all_urls> -- runs everywhere
+
+**What worked:**
+- Extension running successfully on foxnews.com -- 416 blocks scanned, 5 flagged
+- "The overlooked cause that doctors say may drive chronic digestive problems" -- correctly flagged as Unnamed authority (75% confidence). "Doctors say" without naming which doctors. Textbook false authority construction.
+- Mike Rowe story NOT flagged -- specific named person making specific claim. Calibration correct.
+- Annotation panel appearing with correct dark design, amber dot, plain language explanation
+- Session bar showing live stats at bottom of page: Scanned / Flagged / Escalation / Site
+- Universal approach validated -- hl-detect reads language, not DOM structure. Works on any site without platform knowledge.
+- All JS files ASCII-clean -- no unicode injection failures
+
+**What needs improvement:**
+- Annotation positioning -- appearing between page cards rather than directly below the flagged headline element. Needs CSS refinement.
+- 5 flags from 416 scanned on Fox News homepage is reasonable but needs validation across more sites
+- Session bar missing duration stat -- present in popup but not in bar
+- Annotation sometimes appearing in wrong column on grid layouts
+
+**Real world validation:**
+- foxnews.com: 416 scanned, 5 flagged, escalation LOW (1)
+- Detection confirmed working on live site with no platform-specific knowledge
+- False authority pattern firing correctly on health headlines using unnamed "doctors say" construction
+
+**Open questions answered this cycle:**
+- Universal text-based detection is viable -- confirmed on live site
+- reader.js selector strategy (article, h1-h3, p, role=article, class*=card) captures enough content without overcounting
+- Annotation positioning needs work but core functionality confirmed
+
+**Next cycle target:** Refinements
+- Fix annotation positioning to appear directly below flagged element
+- Add more patterns to hl-detect based on real-world observations
+- Test on more sites: CNN, Reddit, X, YouTube, shopping sites
+- Consider annotation being less visually dominant -- more ambient, less alarming
+- Session export feature -- download session as JSON/CSV
