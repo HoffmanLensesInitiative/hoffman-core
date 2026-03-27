@@ -1,0 +1,43 @@
+name: Build Agent Cycle
+
+on:
+  schedule:
+    - cron: '0 10 * * *'    # 10am UTC daily (3am Pacific)
+  workflow_dispatch:          # Manual trigger from GitHub UI
+    inputs:
+      reason:
+        description: 'Why are you running this manually?'
+        required: false
+
+jobs:
+  build-cycle:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install anthropic
+
+      - name: Run build cycle
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scripts/run_cycle.py build
+
+      - name: Commit results
+        run: |
+          git config user.name "Hoffman Build Agent"
+          git config user.email "build-agent@hoffmanlenses.org"
+          git add HOFFMAN_BUILD.md reports/
+          git diff --staged --quiet || git commit -m "build: auto cycle $(date -u +%Y-%m-%d)"
+          git push
