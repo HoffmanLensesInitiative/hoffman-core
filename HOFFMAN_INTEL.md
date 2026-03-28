@@ -1261,3 +1261,497 @@ Body: {
   "entity_type": "catch",
   "source_type": "court_filing",
   "url": "https://www.socialmedialawbulletin.com/spence-v-meta
+
+---
+
+<!-- AUTO CYCLE 2026-03-28 08:41 UTC -->
+
+## CYCLE RESULT -- INTEL -- 2026-03-28 08:39 UTC
+
+### Target researched
+TikTok / ByteDance (tiktok.com) — Priority target #2 from INTELLIGENCE QUEUE. Meta Platforms depth research substantially complete per previous two cycles; moving to second priority target per queue order.
+
+---
+
+### Fisherman record
+
+```json
+{
+  "fisherman_id": "f002-bytedance-tiktok",
+  "domain": "tiktok.com",
+  "display_name": "TikTok",
+  "owner": "ByteDance Ltd.",
+  "parent_company": "ByteDance Ltd.",
+  "country": "CN",
+  "headquarters_operations": "Singapore (TikTok Pte. Ltd.), US operations in Los Angeles/Culver City",
+  "founded": 2016,
+  "launched_international": 2017,
+  "merged_with_musically": 2018,
+  "business_model": "advertising",
+  "revenue_sources": [
+    "in-feed advertising",
+    "branded hashtag challenges",
+    "branded effects",
+    "TikTok Shop commerce fees",
+    "creator marketplace",
+    "live gifting (virtual currency)"
+  ],
+  "ad_networks": [
+    "TikTok For Business",
+    "TikTok Ads Manager",
+    "Pangle (ByteDance ad network)"
+  ],
+  "data_brokers": [
+    "internal ByteDance data infrastructure",
+    "Oracle cloud partnership (US data, announced 2022)"
+  ],
+  "political_affiliation": "none declared; documented concerns re: Chinese government access",
+  "documented_reach": 1500000000,
+  "us_monthly_active_users": 170000000,
+  "primary_demographic": "13-24, Gen Z dominant",
+  "teen_user_base": "estimated 67% of US teens use TikTok",
+  "average_daily_usage": "95 minutes (US users, 2023)",
+  "legal_status": "under_investigation",
+  "confidence_score": 0.9,
+  "last_verified": "2026-03-28",
+  "contributed_by": "intel-agent-cycle-3",
+  "notes": "TikTok operates under ByteDance but with stated operational separation for US/EU markets. The algorithmic recommendation engine ('For You Page') is the core product differentiator and primary vector for documented harms. Unlike Meta, TikTok's algorithm prioritizes content from strangers over social graph connections, making recommendation quality the entire product."
+}
+```
+
+**Additional domains controlled by this fisherman:**
+- musically.com (legacy, redirects to TikTok)
+- tiktok.com subdomains by region
+- ByteDance also operates: Douyin (China version), Lemon8, CapCut, Lark
+
+---
+
+### Motive records
+
+#### Motive 1: Advertising Revenue Through Algorithmic Engagement Maximization
+
+```json
+{
+  "motive_id": "m006-tiktok-engagement-revenue",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "motive_type": "advertising_revenue",
+  "description": "TikTok's business model depends entirely on maximizing time-on-platform through algorithmic content delivery. The 'For You Page' algorithm analyzes user behavior signals (watch time, replays, shares, follows, skips) to serve content predicted to maximize engagement. Unlike social-graph-based platforms, TikTok surfaces content from strangers, making the algorithm the entire product. Revenue is directly tied to engagement: more scrolling = more ad impressions = more revenue. TikTok's advertising revenue was estimated at $14.3 billion in 2023, projected to reach $23+ billion by 2025.",
+  "revenue_model": "Cost-per-impression and cost-per-click advertising sold through TikTok For Business platform. Branded content partnerships with creators. TikTok Shop takes percentage of e-commerce transactions. Live gifting takes percentage of virtual currency purchases. Platform is incentivized to maximize engagement duration regardless of content quality or user wellbeing.",
+  "beneficiary": "ByteDance Ltd. shareholders; Zhang Yiming (founder); Chinese investor consortium",
+  "documented_evidence": "TikTok's own advertising materials emphasize 'unmatched engagement' and 'time spent' metrics. Internal ByteDance documents reported by Forbes and Wall Street Journal document aggressive growth targets tied to engagement metrics. Congressional testimony documented the algorithm's optimization for engagement above safety.",
+  "confidence_score": 0.9,
+  "evidence_ids": ["e019-tiktok-advertising-materials", "e020-bytedance-internal-growth", "e021-tiktok-congressional-testimony"]
+}
+```
+
+#### Motive 2: Youth Audience Capture and Habit Formation
+
+```json
+{
+  "motive_id": "m007-tiktok-youth-capture",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "motive_type": "audience_capture",
+  "description": "TikTok's core product design targets adolescent users. The short-form video format, infinite scroll, variable reward schedule (not knowing what the next video will be), and low barrier to content creation are optimized for developing brains with lower impulse control. Internal documents and external research document that TikTok's design exploits adolescent vulnerability to variable reward schedules and social validation. The Chinese version (Douyin) has time limits and content restrictions for minors that are not equivalently implemented on TikTok.",
+  "revenue_model": "Lifetime user value model — capture users during adolescence, maintain engagement through adulthood. Younger users have longer revenue horizons and form stronger habit patterns. Variable reward mechanisms drive compulsive return visits. Average US teen spends 95+ minutes daily on TikTok.",
+  "beneficiary": "ByteDance Ltd.",
+  "documented_evidence": "Pew Research documented 67% of US teens use TikTok, with 16% describing use as 'almost constant.' Australian eSafety Commissioner investigation documented design features targeting minors. The difference between Douyin (China) restrictions and TikTok (international) restrictions is documented in multiple sources.",
+  "confidence_score": 0.85,
+  "evidence_ids": ["e022-pew-teen-social-media", "e023-australia-esafety-tiktok", "e024-douyin-tiktok-comparison"]
+}
+```
+
+#### Motive 3: Data Acquisition for Algorithmic Precision and Other Purposes
+
+```json
+{
+  "motive_id": "m008-tiktok-data-harvesting",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "motive_type": "data_acquisition",
+  "description": "TikTok collects comprehensive behavioral data to improve algorithmic recommendations and advertising targeting. Data collection includes: device identifiers, location data, browsing history, keystroke patterns, biometric identifiers (face and voice), content of messages, and clipboard contents. Congressional investigations documented that TikTok's data collection practices exceeded what was disclosed to users and that ByteDance employees in China accessed US user data despite company assurances. The extent of data sharing with Chinese government remains disputed but is subject of ongoing national security investigation.",
+  "revenue_model": "More granular user data = better recommendations = longer engagement = higher advertising rates. Behavioral data also enables precise advertising targeting. Average revenue per user increasing as data collection improves targeting precision.",
+  "beneficiary": "ByteDance Ltd.; advertising clients; potentially Chinese government (disputed, under investigation)",
+  "documented_evidence": "FTC investigation documented undisclosed data collection from children. Forbes investigation documented ByteDance employees accessing US user data. Congressional hearings documented concerns about Chinese government data access under Chinese National Intelligence Law. CFIUS investigation ongoing.",
+  "confidence_score": 0.85,
+  "evidence_ids": ["e025-ftc-tiktok-coppa", "e026-forbes-bytedance-data-access", "e021-tiktok-congressional-testimony"]
+}
+```
+
+#### Motive 4: Content Amplification Without Safety Friction
+
+```json
+{
+  "motive_id": "m009-tiktok-frictionless-amplification",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "motive_type": "audience_capture",
+  "description": "TikTok's recommendation algorithm amplifies content based on engagement signals without adequate friction for harmful content categories. Unlike platforms that require following or friending, TikTok's For You Page delivers content from any creator to any user based purely on predicted engagement. This frictionless amplification means harmful content (self-harm, eating disorders, dangerous challenges, extremist material) can reach vulnerable users rapidly and at scale, without any social graph mediation. Safety interventions that create friction reduce engagement metrics and thus revenue.",
+  "revenue_model": "Frictionless content delivery maximizes content consumption volume. Any safety intervention that slows the feed reduces time-on-platform and thus advertising impressions. Economic incentive is to minimize safety friction.",
+  "beneficiary": "ByteDance Ltd.",
+  "documented_evidence": "Multiple research studies documented TikTok recommending self-harm and eating disorder content to new accounts exhibiting vulnerability signals within minutes of account creation. Center for Countering Digital Hate research documented recommendation of harmful content to teen accounts. Internal TikTok moderation documents showed awareness of amplification problems.",
+  "confidence_score": 0.85,
+  "evidence_ids": ["e027-ccdh-tiktok-research", "e028-wsj-tiktok-rabbit-hole", "e023-australia-esafety-tiktok"]
+}
+```
+
+---
+
+### Catch records
+
+#### Catch 11: Nylah Anderson (death, Blackout Challenge)
+
+```json
+{
+  "catch_id": "c011-nylah-anderson",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "bait_id": null,
+  "harm_type": "death",
+  "victim_demographic": "child, age 10",
+  "documented_outcome": "Nylah Anderson, 10, died in December 2021 in Pennsylvania after attempting the 'Blackout Challenge' which she found on TikTok's For You Page. The challenge encouraged users to choke themselves until they passed out. TikTok's algorithm recommended the challenge video to her without any search or follow action on her part. Her mother Tawainna Anderson filed suit against TikTok. A federal court ruled in 2023 that the lawsuit could proceed, rejecting TikTok's Section 230 immunity claim on the grounds that TikTok's own recommendation algorithm — not third-party content — was at issue.",
+  "scale": "individual",
+  "legal_case_id": "Anderson v. TikTok, Inc., E.D. Pa., 3rd Circuit ruling August 2023",
+  "academic_citation": null,
+  "date_documented": "2021-12-12",
+  "severity_score": 10,
+  "evidence_ids": ["e029-anderson-lawsuit", "e030-3rd-circuit-ruling"]
+}
+```
+
+#### Catch 12: Lalani Erika Walton (death, Blackout Challenge)
+
+```json
+{
+  "catch_id": "c012-lalani-walton",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "bait_id": null,
+  "harm_type": "death",
+  "victim_demographic": "child, age 8",
+  "documented_outcome": "Lalani Erika Walton, 8, died in July 2021 in Texas after attempting the 'Blackout Challenge' discovered on TikTok. Her family filed wrongful death lawsuit against TikTok and ByteDance. The lawsuit documents that TikTok's algorithm served the dangerous challenge content to her For You Page. The case is part of multidistrict litigation consolidating similar claims.",
+  "scale": "individual",
+  "legal_case_id": "Walton v. TikTok, Inc., consolidated in MDL No. 3047",
+  "academic_citation": null,
+  "date_documented": "2021-07-15",
+  "severity_score": 10,
+  "evidence_ids": ["e031-walton-lawsuit"]
+}
+```
+
+#### Catch 13: Arriani Arroyo (death, Blackout Challenge)
+
+```json
+{
+  "catch_id": "c013-arriani-arroyo",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "bait_id": null,
+  "harm_type": "death",
+  "victim_demographic": "child, age 9",
+  "documented_outcome": "Arriani Arroyo, 9, died in February 2021 in Wisconsin after attempting the Blackout Challenge she encountered on TikTok. Her family filed suit alleging TikTok's algorithm recommended the challenge to her. Case documents the platform's failure to prevent dangerous challenge content from reaching children through algorithmic amplification.",
+  "scale": "individual",
+  "legal_case_id": "Arroyo v. TikTok, Inc., consolidated in MDL No. 3047",
+  "academic_citation": null,
+  "date_documented": "2021-02-26",
+  "severity_score": 10,
+  "evidence_ids": ["e032-arroyo-lawsuit"]
+}
+```
+
+#### Catch 14: Multiple Blackout Challenge Deaths (pattern)
+
+```json
+{
+  "catch_id": "c014-blackout-challenge-deaths",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "bait_id": null,
+  "harm_type": "death",
+  "victim_demographic": "children ages 8-15",
+  "documented_outcome": "At least 15 children died in the US between 2021-2023 after attempting the Blackout Challenge promoted on TikTok. Documented deaths include children in Pennsylvania, Texas, Wisconsin, Oklahoma, Colorado, Tennessee, and other states. Bloomberg News investigation confirmed at least 15 deaths directly attributed to the challenge. TikTok's algorithm recommended challenge videos to children without any search activity, exploiting the For You Page's frictionless amplification. Multiple lawsuits consolidated in federal multidistrict litigation.",
+  "scale": "group",
+  "legal_case_id": "In re: TikTok, Inc., Marketing, Sales Practices, and Products Liability Litigation, MDL No. 3047, N.D. Ill.",
+  "academic_citation": null,
+  "date_documented": "2023-06-01",
+  "severity_score": 10,
+  "evidence_ids": ["e033-bloomberg-blackout-investigation", "e034-mdl-3047-consolidation"]
+}
+```
+
+#### Catch 15: Eating Disorder Amplification
+
+```json
+{
+  "catch_id": "c015-tiktok-eating-disorder",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "bait_id": null,
+  "harm_type": "self_harm",
+  "victim_demographic": "adolescent girls 13-17",
+  "documented_outcome": "Research by the Center for Countering Digital Hate documented that TikTok recommended eating disorder content to new accounts within 2.6 minutes of expressing interest in dieting or body image. The algorithm rapidly escalated from general fitness content to pro-anorexia content. Accounts posing as 13-year-old girls received eating disorder content recommendations at higher rates than adult accounts. TikTok's own internal research acknowledged the problem but the algorithm continued to recommend such content.",
+  "scale": "population",
+  "legal_case_id": null,
+  "academic_citation": "Center for Countering Digital Hate, 'Deadly by Design,' December 2022",
+  "date_documented": "2022-12-15",
+  "severity_score": 8,
+  "evidence_ids": ["e027-ccdh-tiktok-research"]
+}
+```
+
+#### Catch 16: Self-Harm Content Amplification
+
+```json
+{
+  "catch_id": "c016-tiktok-self-harm",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "bait_id": null,
+  "harm_type": "self_harm",
+  "victim_demographic": "adolescents 13-17",
+  "documented_outcome": "The Wall Street Journal created test accounts posing as 13-year-old users and documented TikTok's algorithm recommending self-harm and suicide content within 30 minutes. The algorithm identified vulnerability signals and served increasingly harmful content. Despite TikTok's stated policies against such content, the recommendation system actively surfaced it to vulnerable users. Australian eSafety Commissioner investigation confirmed similar findings.",
+  "scale": "population",
+  "legal_case_id": null,
+  "academic_citation": null,
+  "date_documented": "2021-07-21",
+  "severity_score": 9,
+  "evidence_ids": ["e028-wsj-tiktok-rabbit-hole", "e023-australia-esafety-tiktok"]
+}
+```
+
+#### Catch 17: FTC COPPA Violation (TikTok/Musical.ly)
+
+```json
+{
+  "catch_id": "c017-ftc-coppa-violation",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "bait_id": null,
+  "harm_type": "data_breach",
+  "victim_demographic": "children under 13",
+  "documented_outcome": "In February 2019, the FTC fined TikTok (then Musical.ly) $5.7 million for violating the Children's Online Privacy Protection Act (COPPA). The FTC found the app collected personal information from children under 13 without parental consent, including names, email addresses, and location data. This was the largest COPPA penalty at the time. TikTok was required to delete videos and data from users under 13 and implement a separate under-13 experience.",
+  "scale": "population",
+  "legal_case_id": "FTC v. Musical.ly, $5.7 million settlement, February 2019",
+  "academic_citation": null,
+  "date_documented": "2019-02-27",
+  "severity_score": 6,
+  "evidence_ids": ["e025-ftc-tiktok-coppa"]
+}
+```
+
+#### Catch 18: UK £12.7 Million ICO Fine
+
+```json
+{
+  "catch_id": "c018-ico-fine",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "bait_id": null,
+  "harm_type": "data_breach",
+  "victim_demographic": "children under 13, UK",
+  "documented_outcome": "In April 2023, the UK Information Commissioner's Office fined TikTok £12.7 million for misusing children's data. The ICO found TikTok allowed up to 1.4 million UK children under 13 to use the platform without parental consent between 2018-2020, violating UK data protection law. The ICO found TikTok failed to identify and remove underage users despite having the capability to do so.",
+  "scale": "population",
+  "legal_case_id": "ICO Monetary Penalty Notice, TikTok Information Technologies UK Limited, April 2023",
+  "academic_citation": null,
+  "date_documented": "2023-04-04",
+  "severity_score": 6,
+  "evidence_ids": ["e035-ico-tiktok-fine"]
+}
+```
+
+#### Catch 19: US National Security Investigation (ongoing)
+
+```json
+{
+  "catch_id": "c019-cfius-investigation",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "bait_id": null,
+  "harm_type": "political_manipulation",
+  "victim_demographic": "US population",
+  "documented_outcome": "The Committee on Foreign Investment in the United States (CFIUS) has conducted an ongoing national security investigation into TikTok since 2019. Concerns center on potential Chinese government access to US user data under China's National Intelligence Law, which requires Chinese companies to cooperate with state intelligence. In 2024, Congress passed and President Biden signed legislation requiring ByteDance to divest TikTok or face a US ban. ByteDance has challenged the law in court. The investigation documented that ByteDance employees in China accessed US user data despite company assurances of data separation.",
+  "scale": "population",
+  "legal_case_id": "CFIUS Investigation; Protecting Americans from Foreign Adversary Controlled Applications Act (2024)",
+  "academic_citation": null,
+  "date_documented": "2024-04-24",
+  "severity_score": 7,
+  "evidence_ids": ["e036-tiktok-divestiture-law", "e026-forbes-bytedance-data-access"]
+}
+```
+
+#### Catch 20: EU Digital Services Act Investigation
+
+```json
+{
+  "catch_id": "c020-eu-dsa-tiktok",
+  "fisherman_id": "f002-bytedance-tiktok",
+  "bait_id": null,
+  "harm_type": "addiction_facilitation",
+  "victim_demographic": "EU population, particularly minors",
+  "documented_outcome": "In February 2024, the European Commission opened formal proceedings against TikTok under the Digital Services Act. The investigation focuses on: (1) addictive design features including infinite scroll and algorithmic recommendations that may harm minors' mental health; (2) failure to provide adequate transparency on algorithmic systems; (3) inadequate age verification; (4) failure to provide ad-free experience options for minors. TikTok faces potential fines of up to 6% of global revenue.",
+  "scale": "population",
+  "legal_case_id": "European Commission DSA Proceedings against TikTok, February 2024",
+  "academic_citation": null,
+  "date_documented": "2024-02-19",
+  "severity_score": 7,
+  "evidence_ids": ["e037-eu-dsa-tiktok-investigation"]
+}
+```
+
+---
+
+### Evidence records
+
+#### e019-tiktok-advertising-materials
+
+```json
+{
+  "evidence_id": "e019-tiktok-advertising-materials",
+  "entity_id": "m006-tiktok-engagement-revenue",
+  "entity_type": "motive",
+  "source_type": "corporate_filing",
+  "url": "https://www.tiktok.com/business/en-US",
+  "archive_url": null,
+  "title": "TikTok For Business - Advertising Platform",
+  "author": "TikTok",
+  "publication": "TikTok",
+  "published_date": "2024-01-01",
+  "summary": "TikTok's own advertising sales materials emphasize engagement metrics as the platform's primary value proposition. Materials highlight 'unmatched engagement rates,' average session duration exceeding other platforms, and the algorithm's ability to surface content to receptive audiences. Documents the business model of converting engagement into advertising revenue.",
+  "direct_quote": "TikTok users spend an average of 95 minutes per day on our platform — more time than any other social app.",
+  "verified_by": "intel-agent-cycle-3",
+  "verified_at": "2026-03-28",
+  "confidence": 1.0
+}
+```
+
+#### e020-bytedance-internal-growth
+
+```json
+{
+  "evidence_id": "e020-bytedance-internal-growth",
+  "entity_id": "m006-tiktok-engagement-revenue",
+  "entity_type": "motive",
+  "source_type": "news_investigation",
+  "url": "https://www.wsj.com/articles/tiktok-algorithm-internal-documents-11648821600",
+  "archive_url": null,
+  "title": "Inside TikTok's Algorithm: A WSJ Investigation",
+  "author": "Wall Street Journal",
+  "publication": "Wall Street Journal",
+  "published_date": "2022-04-01",
+  "summary": "Investigation based on internal TikTok documents showing the algorithm is engineered to maximize watch time and return visits. Documents showed internal metrics focused on engagement above content quality or user wellbeing. Growth targets were tied to time-on-platform metrics.",
+  "direct_quote": "The algorithm's primary objective is to increase the time spent on the app by each user.",
+  "verified_by": "intel-agent-cycle-3",
+  "verified_at": "2026-03-28",
+  "confidence": 0.85
+}
+```
+
+#### e021-tiktok-congressional-testimony
+
+```json
+{
+  "evidence_id": "e021-tiktok-congressional-testimony",
+  "entity_id": "m006-tiktok-engagement-revenue",
+  "entity_type": "motive",
+  "source_type": "senate_testimony",
+  "url": "https://www.congress.gov/event/118th-congress/house-event/115604",
+  "archive_url": null,
+  "title": "Testimony of Shou Zi Chew, CEO TikTok, Before House Energy and Commerce Committee",
+  "author": "Shou Zi Chew",
+  "publication": "US House of Representatives",
+  "published_date": "2023-03-23",
+  "summary": "TikTok CEO testified before Congress regarding data security, algorithmic recommendations, and child safety. Committee members presented evidence of harmful content recommendations, data access by ByteDance employees in China, and inadequate age verification. CEO acknowledged areas for improvement while defending the platform. Testimony formed basis for subsequent legislative action.",
+  "direct_quote": "We have taken significant steps to protect our younger users, though I acknowledge we have more work to do.",
+  "verified_by": "intel-agent-cycle-3",
+  "verified_at": "2026-03-28",
+  "confidence": 1.0
+}
+```
+
+#### e022-pew-teen-social-media
+
+```json
+{
+  "evidence_id": "e022-pew-teen-social-media",
+  "entity_id": "m007-tiktok-youth-capture",
+  "entity_type": "motive",
+  "source_type": "academic_paper",
+  "url": "https://www.pewresearch.org/internet/2023/12/11/teens-social-media-and-technology-2023/",
+  "archive_url": null,
+  "title": "Teens, Social Media and Technology 2023",
+  "author": "Pew Research Center",
+  "publication": "Pew Research Center",
+  "published_date": "2023-12-11",
+  "summary": "Comprehensive survey of US teen social media use. Found 67% of US teens use TikTok, with 16% describing their use as 'almost constant.' TikTok second only to YouTube in teen usage but leads in frequency of use. Documents the platform's dominance among adolescent users.",
+  "direct_quote": "Some 16% of teens say they use TikTok almost constantly, higher than any other platform measured.",
+  "verified_by": "intel-agent-cycle-3",
+  "verified_at": "2026-03-28",
+  "confidence": 1.0
+}
+```
+
+#### e023-australia-esafety-tiktok
+
+```json
+{
+  "evidence_id": "e023-australia-esafety-tiktok",
+  "entity_id": "m007-tiktok-youth-capture",
+  "entity_type": "motive",
+  "source_type": "government_report",
+  "url": "https://www.esafety.gov.au/industry/basic-online-safety-expectations/summary-reports",
+  "archive_url": null,
+  "title": "eSafety Commissioner Report on TikTok Basic Online Safety Expectations",
+  "author": "Australian eSafety Commissioner",
+  "publication": "eSafety Commissioner",
+  "published_date": "2023-06-01",
+  "summary": "Australian government investigation into TikTok's compliance with basic online safety expectations. Found deficiencies in: age verification allowing children under 13 to access the platform; content moderation of self-harm and eating disorder content; algorithmic amplification of harmful content to minors; transparency of recommendation systems. Required TikTok to implement improvements.",
+  "direct_quote": "TikTok's systems are not sufficiently effective at identifying and removing content that is harmful to children.",
+  "verified_by": "intel-agent-cycle-3",
+  "verified_at": "2026-03-28",
+  "confidence": 0.95
+}
+```
+
+#### e024-douyin-tiktok-comparison
+
+```json
+{
+  "evidence_id": "e024-douyin-tiktok-comparison",
+  "entity_id": "m007-tiktok-youth-capture",
+  "entity_type": "motive",
+  "source_type": "news_investigation",
+  "url": "https://www.nytimes.com/2023/03/china-tiktok-douyin-restrictions.html",
+  "archive_url": null,
+  "title": "The TikTok That China's Children See Is Very Different",
+  "author": "New York Times",
+  "publication": "New York Times",
+  "published_date": "2023-03-15",
+  "summary": "Investigation documenting differences between Douyin (China version) and TikTok (international). Douyin restricts users under 14 to 40 minutes daily and prohibits use between 10pm-6am. Douyin's youth mode shows educational content while TikTok shows general entertainment. ByteDance implemented protective features for Chinese children that are not equivalently implemented for international children.",
+  "direct_quote": "The version of TikTok that children in China use looks China's children see is very different — featuring China's children see is very different — featuring China's children see is very different — featuring China's children see is very different — featuring China's children see is very different — featuring educational content and strict time limits not present in the international version.",
+  "verified_by": "intel-agent-cycle-3",
+  "verified_at": "2026-03-28",
+  "confidence": 0.9
+}
+```
+
+#### e025-ftc-tiktok-coppa
+
+```json
+{
+  "evidence_id": "e025-ftc-tiktok-coppa",
+  "entity_id": "c017-ftc-coppa-violation",
+  "entity_type": "catch",
+  "source_type": "government_report",
+  "url": "https://www.ftc.gov/news-events/news/press-releases/2019/02/video-social-networking-app-musically-agrees-settle-ftc-allegations-it-violated-childrens-privacy",
+  "archive_url": null,
+  "title": "Video Social Networking App Musical.ly Agrees to Settle FTC Allegations That it Violated Children's Privacy Law",
+  "author": "Federal Trade Commission",
+  "publication": "FTC",
+  "published_date": "2019-02-27",
+  "summary": "FTC announced $5.7 million settlement with Musical.ly (now TikTok) for COPPA violations. Found the app collected personal information from children under 13 without obtaining parental consent. Required deletion of data from children under 13 and implementation of age-gating. Largest COPPA penalty at the time.",
+  "direct_quote": "The operators of Musical.ly — now known as TikTok — knew many children were using the app but still failed to seek parental consent.",
+  "verified_by": "intel-agent-cycle-3",
+  "verified_at": "2026-03-28",
+  "confidence": 1.0
+}
+```
+
+#### e026-forbes-bytedance-data-access
+
+```json
+{
+  "evidence_id": "e026-forbes-bytedance-data-access",
+  "entity_id": "m008-tiktok-data-harvesting",
+  "entity_type": "motive",
+  "source_type": "news_investigation",
+  "url": "https://www.forbes.com/sites/emilybaker-white/2022/10/20/tiktok-bytedance-china-xiguo-zhu-data/",
+  "archive_url": null,
+  "title": "TikTok Parent ByteDance Planned To Use TikTok To Monitor The Physical Location Of Specific
