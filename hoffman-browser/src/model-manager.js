@@ -84,11 +84,11 @@ class ModelManager {
       });
 
       this._context = await this._model.createContext({
-        contextSize: 2048
+        contextSize: 4096
       });
 
       this._status = 'ready';
-      console.log('[Hoffman] Model loaded on CPU, context 2048');
+      console.log('[Hoffman] Model loaded on CPU, context 4096');
 
       if (progressCallback) {
         progressCallback({ stage: 'ready', message: 'Model ready' });
@@ -107,7 +107,7 @@ class ModelManager {
     if (this._context) {
       try { await this._context.dispose(); } catch(e) {}
     }
-    this._context = await this._model.createContext({ contextSize: 2048 });
+    this._context = await this._model.createContext({ contextSize: 4096 });
 
     const session = new this._Session({
       contextSequence: this._context.getSequence(),
@@ -149,6 +149,12 @@ class ModelManager {
         }
       }
     });
+
+    // Recreate context for each call to avoid 'no sequences left'
+    if (this._context) {
+      try { await this._context.dispose(); } catch(e) {}
+    }
+    this._context = await this._model.createContext({ contextSize: 4096 });
 
     const session = new this._Session({
       contextSequence: this._context.getSequence(),

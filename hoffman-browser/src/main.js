@@ -133,9 +133,33 @@ ipcMain.on('toggle-panel', () => {
 ipcMain.on('analyze-page', async () => {
   panelView.webContents.send('analysis-started');
   try {
-    // Extract full rendered text -- above the page, the page sees nothing
-    const text = await browserView.webContents.executeJavaScript(
-      'document.body.innerText'
+    // Extract content text -- skip nav/header/footer/chrome, target article content
+    const text = await browserView.webContents.executeJavaScript(`(function() {
+      // Priority 1: semantic content containers
+      const selectors = [
+        'article', 'main', '[role="main"]', '[role="article"]',
+        '.post-content', '.article-body', '.story-body', '.entry-content',
+        '#content', '#main-content', '.content'
+      ];
+      for (const sel of selectors) {
+        const el = document.querySelector(sel);
+        if (el && el.innerText && el.innerText.trim().length > 200) {
+          return el.innerText;
+        }
+      }
+      // Priority 2: collect all paragraphs, skip nav/header/footer
+      const skip = new Set(['NAV','HEADER','FOOTER','ASIDE','SCRIPT','STYLE','NOSCRIPT']);
+      const paras = Array.from(document.querySelectorAll('p, h1, h2, h3, blockquote'))
+        .filter(el => {
+          let p = el.parentElement;
+          while (p) { if (skip.has(p.tagName)) return false; p = p.parentElement; }
+          return el.innerText && el.innerText.trim().length > 30;
+        })
+        .map(el => el.innerText.trim());
+      if (paras.length > 3) return paras.join('\\n');
+      // Fallback: full body text
+      return document.body.innerText;
+    })()`
     );
     const url      = browserView.webContents.getURL();
     const hostname = safeHostname(url);

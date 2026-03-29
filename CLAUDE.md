@@ -47,10 +47,9 @@ All IPC flows through `hoffman-browser/src/main.js`. Preload scripts expose limi
 User clicks Analyze
   → panel sends 'analyze-page' IPC to main
   → main extracts page text via browserView.webContents.executeJavaScript('document.body.innerText')
-  → analyzer.js cleans text, trims to 1200 chars (fits 2048-token context with system prompt)
+  → analyzer.js cleans text, trims to 2400 chars (fits 4096-token context with system prompt)
   → model-manager.js calls getLlama({gpu: false}) + recreates context per call (avoids "no sequences left" error)
-  → model returns JSON or prose
-  → analyzer.js tries extractJson(), falls back to parseNaturalResponse()
+  → model returns grammar-constrained JSON via completeJson() (physically cannot output non-JSON)
   → structured flags returned to panel via 'analysis-complete' IPC
 ```
 
@@ -76,7 +75,8 @@ Llama 3.2 3B Instruct (Q4_K_M, ~2.2GB) stored at Electron `userData` path. Downl
 
 ### Important constraints
 
-- **Context recreation**: `model-manager.js` recreates the llama context on every `complete()` call. This is intentional to prevent the "no sequences left" error — do not refactor to reuse a single context.
-- **1200-char text limit**: The analyzer truncates page text to fit within the 2048-token context window alongside the system prompt. Increasing this requires also increasing the context size in model-manager.js.
+- **Context recreation**: `model-manager.js` recreates the llama context on every `completeJson()` call. This is intentional to prevent the "no sequences left" error — do not refactor to reuse a single context.
+- **2400-char text limit**: The analyzer truncates page text to fit within the 4096-token context window alongside the system prompt. Increasing this requires also increasing the context size in model-manager.js.
+- **Grammar-constrained JSON**: `completeJson()` uses `LlamaJsonSchemaGrammar` so the model physically cannot output non-JSON tokens. Do not revert to `complete()` + string parsing.
 - **CPU-only inference**: `getLlama({gpu: false})` is intentional for universal hardware compatibility.
 - **No build step for UI**: `panel/toolbar.html` and `panel/panel.html` are standalone files with inline CSS/JS — there is no bundler or transpiler.

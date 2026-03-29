@@ -52,25 +52,54 @@ class Analyzer {
 
   async analyzeWithModel(text, context) {
     const { url, hostname } = context;
-    const excerpt = text.length > 1200 ? text.substring(0, 1200) : text;
+    const excerpt = text.length > 2400 ? text.substring(0, 2400) : text;
 
     try {
-      const response = await this.modelManager.complete(
+      // Grammar-constrained JSON -- model physically cannot output non-JSON tokens
+      const jsonResult = await this.modelManager.completeJson(
         SYSTEM_PROMPT,
         `Analyze this text from ${hostname}:\n\n${excerpt}`
       );
 
-      console.log('[Hoffman] Raw length:', response.length);
-      console.log('[Hoffman] Raw preview:', response.substring(0, 300));
+      // Normalize: don't trust the boolean the model committed to before analyzing.
+      // A 3B model often writes manipulation_found:false then a summary describing manipulation.
+      // Derive truth from the summary text and flags array.
+      const flags = jsonResult.flags || [];
+      const summarySignals = ['manipulat', 'outrage', 'tribal', 'dehumani', 'false authority',
+        'false urgency', 'war framing', 'enemy framing', 'complicity', 'propaganda'];
+      const summaryImpliesFound = summarySignals.some(s =>
+        (jsonResult.summary || '').toLowerCase().includes(s)
+      );
+      const manipulation_found = flags.length > 0 || summaryImpliesFound;
 
-      // Try JSON first, fall back to natural language parsing
-      const jsonResult = this.extractJson(response);
-      if (jsonResult && jsonResult.manipulation_found !== undefined) {
-        console.log('[Hoffman] JSON parse succeeded');
-        return { hostname, url, ...jsonResult, method: 'model', textLength: text.length };
+      // If manipulation was detected in summary but the model returned no flags,
+      // synthesize one so the panel count > 0 and the result is visible.
+      if (manipulation_found && flags.length === 0 && jsonResult.summary) {
+        const techniqueMap = {
+          'outrage':         'outrage_engineering',
+          'tribal':          'tribal_activation',
+          'false urgency':   'false_urgency',
+          'false authority': 'false_authority',
+          'dehumani':        'dehumanization',
+          'war framing':     'war_framing',
+          'enemy framing':   'enemy_framing',
+          'complicity':      'complicity_framing',
+        };
+        let technique = 'outrage_engineering';
+        const lsummary = jsonResult.summary.toLowerCase();
+        for (const [kw, tech] of Object.entries(techniqueMap)) {
+          if (lsummary.includes(kw)) { technique = tech; break; }
+        }
+        flags.push({
+          quote: excerpt.split('\n').find(l => l.trim().length > 40) || excerpt.substring(0, 100),
+          technique,
+          explanation: jsonResult.summary,
+          severity: 'high'
+        });
       }
-      console.log('[Hoffman] Falling back to natural language parse');
-      return this.parseNaturalResponse(response, hostname, url, text.length);
+
+      console.log('[Hoffman] flags:', flags.length, 'manipulation_found:', manipulation_found);
+      return { hostname, url, ...jsonResult, flags, manipulation_found, method: 'model', textLength: text.length };
 
     } catch (err) {
       console.log('[Hoffman] Error:', err.message);

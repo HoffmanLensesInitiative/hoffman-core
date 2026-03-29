@@ -56,12 +56,54 @@ All JS files must be ASCII-clean (no unicode above 127).
 
 ## BUILD QUEUE (priority order)
 
-1. Session export -- download session as JSON/CSV from popup
-2. "Why is this here?" button -- Claude API integration in popup
-3. BMID API v0.1 -- basic read/write endpoints, SQLite initially
-4. hl-detect v0.2 -- coordinated_language pattern, multilingual stub
-5. hoffmanlenses.org missing pages
-6. Hoffman Electron browser (Stage 3 -- deferred until extension stable)
+1. **[BROWSER] Two-pass analysis -- Hoffman Browser LLM reliability** (see brief below)
+2. Session export -- download session as JSON/CSV from popup
+3. "Why is this here?" button -- Claude API integration in popup
+4. BMID API v0.1 -- basic read/write endpoints, SQLite initially
+5. hl-detect v0.2 -- coordinated_language pattern, multilingual stub
+6. hoffmanlenses.org missing pages
+7. Hoffman Electron browser (Stage 3 -- deferred until extension stable)
+
+---
+
+## BUILD BRIEF: Two-pass analysis for Hoffman Browser
+
+**Problem**: Llama 3.2 3B cannot reliably do detection + quote extraction in a single pass.
+Testing on foxnews.com, facebook.com (Occupy Democrats page), and codepink.org showed the
+model correctly describing manipulation in its `summary` field but returning an empty `flags`
+array. The model commits to `manipulation_found: false` before analyzing, then contradicts
+itself. Root cause: a 3B model at 4096-token context is at its limit doing both jobs at once.
+
+**Current workaround** (in place, not a real fix):
+- `analyzer.js` detects manipulation signals in the summary text and synthesizes a single flag
+  from it. This surfaces results but loses quote precision -- the flag quote is the first long
+  line of the page text, not the actual manipulative phrase.
+
+**The real fix: two-pass prompting**
+
+Pass 1 -- Detection only. Ask the model:
+  "Does this text contain manipulation? If yes, list only the technique names present,
+   one per line. Example: outrage_engineering, tribal_activation"
+  This is a simple task a 3B model handles well.
+
+Pass 2 -- Extraction. For each detected technique, ask:
+  "Find one sentence or phrase from this text that is an example of [technique].
+   Quote it exactly. Then explain in one sentence why it is manipulative."
+  One technique per call = focused, reliable output.
+
+Both passes use small prompts fitting comfortably in the 4096-token context.
+
+**Where to make changes**:
+- `hoffman-browser/src/analyzer.js` -- `analyzeWithModel()` method
+- `hoffman-browser/src/model-manager.js` -- may need a lightweight `completeText()` for pass 1
+
+**Constraints**:
+- Do not add new npm dependencies
+- Keep CPU-only inference (`gpu: false`)
+- Context recreation per call is intentional (prevents "no sequences left" error)
+- The `flags` array shape must remain: `{ quote, technique, explanation, severity }`
+- Test by running the browser (`cd hoffman-browser && npm start`) and analyzing
+  foxnews.com, a Facebook page, and one news article. All three should return flags.
 
 ---
 
