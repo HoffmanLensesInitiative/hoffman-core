@@ -7,6 +7,7 @@
 
 const { app, BrowserWindow, BrowserView, ipcMain } = require('electron');
 const path = require('path');
+const http = require('http');
 const Analyzer = require('./analyzer');
 const ModelManager = require('./model-manager');
 
@@ -178,6 +179,30 @@ ipcMain.on('load-model', async () => {
   } catch (err) {
     panelView.webContents.send('model-error', err.message);
   }
+});
+
+// ── IPC: panel -- BMID ───────────────────────────────────
+
+function bmidFetch(urlPath) {
+  return new Promise((resolve, reject) => {
+    const req = http.get('http://localhost:5000' + urlPath, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(new Error('Invalid JSON from BMID')); }
+      });
+    });
+    req.on('error', (err) => reject(new Error('BMID unavailable: ' + err.message)));
+    req.setTimeout(5000, () => { req.destroy(); reject(new Error('BMID timeout')); });
+  });
+}
+
+ipcMain.handle('query-bmid', async (event, domain, pattern) => {
+  const clean = (domain || '').replace(/^www\./, '');
+  const params = new URLSearchParams({ domain: clean });
+  if (pattern) params.set('patterns', pattern);
+  return bmidFetch('/api/v1/explain?' + params.toString());
 });
 
 // ── App lifecycle ─────────────────────────────────────────

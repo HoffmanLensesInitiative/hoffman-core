@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('hoffman', {
   analyzePage:    ()  => ipcRenderer.send('analyze-page'),
   getModelStatus: ()  => ipcRenderer.send('get-model-status'),
   loadModel:      ()  => ipcRenderer.send('load-model'),
+  queryBmid: (domain, pattern) => ipcRenderer.invoke('query-bmid', domain, pattern),
 
   onPageChanged:      (cb) => ipcRenderer.on('page-changed',      (e, d) => cb(d)),
   onAnalysisStarted:  (cb) => ipcRenderer.on('analysis-started',  ()     => cb()),

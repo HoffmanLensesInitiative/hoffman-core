@@ -270,6 +270,76 @@
     background: rgba(90,176,138,0.2);
     color: #5ABF8A;
   }
+
+  /* BMID */
+  .bmid-btn {
+    margin-top: 10px;
+    padding: 5px 10px;
+    background: transparent;
+    border: 1px solid rgba(90,144,238,0.3);
+    border-radius: 3px;
+    color: #5A90EE;
+    font-family: ui-monospace, monospace;
+    font-size: 9px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+
+  .bmid-btn:hover { background: rgba(90,144,238,0.1); border-color: rgba(90,144,238,0.6); }
+  .bmid-btn:disabled { opacity: 0.4; cursor: default; }
+
+  .bmid-result {
+    margin-top: 8px;
+    font-size: 10px;
+    line-height: 1.6;
+  }
+
+  .bmid-loading { color: #5A8090; font-style: italic; }
+
+  .bmid-none {
+    color: #3A5060;
+    font-style: italic;
+  }
+
+  .bmid-intel {
+    background: rgba(90,144,238,0.05);
+    border: 1px solid rgba(90,144,238,0.15);
+    border-radius: 4px;
+    padding: 8px 10px;
+  }
+
+  .bmid-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 4px;
+    color: #A8C4C4;
+  }
+
+  .bmid-label {
+    color: #5A8090;
+    flex-shrink: 0;
+    min-width: 60px;
+  }
+
+  .bmid-motive {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    color: #A8C4C4;
+  }
+
+  .bmid-harm {
+    margin-top: 4px;
+    color: #FF5555;
+    font-size: 9px;
+  }
+
+  .bmid-confidence {
+    font-size: 9px;
+    color: #3A5060;
+    margin-top: 6px;
+  }
 </style>
 </head>
 <body>
@@ -309,6 +379,7 @@
   const progressBar  = document.getElementById('progress-bar');
 
   let modelReady = false;
+  let currentHostname = '';
 
   // ── Analyze button ──────────────────────────────────────
   analyzeBtn.addEventListener('click', () => {
@@ -372,7 +443,8 @@
 
   // ── Page navigation ─────────────────────────────────────
   window.hoffman.onPageChanged((data) => {
-    hostnameEl.textContent = data.hostname || data.url;
+    currentHostname = data.hostname || '';
+    hostnameEl.textContent = currentHostname || data.url;
     // Clear results on navigation
     resultsEl.innerHTML = '<div class="state-idle">Navigate to any page.<br>Click <strong>Analyze</strong> to read the room.</div>';
   });
@@ -441,6 +513,8 @@
       if (flag.explanation) {
         html += '<div class="flag-explanation">' + escHtml(flag.explanation) + '</div>';
       }
+      html += '<button class="bmid-btn" onclick="queryBmid(' + i + ',\'' + escAttr(flag.technique) + '\')">Why is this here?</button>';
+      html += '<div class="bmid-result" id="bmid-' + i + '"></div>';
       html +=   '</div>';
       html += '</div>';
     });
@@ -453,6 +527,69 @@
   function toggleFlag(i) {
     const el = document.getElementById('flag-' + i);
     if (el) el.classList.toggle('open');
+  }
+
+  async function queryBmid(flagIndex, technique) {
+    const resultEl = document.getElementById('bmid-' + flagIndex);
+    const btn = resultEl ? resultEl.previousElementSibling : null;
+    if (!resultEl) return;
+
+    if (btn) btn.disabled = true;
+    resultEl.innerHTML = '<div class="bmid-loading">Checking intel...</div>';
+
+    try {
+      const data = await window.hoffman.queryBmid(currentHostname, technique);
+      resultEl.innerHTML = renderBmid(data);
+    } catch (err) {
+      resultEl.innerHTML = '<div class="bmid-none">' + escHtml(err.message) + '</div>';
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function renderBmid(data) {
+    if (!data) return '<div class="bmid-none">No response from BMID.</div>';
+
+    if (data.intelligence_level === 'none') {
+      return '<div class="bmid-none">No intelligence on file for ' + escHtml(data.domain || currentHostname) + '.</div>';
+    }
+
+    const f = data.fisherman || {};
+    let html = '<div class="bmid-intel">';
+
+    if (f.display_name || f.owner) {
+      html += '<div class="bmid-row"><span class="bmid-label">Owner</span><span>'
+            + escHtml(f.display_name || f.domain) + (f.owner && f.owner !== f.display_name ? ' — ' + escHtml(f.owner) : '')
+            + '</span></div>';
+    }
+
+    if (f.business_model) {
+      html += '<div class="bmid-row"><span class="bmid-label">Model</span><span>'
+            + escHtml(f.business_model.replace(/_/g, ' '))
+            + '</span></div>';
+    }
+
+    if (data.motives && data.motives.length > 0) {
+      const m = data.motives[0];
+      html += '<div class="bmid-motive">' + escHtml(m.description || m.motive_type) + '</div>';
+    }
+
+    if (data.catch_summary && data.catch_summary.total_documented > 0) {
+      const n = data.catch_summary.total_documented;
+      html += '<div class="bmid-harm">' + n + ' documented harm case' + (n !== 1 ? 's' : '') + ' on record.</div>';
+    }
+
+    if (f.confidence_score != null) {
+      html += '<div class="bmid-confidence">Intelligence confidence: ' + Math.round(f.confidence_score * 100) + '%</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function escAttr(str) {
+    if (!str) return '';
+    return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
   }
 
   function escHtml(str) {
