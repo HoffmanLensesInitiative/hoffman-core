@@ -1,0 +1,36 @@
+# Node
+node_modules/
+dist/
+.npm/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Local model (large binary, downloaded at runtime)
+models/
+*.gguf
+
+# Database (generated from seed.py, not committed)
+*.db
+*.sqlite
+*.sqlite3
+
+# Electron build artifacts
+out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*~
+
+# Logs
+*.log
+npm-debug.log*
