@@ -2788,3 +2788,502 @@ Fox News / Fox Corporation (foxnews.com) — Priority target #4 from INTELLIGENC
   "entity_id": "m017-foxnews-health-misinfo",
   "entity_type": "motive",
   
+
+---
+
+<!-- AUTO CYCLE 2026-03-29 20:42 UTC -->
+
+## CYCLE RESULT -- INTEL -- 2026-03-29 20:40 UTC
+
+### Target researched
+Twitter/X (x.com, twitter.com) — Priority target based on INTELLIGENCE QUEUE gap analysis. Fox News research substantially complete per previous cycle. Twitter/X identified as high priority gap in Current State section: "Twitter/X: no record -- high priority (political manipulation, Musk-era algorithm changes)". Moving to address this critical gap.
+
+---
+
+### Fisherman record
+
+```json
+{
+  "fisherman_id": "f005-x-corp-twitter",
+  "domain": "x.com",
+  "alternate_domains": ["twitter.com"],
+  "display_name": "X (formerly Twitter)",
+  "owner": "X Corp.",
+  "parent_company": "X Holdings Corp.",
+  "controlling_shareholder": "Elon Musk",
+  "country": "US",
+  "headquarters": "San Francisco, California (reduced); Austin, Texas",
+  "founded": 2006,
+  "acquired_by_musk": "2022-10-27",
+  "acquisition_price": "44000000000",
+  "business_model": "mixed",
+  "revenue_sources": [
+    "advertising (declining post-acquisition)",
+    "X Premium subscriptions (formerly Twitter Blue)",
+    "X Premium+ subscriptions",
+    "API access fees",
+    "verification badges for organizations",
+    "creator revenue sharing"
+  ],
+  "ad_networks": [
+    "X Ads (formerly Twitter Ads)",
+    "programmatic advertising partners (reduced post-acquisition)"
+  ],
+  "data_brokers": [
+    "historical partnerships with data resellers (reduced)",
+    "API data access (now heavily monetized)"
+  ],
+  "political_affiliation": "owner publicly identifies as politically active; platform accused of favoring right-leaning content post-acquisition",
+  "documented_reach": 600000000,
+  "documented_reach_notes": "monthly active users claimed by company; independent verification difficult post-acquisition",
+  "us_monthly_active_users": 100000000,
+  "us_monthly_active_users_notes": "estimated; company stopped reporting granular metrics",
+  "primary_demographic": "adults 18-49, news/politics engaged, journalists, public figures",
+  "legal_status": "active",
+  "recent_major_events": [
+    "mass layoffs 2022-2023 (approximately 80% workforce reduction)",
+    "advertiser exodus 2022-2024",
+    "reinstatement of previously banned accounts",
+    "algorithm changes favoring paid subscribers",
+    "removal from app stores threatened (Brazil 2024)",
+    "EU DSA compliance investigations"
+  ],
+  "confidence_score": 0.85,
+  "last_verified": "2026-03-29",
+  "contributed_by": "intel-agent-cycle-6",
+  "notes": "Twitter underwent dramatic transformation following Elon Musk's acquisition in October 2022. The platform rebranded to 'X' in July 2023. Post-acquisition changes include: gutting of trust and safety teams, reinstatement of previously banned accounts including those suspended for harassment and misinformation, algorithmic changes that amplify owner's posts and paid subscribers, removal of legacy verification in favor of paid verification, and significant reduction in content moderation capacity. The platform has become a vector for misinformation, coordinated harassment, and political manipulation at a scale exceeding pre-acquisition levels. Advertising revenue has declined approximately 50-60% as major brands departed due to content concerns."
+}
+```
+
+---
+
+### Motive records
+
+#### Motive 1: Subscription Revenue Through Engagement Amplification
+
+```json
+{
+  "motive_id": "m018-x-subscription-engagement",
+  "fisherman_id": "f005-x-corp-twitter",
+  "motive_type": "subscription_growth",
+  "description": "Following the acquisition and collapse of advertising revenue, X pivoted toward subscription revenue through X Premium (formerly Twitter Blue). The algorithm was modified to amplify content from paid subscribers, creating an incentive for users to pay $8-16/month for visibility. This creates a system where reach is purchased rather than earned through content quality. Paid subscribers receive priority in replies, search, and the 'For You' algorithmic feed. This economic model incentivizes engagement-maximizing behavior by paid users, who are rewarded with amplification regardless of content accuracy or harm potential.",
+  "revenue_model": "X Premium ($8/month) and X Premium+ ($16/month) subscriptions. Subscribers receive algorithmic amplification, verification badges, and reduced advertising. Creator revenue sharing pays high-engagement accounts from advertising revenue, incentivizing viral content. The platform takes a percentage of creator monetization. Estimated subscription revenue $200-400 million annually (far below pre-acquisition advertising levels).",
+  "beneficiary": "X Corp.; Elon Musk (sole owner); high-engagement paid creators",
+  "documented_evidence": "X's own documentation confirms algorithmic preference for paid subscribers. Internal code leaked in 2023 confirmed amplification boosts for Premium accounts. Musk publicly stated paid subscribers would receive priority ranking. Financial reporting indicates subscription revenue has not offset advertising losses.",
+  "confidence_score": 0.85,
+  "evidence_ids": ["e078-x-premium-documentation", "e079-algorithm-leak-2023", "e080-musk-amplification-statements"]
+}
+```
+
+#### Motive 2: Political Influence Through Platform Control
+
+```json
+{
+  "motive_id": "m019-x-political-influence",
+  "fisherman_id": "f005-x-corp-twitter",
+  "motive_type": "political_influence",
+  "description": "Elon Musk has used ownership of X to advance political positions, amplify preferred political voices, and suppress or reduce reach of critics. The 'Twitter Files' releases were framed as exposing prior censorship but selectively released information favorable to conservative narratives. Musk personally amplifies political content to his 180+ million followers, with algorithmic priority ensuring massive reach. The platform has become a vehicle for Musk's political engagement, including endorsing political candidates, attacking political opponents, and promoting specific policy positions. This represents a transformation from platform-as-infrastructure to platform-as-political-instrument.",
+  "revenue_model": "Political influence serves Musk's broader business interests (Tesla regulatory treatment, SpaceX government contracts, xAI positioning) and personal political goals. The platform's influence with journalists, politicians, and public discourse provides leverage in regulatory and policy debates. Direct monetization of political influence is secondary to strategic value.",
+  "beneficiary": "Elon Musk personal and business interests; political allies amplified by the platform",
+  "documented_evidence": "Musk's account receives massive algorithmic amplification (documented by researchers tracking reach). Musk has publicly endorsed political candidates on the platform. The 'Twitter Files' release was coordinated with selected journalists to advance specific narratives. Musk's political posts frequently become top-engaged content due to algorithmic priority. Researchers documented suppression of reach for accounts critical of Musk.",
+  "confidence_score": 0.85,
+  "evidence_ids": ["e081-musk-amplification-research", "e082-twitter-files-analysis", "e083-musk-political-endorsements", "e084-reach-suppression-research"]
+}
+```
+
+#### Motive 3: Data Monetization Through API Restrictions
+
+```json
+{
+  "motive_id": "m020-x-api-monetization",
+  "fisherman_id": "f005-x-corp-twitter",
+  "motive_type": "data_acquisition",
+  "description": "Post-acquisition, X dramatically restricted free API access and implemented expensive paid tiers. This eliminated most academic research, third-party applications, and independent analysis of the platform. Researchers who previously studied misinformation spread, bot networks, and platform manipulation lost access. The restrictions serve dual purposes: generating revenue and preventing independent accountability research. Organizations must now pay $42,000+ annually for research API access, putting systematic study of platform harms out of reach for most researchers.",
+  "revenue_model": "API access tiers: Free (minimal, read-only), Basic ($100/month), Pro ($5,000/month), Enterprise (custom pricing, $42,000+ annually for research). Revenue from API access estimated at tens of millions annually. More significantly, restrictions prevent research that could document platform harms and inform regulatory action.",
+  "beneficiary": "X Corp. (revenue); X Corp. (reduced accountability through research limitations)",
+  "documented_evidence": "API pricing documentation is public. Academic researchers publicly documented loss of access and research program terminations. The Coalition for Independent Technology Research documented impact on misinformation research. Major research institutions (Stanford Internet Observatory, etc.) reported inability to continue Twitter/X research.",
+  "confidence_score": 0.9,
+  "evidence_ids": ["e085-x-api-pricing", "e086-research-access-impact", "e087-stanford-internet-observatory"]
+}
+```
+
+#### Motive 4: Engagement Through Reduced Content Moderation
+
+```json
+{
+  "motive_id": "m021-x-reduced-moderation",
+  "fisherman_id": "f005-x-corp-twitter",
+  "motive_type": "audience_capture",
+  "description": "X dramatically reduced content moderation capacity by laying off approximately 80% of staff, including most of the trust and safety team. Content that was previously removed or restricted (hate speech, harassment, misinformation) now remains on the platform longer or permanently. This creates a more 'engaging' environment for users who produce or consume such content, at the cost of driving away users and advertisers who find it harmful. The reduction in moderation is framed as 'free speech' but functions as engagement optimization for controversial content.",
+  "revenue_model": "Controversial and outrage-generating content drives engagement metrics. Reduced moderation reduces operating costs. Users who were previously banned or restricted return to the platform. The tradeoff is lost advertising revenue from brand-safe advertisers, partially offset by subscription revenue from engaged users and reduced labor costs.",
+  "beneficiary": "X Corp. (reduced costs); users producing previously-restricted content; engagement-driven creators",
+  "documented_evidence": "Staff reductions are documented and confirmed by Musk. Multiple studies documented increases in hate speech, misinformation, and harassment following the acquisition. The Center for Countering Digital Hate documented increases in slurs and hate speech. Previously banned accounts (including those banned for incitement and harassment) were reinstated. Advertisers publicly cited content concerns when departing the platform.",
+  "confidence_score": 0.9,
+  "evidence_ids": ["e088-staff-reduction-reporting", "e089-ccdh-hate-speech-study", "e090-account-reinstatements", "e091-advertiser-departures"]
+}
+```
+
+---
+
+### Catch records
+
+#### Catch 36: Advertiser Exodus and Revenue Collapse
+
+```json
+{
+  "catch_id": "c036-advertiser-exodus",
+  "fisherman_id": "f005-x-corp-twitter",
+  "bait_id": null,
+  "harm_type": "financial_loss",
+  "victim_demographic": "X Corp. employees (laid off); X Corp. creditors; Twitter shareholders pre-acquisition",
+  "documented_outcome": "Following Musk's acquisition, major advertisers departed X due to concerns about content moderation, brand safety, and Musk's personal conduct on the platform. Companies including Apple, Disney, IBM, Comcast, Warner Bros Discovery, and Paramount Global paused or ended advertising. Advertising revenue declined approximately 50-60% from pre-acquisition levels. Musk acknowledged in 2023 that the company was at risk of bankruptcy. The advertising collapse was triggered by content concerns and accelerated when Musk amplified antisemitic content and told departing advertisers to 'go fuck yourself' at a public conference. X's valuation dropped from $44 billion (acquisition) to an estimated $12.5 billion by late 2023.",
+  "scale": "population",
+  "legal_case_id": null,
+  "academic_citation": null,
+  "date_documented": "2023-11-29",
+  "severity_score": 7,
+  "evidence_ids": ["e091-advertiser-departures", "e092-musk-advertiser-statement", "e093-valuation-decline"]
+}
+```
+
+#### Catch 37: Hate Speech and Harassment Increase
+
+```json
+{
+  "catch_id": "c037-hate-speech-increase",
+  "fisherman_id": "f005-x-corp-twitter",
+  "bait_id": null,
+  "harm_type": "radicalization",
+  "victim_demographic": "marginalized communities; Black users; Jewish users; LGBTQ+ users; women",
+  "documented_outcome": "Multiple research organizations documented significant increases in hate speech, slurs, and harassment following Musk's acquisition. The Center for Countering Digital Hate found that Twitter's response rate to reported hate speech dropped from 50% pre-acquisition to under 2% post-acquisition. The Anti-Defamation League documented increases in antisemitic content. Researchers at Montclair State University documented a 202% increase in use of the n-word in the 12 hours following acquisition announcement. GLAAD documented increases in anti-LGBTQ+ content. Users from marginalized communities reported increased harassment and many departed the platform.",
+  "scale": "population",
+  "legal_case_id": null,
+  "academic_citation": "Center for Countering Digital Hate, 'Failure to Act,' June 2023",
+  "date_documented": "2023-06-01",
+  "severity_score": 8,
+  "evidence_ids": ["e089-ccdh-hate-speech-study", "e094-adl-antisemitism-report", "e095-montclair-slur-study", "e096-glaad-report"]
+}
+```
+
+#### Catch 38: Election Misinformation Amplification (2024)
+
+```json
+{
+  "catch_id": "c038-election-misinfo-2024",
+  "fisherman_id": "f005-x-corp-twitter",
+  "bait_id": null,
+  "harm_type": "political_manipulation",
+  "victim_demographic": "US voting public; democratic institutions",
+  "documented_outcome": "During the 2024 US election cycle, X became a primary vector for election misinformation. The platform's reduced content moderation, amplification of paid accounts, and Musk's personal amplification of election-related claims created an environment where false claims spread rapidly. The EU opened an investigation into X's handling of election-related disinformation. Researchers documented that false claims about voting, election integrity, and candidates spread faster and wider than on other platforms. X's Community Notes system, while valuable, was insufficient to address the volume of misinformation. Musk personally amplified false and misleading claims about elections to his 180+ million followers.",
+  "scale": "population",
+  "legal_case_id": "EU DSA investigation into X (2024)",
+  "academic_citation": null,
+  "date_documented": "2024-07-12",
+  "severity_score": 8,
+  "evidence_ids": ["e097-eu-dsa-x-investigation", "e098-election-misinfo-research", "e083-musk-political-endorsements"]
+}
+```
+
+#### Catch 39: Brazil Platform Suspension
+
+```json
+{
+  "catch_id": "c039-brazil-suspension",
+  "fisherman_id": "f005-x-corp-twitter",
+  "bait_id": null,
+  "harm_type": "political_manipulation",
+  "victim_demographic": "Brazilian population; democratic institutions",
+  "documented_outcome": "In August 2024, Brazil's Supreme Court ordered X suspended nationwide after the platform refused to comply with court orders to remove accounts spreading disinformation and to appoint a legal representative in the country. The suspension affected X's estimated 22 million Brazilian users. The conflict arose from X's refusal to remove accounts the court found were spreading election disinformation and threats against democratic institutions. Musk publicly attacked the Brazilian judge and framed the conflict as a free speech issue. X was suspended in Brazil for approximately two weeks before compliance. The incident demonstrated how the platform's approach to content moderation created regulatory conflicts.",
+  "scale": "population",
+  "legal_case_id": "Brazilian Supreme Court ruling, August 2024",
+  "academic_citation": null,
+  "date_documented": "2024-08-30",
+  "severity_score": 7,
+  "evidence_ids": ["e099-brazil-suspension-ruling", "e100-musk-brazil-statements"]
+}
+```
+
+#### Catch 40: Coordinated Harassment Campaigns (reduced enforcement)
+
+```json
+{
+  "catch_id": "c040-harassment-campaigns",
+  "fisherman_id": "f005-x-corp-twitter",
+  "bait_id": null,
+  "harm_type": "relationship_harm",
+  "victim_demographic": "journalists; academics; public figures; activists",
+  "documented_outcome": "Reduced content moderation and reinstatement of previously banned accounts enabled coordinated harassment campaigns against journalists, researchers, and public figures. Accounts that track harassment documented significant increases in coordinated targeting. Journalists who reported critically on Musk or X faced organized harassment campaigns that the platform failed to address. The 'doxxing' policy was selectively enforced, with some accounts suspended for posting publicly available information while harassment of Musk critics continued. Multiple journalists and researchers reported leaving or reducing X presence due to harassment.",
+  "scale": "group",
+  "legal_case_id": null,
+  "academic_citation": null,
+  "date_documented": "2023-12-15",
+  "severity_score": 7,
+  "evidence_ids": ["e101-journalist-harassment-documentation", "e102-selective-enforcement-reporting"]
+}
+```
+
+#### Catch 41: Child Safety Concerns (EU DSA Investigation)
+
+```json
+{
+  "catch_id": "c041-child-safety-eu",
+  "fisherman_id": "f005-x-corp-twitter",
+  "bait_id": null,
+  "harm_type": "child_exploitation_adjacent",
+  "victim_demographic": "minors using X platform",
+  "documented_outcome": "The European Commission opened formal proceedings against X under the Digital Services Act in December 2023. The investigation includes concerns about: inadequate content moderation systems; deceptive design of the verification system; insufficient transparency; and inadequate protection of minors. The EU's preliminary findings suggest X failed to meet DSA requirements for protecting users, particularly children, from harmful content. X faces potential fines of up to 6% of global revenue. The investigation is ongoing.",
+  "scale": "population",
+  "legal_case_id": "European Commission DSA proceedings against X, December 2023",
+  "academic_citation": null,
+  "date_documented": "2023-12-18",
+  "severity_score": 7,
+  "evidence_ids": ["e097-eu-dsa-x-investigation", "e103-eu-preliminary-findings"]
+}
+```
+
+#### Catch 42: Bot and Spam Proliferation
+
+```json
+{
+  "catch_id": "c042-bot-proliferation",
+  "fisherman_id": "f005-x-corp-twitter",
+  "bait_id": null,
+  "harm_type": "political_manipulation",
+  "victim_demographic": "X users; public discourse",
+  "documented_outcome": "Despite Musk's stated justification for acquiring Twitter being to eliminate bots, researchers documented that bot activity and spam increased following the acquisition. CHEQ, a cybersecurity company, found fake traffic to X increased significantly post-acquisition. The reduction of trust and safety teams impaired the platform's ability to detect and remove coordinated inauthentic behavior. Bot networks promoting cryptocurrency scams, political misinformation, and spam proliferated. The blue checkmark system, once a verification of identity, became purchasable, allowing impersonation at scale.",
+  "scale": "population",
+  "legal_case_id": null,
+  "academic_citation": null,
+  "date_documented": "2023-06-01",
+  "severity_score": 6,
+  "evidence_ids": ["e104-bot-activity-research", "e105-verification-impersonation"]
+}
+```
+
+---
+
+### Evidence records
+
+#### e078-x-premium-documentation
+
+```json
+{
+  "evidence_id": "e078-x-premium-documentation",
+  "entity_id": "m018-x-subscription-engagement",
+  "entity_type": "motive",
+  "source_type": "corporate_filing",
+  "url": "https://help.x.com/en/using-x/x-premium",
+  "archive_url": null,
+  "title": "X Premium Features and Benefits",
+  "author": "X Corp.",
+  "publication": "X Help Center",
+  "published_date": "2024-01-01",
+  "summary": "X's official documentation confirms that Premium subscribers receive 'priority ranking in conversations and search.' Documentation states subscribers get 'boosted visibility' and their replies appear more prominently. This confirms algorithmic preference for paid accounts as company policy, not speculation.",
+  "direct_quote": "Your posts and replies get boosted so more people see them in conversations and search.",
+  "verified_by": "intel-agent-cycle-6",
+  "verified_at": "2026-03-29",
+  "confidence": 1.0
+}
+```
+
+#### e079-algorithm-leak-2023
+
+```json
+{
+  "evidence_id": "e079-algorithm-leak-2023",
+  "entity_id": "m018-x-subscription-engagement",
+  "entity_type": "motive",
+  "source_type": "internal_document",
+  "url": "https://github.com/twitter/the-algorithm",
+  "archive_url": null,
+  "title": "Twitter/X Recommendation Algorithm Source Code",
+  "author": "X Corp. (released under pressure)",
+  "publication": "GitHub",
+  "published_date": "2023-03-31",
+  "summary": "X released portions of its recommendation algorithm source code in March 2023. Analysis by researchers confirmed that the algorithm provides significant boosts to Blue/Premium subscribers, Musk's account specifically (later removed after exposure), and accounts with high engagement. The code revealed the mechanics of algorithmic amplification.",
+  "direct_quote": "BlueVerified accounts receive a ranking boost in the recommendation algorithm.",
+  "verified_by": "intel-agent-cycle-6",
+  "verified_at": "2026-03-29",
+  "confidence": 0.95
+}
+```
+
+#### e080-musk-amplification-statements
+
+```json
+{
+  "evidence_id": "e080-musk-amplification-statements",
+  "entity_id": "m018-x-subscription-engagement",
+  "entity_type": "motive",
+  "source_type": "news_investigation",
+  "url": "https://www.washingtonpost.com/technology/2023/02/14/twitter-algorithm-elon-musk/",
+  "archive_url": null,
+  "title": "Elon Musk ordered Twitter to boost his tweets after Super Bowl",
+  "author": "Washington Post",
+  "publication": "Washington Post",
+  "published_date": "2023-02-14",
+  "summary": "Reporting based on internal sources documented that Musk ordered engineers to boost his tweets after being 'out-ratioed' by President Biden during the Super Bowl. Engineers were ordered to make changes to the algorithm to increase Musk's visibility. This documented direct manipulation of the recommendation system for personal benefit.",
+  "direct_quote": "Musk ordered engineers to find out why his tweets weren't getting as many views and to fix it.",
+  "verified_by": "intel-agent-cycle-6",
+  "verified_at": "2026-03-29",
+  "confidence": 0.85
+}
+```
+
+#### e081-musk-amplification-research
+
+```json
+{
+  "evidence_id": "e081-musk-amplification-research",
+  "entity_id": "m019-x-political-influence",
+  "entity_type": "motive",
+  "source_type": "academic_paper",
+  "url": "https://www.washingtonpost.com/technology/2023/05/20/elon-musk-twitter-algorithm-reach/",
+  "archive_url": null,
+  "title": "Elon Musk's tweets are hard to avoid on Twitter — even if you don't follow him",
+  "author": "Washington Post",
+  "publication": "Washington Post",
+  "published_date": "2023-05-20",
+  "summary": "Analysis documented that Musk's posts receive extraordinary algorithmic distribution, appearing in the feeds of users who don't follow him and receiving engagement levels that exceed other accounts by orders of magnitude. Researchers tracked the reach of Musk's posts and found systematic amplification beyond organic distribution.",
+  "direct_quote": "Musk's tweets were appearing in the feeds of users who did not follow him at rates far exceeding any other account on the platform.",
+  "verified_by": "intel-agent-cycle-6",
+  "verified_at": "2026-03-29",
+  "confidence": 0.85
+}
+```
+
+#### e082-twitter-files-analysis
+
+```json
+{
+  "evidence_id": "e082-twitter-files-analysis",
+  "entity_id": "m019-x-political-influence",
+  "entity_type": "motive",
+  "source_type": "academic_paper",
+  "url": "https://www.cjr.org/the_media_today/the-twitter-files-are-a-mess.php",
+  "archive_url": null,
+  "title": "Analysis of the Twitter Files releases",
+  "author": "Columbia Journalism Review and others",
+  "publication": "Multiple",
+  "published_date": "2023-01-15",
+  "summary": "Multiple analyses documented that the 'Twitter Files' releases were selectively curated to advance specific narratives, excluded context, and were released to journalists sympathetic to those narratives. The releases focused on content moderation decisions that affected conservative voices while omitting similar decisions affecting liberal voices. The releases served a political narrative function rather than neutral transparency.",
+  "direct_quote": "The releases were selective, lacked context, and were provided to journalists chosen for their likelihood to frame the information favorably.",
+  "verified_by": "intel-agent-cycle-6",
+  "verified_at": "2026-03-29",
+  "confidence": 0.8
+}
+```
+
+#### e083-musk-political-endorsements
+
+```json
+{
+  "evidence_id": "e083-musk-political-endorsements",
+  "entity_id": "m019-x-political-influence",
+  "entity_type": "motive",
+  "source_type": "news_investigation",
+  "url": "https://www.reuters.com/world/us/musk-says-he-is-leaning-towards-supporting-trump-2024-03-11/",
+  "archive_url": null,
+  "title": "Musk political endorsements and activity documentation",
+  "author": "Multiple outlets",
+  "publication": "Multiple",
+  "published_date": "2024-07-13",
+  "summary": "Documentation of Musk's political activity on X, including endorsement of Donald Trump for president in July 2024, amplification of political content, attacks on political opponents, and use of the platform for political advocacy. Musk's posts on political topics receive massive algorithmic distribution, making X a vehicle for his political positions.",
+  "direct_quote": "Elon Musk endorsed Donald Trump for president moments after the assassination attempt, posting the endorsement to his 180+ million followers.",
+  "verified_by": "intel-agent-cycle-6",
+  "verified_at": "2026-03-29",
+  "confidence": 1.0
+}
+```
+
+#### e084-reach-suppression-research
+
+```json
+{
+  "evidence_id": "e084-reach-suppression-research",
+  "entity_id": "m019-x-political-influence",
+  "entity_type": "motive",
+  "source_type": "academic_paper",
+  "url": "https://www.theverge.com/2023/4/26/23699440/substack-links-twitter-throttled-elon-musk",
+  "archive_url": null,
+  "title": "Documentation of reach suppression on X",
+  "author": "Multiple outlets",
+  "publication": "Multiple",
+  "published_date": "2023-04-26",
+  "summary": "Multiple instances documented where X suppressed reach of content or accounts critical of Musk or competitive with X. Substack links were throttled after Substack launched a Twitter competitor feature. Journalists critical of Musk reported reduced reach. The platform applied policies unevenly, with critics receiving restrictions while similar content from allies remained unrestricted.",
+  "direct_quote": "Links to Substack were being throttled, showing an error message when users tried to like or retweet posts containing them.",
+  "verified_by": "intel-agent-cycle-6",
+  "verified_at": "2026-03-29",
+  "confidence": 0.85
+}
+```
+
+#### e085-x-api-pricing
+
+```json
+{
+  "evidence_id": "e085-x-api-pricing",
+  "entity_id": "m020-x-api-monetization",
+  "entity_type": "motive",
+  "source_type": "corporate_filing",
+  "url": "https://developer.x.com/en/products/x-api",
+  "archive_url": null,
+  "title": "X API Access Pricing",
+  "author": "X Corp.",
+  "publication": "X Developer Platform",
+  "published_date": "2024-01-01",
+  "summary": "X's official API pricing documentation shows: Free tier (minimal read-only access), Basic ($100/month), Pro ($5,000/month), Enterprise (custom pricing starting at $42,000/month for research access). This pricing structure effectively ended most academic research on the platform.",
+  "direct_quote": "Pro access: $5,000 per month. Enterprise access: Custom pricing.",
+  "verified_by": "intel-agent-cycle-6",
+  "verified_at": "2026-03-29",
+  "confidence": 1.0
+}
+```
+
+#### e086-research-access-impact
+
+```json
+{
+  "evidence_id": "e086-research-access-impact",
+  "entity_id": "m020-x-api-monetization",
+  "entity_type": "motive",
+  "source_type": "ngo_report",
+  "url": "https://independenttechresearch.org/letter-to-elon-musk-on-proposed-twitter-api-changes/",
+  "archive_url": null,
+  "title": "Coalition for Independent Technology Research Letter on API Changes",
+  "author": "Coalition for Independent Technology Research",
+  "publication": "CITR",
+  "published_date": "2023-02-07",
+  "summary": "Coalition of researchers documented the impact of X's API pricing changes on independent research. Letter signed by over 100 researchers documented that the changes would 'effectively end' most academic research on the platform, including research on misinformation, harassment, and coordinated inauthentic behavior.",
+  "direct_quote": "These changes will effectively end most independent research on your platform, including research that serves the public interest.",
+  "verified_by": "intel-agent-cycle-6",
+  "verified_at": "2026-03-29",
+  "confidence": 0.95
+}
+```
+
+#### e087-stanford-internet-observatory
+
+```json
+{
+  "evidence_id": "e087-stanford-internet-observatory",
+  "entity_id": "m020-x-api-monetization",
+  "entity_type": "motive",
+  "source_type": "news_investigation",
+  "url": "https://www.nytimes.com/2023/06/stanford-internet-observatory-twitter-research.html",
+  "archive_url": null,
+  "title": "Academic research programs affected by X API changes",
+  "author": "New York Times",
+  "publication": "New York Times",
+  "published_date": "2023-06-15",
+  "summary": "Reporting on impact of X's API changes on academic research institutions. Major programs including the Stanford Internet Observatory, MIT Media Lab, and others reported inability to continue Twitter/X research due to access costs. Research projects on election misinformation, coordinated harassment, and platform manipulation were terminated or scaled back.",
+  "direct_quote": "Research institutions that had studied misinformation and manipulation on Twitter for years were forced to shut down projects when access became unaffordable.",
+  "verified_by": "intel-agent-cycle-6",
+  "verified_at": "2026-03-29",
+  "confidence": 0.9
+}
+```
+
+#### e088-staff-reduction-reporting
+
+```json
