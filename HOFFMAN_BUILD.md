@@ -68,25 +68,54 @@ All JS files must be ASCII-clean (no unicode above 127).
 ## BUILD QUEUE (priority order)
 
 ### Hoffman Browser (primary track)
-1. **Two-pass LLM analysis** -- reliable flag extraction (see brief below)
-2. **OCR integration** -- tesseract.js reads image-embedded text (see brief below)
-3. **hl-detect pre-screen** -- run hl-detect before LLM, pass technique hints
-4. **Model upgrade path** -- evaluate Llama 3.2 7B or Mistral 7B for better extraction;
-   document min hardware requirements
+1. **OCR for image text** -- platforms deliver manipulation in meme images; model sees
+   nothing. tesseract.js reads the viewport. (see brief below)
+2. **User agent spoofing** -- some sites don't render fully because they detect a
+   non-standard browser; need to spoof a standard Chrome user-agent string
+3. **Model selection UI** -- let users choose 3B (fast), 7B (balanced), 8B (deep);
+   surface download size and hardware requirements per model
+4. **"Why is this here?" BMID wiring** -- wired in main.js/panel-preload.js;
+   verify end-to-end with BMID API running and document the flow for agents
 
 ### Supporting systems
-5. hoffmanlenses.org missing pages: /families, /research, /remembrance
-6. BMID: expand database -- Twitter/X, TikTok, Reddit fishermen
-7. hl-detect v0.2 -- coordinated_language, multilingual stub (low priority -- stable)
+5. BMID: expand database -- Twitter/X, TikTok, Reddit fishermen
+6. hoffmanlenses.org missing pages: /families, /research, /remembrance
+7. hl-detect v0.2 -- maintenance only; do not add to browser pipeline
 
-### Do not work on
-- Universal extension -- HALTED. See HOFFMAN.md Decisions Log 2026-03-29.
+### Architecture constraint — DO NOT violate
+The browser analysis pipeline is: page text → local model → structured JSON → panel.
+There is NO pre-screening layer. hl-detect has NO role in this pipeline.
+The model reads everything and returns what it finds. One pass. No gatekeeping.
+See HOFFMAN.md Decisions Log 2026-03-29 for full reasoning. This is settled.
 
 ---
 
-## BUILD BRIEF: Two-pass analysis for Hoffman Browser
+## BUILD BRIEF: Single-pass LLM analysis — current architecture
 
-**Problem**: Llama 3.2 3B cannot reliably do detection + quote extraction in a single pass.
+**Architecture**: One model call. Full page text in. Grammar-constrained JSON out.
+No pre-screening. No routing. No hl-detect. The model reads everything and returns
+what it finds.
+
+Current implementation (this is correct — do not rewrite to two-pass):
+- `analyzer.js` sends full text to `completeJson()` with a single system prompt
+- `completeJson()` uses `LlamaJsonSchemaGrammar` -- model cannot output non-JSON
+- If model writes a summary describing manipulation but returns empty flags, a flag is
+  synthesized from the summary (workaround for 3B model inconsistency)
+- Grammar schema: `{ manipulation_found, summary, flags: [{ quote, technique, explanation, severity }] }`
+
+**Known limitation**: 3B model sometimes sets manipulation_found:false then writes a
+contradictory summary. Current workaround (summary signal detection + flag synthesis)
+handles this. Longer-term fix is a larger model (7B/8B), not architectural changes.
+
+---
+
+## ARCHIVED BRIEF: Two-pass analysis (rejected)
+
+**Status: DO NOT IMPLEMENT.** Included for historical record only.
+**Reason rejected**: The correct architecture is single-pass. The doctor does not need
+a checklist before reading the room. See HOFFMAN.md Decisions Log 2026-03-29.
+
+**Original problem statement**: Llama 3.2 3B cannot reliably do detection + quote extraction in a single pass.
 Testing on foxnews.com, facebook.com (Occupy Democrats page), and codepink.org showed the
 model correctly describing manipulation in its `summary` field but returning an empty `flags`
 array. The model commits to `manipulation_found: false` before analyzing, then contradicts

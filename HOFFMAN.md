@@ -58,7 +58,7 @@ Not trying to reach everyone. Trying to reach people who are ready to see. The g
 A standalone JavaScript library that takes text as input and returns structured analysis of manipulation patterns present in that text.
 Platform-agnostic. DOM-agnostic. No dependencies.
 Status: v0.1.0 shipped, 64/64 tests passing.
-Role going forward: fast pre-screen in the browser pipeline. Not the primary detection engine — the LLM is — but a first-pass filter that identifies likely techniques and passes them as hints to the model.
+Role going forward: standalone npm library for developers. Has NO role in the Hoffman Browser detection pipeline (see Decisions Log 2026-03-29).
 
 #### Stage 2 — Universal Extension (HALTED)
 A browser extension (Chrome + Firefox) that injects hl-detect into every page the user visits.
@@ -548,12 +548,21 @@ OCR output is merged with rendered text extraction before being passed to the LL
 This closes the image-text detection gap that is a primary platform countermeasure.
 Director: Norm Robichaud
 
-**2026-03-29: hl-detect role redefined**
-Decision: hl-detect is no longer the primary detection engine. Its role is fast
-pre-screening in the browser pipeline — run first (milliseconds, no LLM), pass
-detected technique names as hints to the LLM so the model focuses on explanation
-and quote extraction rather than blind detection. The LLM remains the primary
-analysis engine. hl-detect improves its reliability.
+**2026-03-29: hl-detect has NO role in the browser detection pipeline**
+Decision: hl-detect is explicitly NOT used as a pre-screen, triage layer, or hint
+generator in the Hoffman Browser analysis pipeline. The local model reads the full
+page text directly and is the sole detector.
+Reason: hl-detect is a regex library with 67 rules. It only catches what someone
+remembered to write a rule for. It has no understanding of meaning, context, or novel
+phrasing. During development it missed 14 of 15 real-world manipulation examples before
+extensive patching. Every new site revealed new gaps. It is the wrong tool for detection.
+The correct analogy: hl-detect is a corpsman with a checklist. The local model is the
+doctor who reads the whole room. The doctor does not need the corpsman to pre-screen.
+hl-detect's legitimate roles: (1) standalone npm library for developers who need
+lightweight programmatic detection without a model; (2) potentially a fast pre-screen
+for very high volume batch processing in future — not current architecture.
+The 67 patterns inform the model's system prompt as vocabulary, not as code.
+Do not add hl-detect to the browser pipeline. This decision is settled.
 Director: Norm Robichaud
 
 **2026-03-25: Research tool framing for Phase 1**
