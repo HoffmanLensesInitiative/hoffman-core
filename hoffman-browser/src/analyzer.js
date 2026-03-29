@@ -1,11 +1,19 @@
 /**
  * Hoffman Browser - Analyzer
  * The doctor. Reads the room. Works with whatever the model says.
+ *
+ * Architecture: single pass. Full page text in, grammar-constrained JSON out.
+ * No pre-screening. No routing. The model reads everything and returns what it finds.
+ * BMID context is prepended to the system prompt when available -- the doctor with the
+ * chart -- but the model still detects independently.
  */
 
 'use strict';
 
-const SYSTEM_PROMPT = `You are a media manipulation detection API. You respond only with a valid JSON object.
+const { isTechniqueKnown } = require('./bmid-client.js');
+const { buildContext }     = require('./context-builder.js');
+
+const BASE_SYSTEM_PROMPT = `You are a media manipulation detection API. You respond only with a valid JSON object.
 
 Analyze the provided webpage text for manipulation techniques. Return this JSON structure:
 
@@ -31,9 +39,15 @@ Return only the JSON object. No explanation. No markdown. No text before or afte
 class Analyzer {
   constructor(modelManager) {
     this.modelManager = modelManager;
+    this._lastBmidResponse = null;
   }
 
   setModel(model) {}
+
+  // Called by main.js after BMID query completes (runs in parallel with text extraction)
+  setBmidResponse(bmidResponse) {
+    this._lastBmidResponse = bmidResponse;
+  }
 
   async analyze(pageText, context) {
     const { url, hostname } = context;
@@ -54,10 +68,20 @@ class Analyzer {
     const { url, hostname } = context;
     const excerpt = text.length > 2400 ? text.substring(0, 2400) : text;
 
+    // Build system prompt -- prepend BMID context if available
+    const bmidContext = buildContext(this._lastBmidResponse);
+    const systemPrompt = bmidContext
+      ? bmidContext + BASE_SYSTEM_PROMPT
+      : BASE_SYSTEM_PROMPT;
+
+    if (bmidContext) {
+      console.log('[Hoffman] Analyzing with BMID context (' + bmidContext.length + ' chars)');
+    }
+
     try {
-      // Grammar-constrained JSON -- model physically cannot output non-JSON tokens
+      // Single pass -- grammar-constrained JSON -- model physically cannot output non-JSON tokens
       const jsonResult = await this.modelManager.completeJson(
-        SYSTEM_PROMPT,
+        systemPrompt,
         `Analyze this text from ${hostname}:\n\n${excerpt}`
       );
 
@@ -72,8 +96,7 @@ class Analyzer {
       );
       const manipulation_found = flags.length > 0 || summaryImpliesFound;
 
-      // If manipulation was detected in summary but the model returned no flags,
-      // synthesize one so the panel count > 0 and the result is visible.
+      // If manipulation detected in summary but model returned no flags, synthesize one.
       if (manipulation_found && flags.length === 0 && jsonResult.summary) {
         const techniqueMap = {
           'outrage':         'outrage_engineering',
@@ -95,6 +118,13 @@ class Analyzer {
           technique,
           explanation: jsonResult.summary,
           severity: 'high'
+        });
+      }
+
+      // Mark novel techniques -- ones not previously documented for this fisherman in BMID
+      if (this._lastBmidResponse && this._lastBmidResponse.intelligence_level !== 'none') {
+        flags.forEach(flag => {
+          flag.novel = !isTechniqueKnown(this._lastBmidResponse, flag.technique);
         });
       }
 

@@ -255,6 +255,21 @@
   .medium .flag-technique { color: #FFB040; }
   .low .flag-technique    { color: #5A9AEE; }
 
+  .novel-badge {
+    display: inline-block;
+    background: rgba(180,100,255,0.15);
+    color: #B464FF;
+    border: 1px solid rgba(180,100,255,0.4);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin-left: 6px;
+    vertical-align: middle;
+    text-transform: uppercase;
+  }
+
   .count-badge {
     display: inline-block;
     background: rgba(255,85,85,0.2);
@@ -504,6 +519,9 @@
       html += '<div class="flag-card ' + sev + '">';
       html +=   '<div class="flag-header" onclick="toggleFlag(' + i + ')">';
       html +=     '<span class="flag-technique">' + escHtml(flag.technique || 'Flag') + '</span>';
+      if (flag.novel) {
+        html +=   '<span class="novel-badge" title="Not previously documented for this publisher">NEW</span>';
+      }
       html +=     '<span class="flag-severity severity-' + sev + '">' + sev + '</span>';
       html +=   '</div>';
       html +=   '<div class="flag-body" id="flag-' + i + '">';

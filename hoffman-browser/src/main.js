@@ -8,8 +8,9 @@
 const { app, BrowserWindow, BrowserView, ipcMain } = require('electron');
 const path = require('path');
 const http = require('http');
-const Analyzer = require('./analyzer');
+const Analyzer    = require('./analyzer');
 const ModelManager = require('./model-manager');
+const bmidClient  = require('./bmid-client');
 
 let mainWindow = null;
 let browserView = null;
@@ -133,36 +134,42 @@ ipcMain.on('toggle-panel', () => {
 ipcMain.on('analyze-page', async () => {
   panelView.webContents.send('analysis-started');
   try {
-    // Extract content text -- skip nav/header/footer/chrome, target article content
-    const text = await browserView.webContents.executeJavaScript(`(function() {
-      // Priority 1: semantic content containers
-      const selectors = [
-        'article', 'main', '[role="main"]', '[role="article"]',
-        '.post-content', '.article-body', '.story-body', '.entry-content',
-        '#content', '#main-content', '.content'
-      ];
-      for (const sel of selectors) {
-        const el = document.querySelector(sel);
-        if (el && el.innerText && el.innerText.trim().length > 200) {
-          return el.innerText;
-        }
-      }
-      // Priority 2: collect all paragraphs, skip nav/header/footer
-      const skip = new Set(['NAV','HEADER','FOOTER','ASIDE','SCRIPT','STYLE','NOSCRIPT']);
-      const paras = Array.from(document.querySelectorAll('p, h1, h2, h3, blockquote'))
-        .filter(el => {
-          let p = el.parentElement;
-          while (p) { if (skip.has(p.tagName)) return false; p = p.parentElement; }
-          return el.innerText && el.innerText.trim().length > 30;
-        })
-        .map(el => el.innerText.trim());
-      if (paras.length > 3) return paras.join('\\n');
-      // Fallback: full body text
-      return document.body.innerText;
-    })()`
-    );
     const url      = browserView.webContents.getURL();
     const hostname = safeHostname(url);
+
+    // Run text extraction and BMID query in parallel -- BMID must not block analysis
+    const [text, bmidResponse] = await Promise.all([
+      browserView.webContents.executeJavaScript(`(function() {
+        // Priority 1: semantic content containers
+        const selectors = [
+          'article', 'main', '[role="main"]', '[role="article"]',
+          '.post-content', '.article-body', '.story-body', '.entry-content',
+          '#content', '#main-content', '.content'
+        ];
+        for (const sel of selectors) {
+          const el = document.querySelector(sel);
+          if (el && el.innerText && el.innerText.trim().length > 200) {
+            return el.innerText;
+          }
+        }
+        // Priority 2: collect all paragraphs, skip nav/header/footer
+        const skip = new Set(['NAV','HEADER','FOOTER','ASIDE','SCRIPT','STYLE','NOSCRIPT']);
+        const paras = Array.from(document.querySelectorAll('p, h1, h2, h3, blockquote'))
+          .filter(el => {
+            let p = el.parentElement;
+            while (p) { if (skip.has(p.tagName)) return false; p = p.parentElement; }
+            return el.innerText && el.innerText.trim().length > 30;
+          })
+          .map(el => el.innerText.trim());
+        if (paras.length > 3) return paras.join('\\n');
+        // Fallback: full body text
+        return document.body.innerText;
+      })()`),
+      bmidClient.queryDomain(url)
+    ]);
+
+    // Give analyzer the BMID response so it can build context and flag novelty
+    analyzer.setBmidResponse(bmidResponse);
 
     const results = await analyzer.analyze(text, { url, hostname });
     console.log('[Hoffman] Analysis complete, flags:', results.flags ? results.flags.length : 'none');
@@ -179,7 +186,8 @@ ipcMain.on('analyze-page', async () => {
           quote:       (f.quote || '').substring(0, 300),
           technique:   (f.technique || '').substring(0, 100),
           explanation: (f.explanation || '').substring(0, 500),
-          severity:    f.severity || 'medium'
+          severity:    f.severity || 'medium',
+          novel:       f.novel || false
         };
       })
     };
