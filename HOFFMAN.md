@@ -527,6 +527,16 @@ Decision: Use agentic loop with this document as the central memory store. AI ag
 Director directs and reviews between cycles.
 Director: Norm Robichaud
 
+**2026-03-29: Browser and BMID are a loop, not two separate tools**
+Decision: The Hoffman Browser and BMID must be developed as an integrated system.
+BMID informs the browser before analysis runs (fisherman context in system prompt).
+The browser feeds BMID over time (observed patterns from sessions, opt-in).
+The target architecture is a closed loop: institutional knowledge sharpens field
+detection; field detection validates and extends institutional knowledge.
+The current "Why is this here?" button is a starting point, not the destination.
+See Part 11 for full integration architecture.
+Director: Norm Robichaud
+
 **2026-03-29: Extension development halted — browser is the primary product**
 Decision: Stop all extension development. The Hoffman Browser (Electron) is now the
 sole primary build target. Intel, investigation, BMID, and advocacy work continue unchanged.
@@ -856,24 +866,64 @@ hoffman-core/BMID_SCHEMA.md
 ### API location
 hoffman-core/bmid-api/
 
-### Status
+### Status (March 2026)
 - Schema: COMPLETE
-- API: v0.1 BUILT AND TESTED
-- Database: initialized with first record (Meta Platforms / Molly Russell)
+- API: v0.1 BUILT AND TESTED, running at localhost:5000
+- Database: 3 fishermen (facebook.com, instagram.com, youtube.com),
+  9 motives, 16 catches, 33 evidence records
+- Seed script: bmid-api/seed.py (idempotent, re-runnable)
 - Endpoints: health, fisherman, bait, explain, pattern, search, session
 
-### First record
-Fisherman: Meta Platforms (facebook.com)
-Catch: Molly Russell, age 14, UK, 2017
-Evidence: UK Coroner ruling September 2022
-Intelligence level: full (fisherman + motive + catch + evidence)
+### The integration vision — Browser and BMID as a loop
 
-### The "Why is this here?" pipeline
-Extension detects pattern -> sends domain + patterns to /api/v1/explain
--> API returns fisherman record + motives + catch summary
--> Claude generates plain language explanation from structured data
--> User sees: not a generic pattern description but specific intelligence
-   about this publisher, their documented business model, and documented harm
+The browser and BMID are not two separate tools. They are two faces of the same system.
+BMID is institutional knowledge — who manipulates, why, what harm resulted.
+The browser is the field instrument — detecting manipulation in real time on live pages.
+They should be in constant conversation, each feeding the other.
+
+**Current state (shallow):**
+Browser detects technique on a page → user clicks "Why is this here?" → BMID explains
+This is useful but one-directional and user-initiated.
+
+**Target state (integrated loop):**
+
+Direction 1 — BMID informs the browser before analysis runs:
+When the user navigates to a page, query BMID for the domain. If a fisherman record
+exists, prepend that intelligence to the model's system prompt as context:
+"You are analyzing content from [Owner]. Their documented business model is [model].
+Their known motives include [motives]. Documented harms include [catch count] cases."
+The model reads a Fox News page differently knowing Fox Corp's documented motive structure.
+The model is not pre-screened — it still reads everything — but it reads as a doctor
+who has the patient's chart, not one encountering them cold.
+
+Direction 2 — Browser findings feed BMID:
+Every analysis the browser completes is potential intelligence. When the browser
+consistently finds war_framing on foxnews.com or tribal_activation on a specific
+political page, those are observed pattern records — with dates, quoted text, and
+confidence. Over time, user session data (opt-in, anonymized) builds a picture of
+which sites use which techniques in the wild. This validates and extends BMID's
+documented patterns beyond what research agents can produce alone.
+
+Direction 3 — Cross-reference strengthens confidence:
+When the browser returns a flag, check whether BMID lists that technique as a known
+pattern for that fisherman. If so, display higher confidence. If the browser finds
+a technique that BMID has not documented for that fisherman, flag it as novel —
+potentially worth investigation.
+
+### The "Why is this here?" pipeline (current)
+Browser detects technique → user clicks button on flag card
+→ panel-preload.js calls ipcRenderer.invoke('query-bmid', domain, technique)
+→ main.js calls GET http://localhost:5000/api/v1/explain?domain=&patterns=
+→ API returns fisherman record + motives + catch_summary + intelligence_level
+→ Panel renders: owner, business model, first motive, documented harm count, confidence
+→ Gracefully shows "BMID unavailable" if API is not running
+
+### The "Why is this here?" pipeline (target)
+BMID context fetched on page load (not on button click)
+→ Injected into system prompt before model runs
+→ Model analysis is context-aware from the start
+→ "Why is this here?" button shows pre-fetched result instantly (no second call)
+→ Panel renders richer result: technique confirmed by BMID + novel technique flagging
 
 ---
 

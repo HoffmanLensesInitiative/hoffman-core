@@ -67,26 +67,86 @@ All JS files must be ASCII-clean (no unicode above 127).
 
 ## BUILD QUEUE (priority order)
 
-### Hoffman Browser (primary track)
-1. **OCR for image text** -- platforms deliver manipulation in meme images; model sees
+### Integration track (browser ↔ BMID loop) — highest strategic priority
+1. **BMID context injection** -- on page load, query BMID for the domain; if fisherman
+   record exists, prepend context to the model's system prompt before analysis runs.
+   The model reads with the chart, not cold. (see brief below)
+2. **Novel technique flagging** -- when browser finds a technique not in BMID's
+   documented patterns for that fisherman, surface it as "NEW — not previously
+   documented" in the panel; creates a feedback path to intel agents
+
+### Hoffman Browser (capabilities track)
+3. **OCR for image text** -- platforms deliver manipulation in meme images; model sees
    nothing. tesseract.js reads the viewport. (see brief below)
-2. **User agent spoofing** -- some sites don't render fully because they detect a
+4. **User agent spoofing** -- some sites don't render fully because they detect a
    non-standard browser; need to spoof a standard Chrome user-agent string
-3. **Model selection UI** -- let users choose 3B (fast), 7B (balanced), 8B (deep);
+5. **Model selection UI** -- let users choose 3B (fast), 7B (balanced), 8B (deep);
    surface download size and hardware requirements per model
-4. **"Why is this here?" BMID wiring** -- wired in main.js/panel-preload.js;
-   verify end-to-end with BMID API running and document the flow for agents
 
 ### Supporting systems
-5. BMID: expand database -- Twitter/X, TikTok, Reddit fishermen
-6. hoffmanlenses.org missing pages: /families, /research, /remembrance
-7. hl-detect v0.2 -- maintenance only; do not add to browser pipeline
+6. BMID: expand database -- Twitter/X, TikTok, Reddit fishermen
+7. hoffmanlenses.org missing pages: /families, /research, /remembrance
+8. hl-detect v0.2 -- maintenance only; do not add to browser pipeline
 
 ### Architecture constraint — DO NOT violate
 The browser analysis pipeline is: page text → local model → structured JSON → panel.
 There is NO pre-screening layer. hl-detect has NO role in this pipeline.
 The model reads everything and returns what it finds. One pass. No gatekeeping.
 See HOFFMAN.md Decisions Log 2026-03-29 for full reasoning. This is settled.
+
+---
+
+## BUILD BRIEF: BMID context injection (integration priority 1)
+
+**The idea**: Before the model analyzes a page, check whether BMID has a fisherman record
+for the current domain. If yes, prepend that intelligence to the system prompt. The model
+reads every page — but for known fishermen it reads as a doctor with the chart in hand.
+
+**Why this matters**: The 3B model performing blind detection on foxnews.com produces
+different results than one that knows "this domain is operated by Fox Corporation, whose
+documented motive is audience capture through outrage amplification, with $14.7B in
+advertising revenue tied to engagement metrics." Context primes detection without gating it.
+
+**What to build**:
+
+1. In `hoffman-browser/src/main.js`, in the `analyze-page` IPC handler, after extracting
+   page text and before calling `analyzer.analyze()`: query BMID via
+   `GET http://localhost:5000/api/v1/explain?domain={hostname}`.
+   If the response has `intelligence_level !== 'none'`, build a context string.
+   Pass it to `analyzer.analyze()` as a new optional `bmidContext` parameter.
+
+2. In `hoffman-browser/src/analyzer.js`, accept `bmidContext` in `analyzeWithModel()`.
+   If present, prepend it to the system prompt as a new section:
+
+   ```
+   KNOWN INTELLIGENCE ON THIS DOMAIN:
+   Owner: {fisherman.owner}
+   Business model: {fisherman.business_model}
+   Documented motive: {motives[0].description}
+   Documented harms: {catch_summary.total_documented} cases on record
+   Known techniques: {top_patterns or motive types}
+   ```
+
+   This appears before the technique list in the system prompt, not instead of it.
+
+3. If BMID is unavailable (API not running, timeout, unknown domain), proceed with
+   standard analysis unchanged. BMID context is enrichment, never a requirement.
+
+**Novel technique flagging** (integration priority 2, can be built alongside):
+When the browser returns flags, compare each flag's technique against BMID's
+`top_patterns` for that fisherman. If a technique is NOT in BMID's documented patterns,
+add a `novel: true` field to the flag. In `panel.html`, render these with a distinct
+indicator: "NEW — not previously documented for this domain." This creates a natural
+feedback path: novel findings can be reviewed and added to BMID as new evidence records.
+
+**Constraints**:
+- BMID query must be non-blocking: run it in parallel with text extraction, not before
+- Timeout: if BMID doesn't respond in 2 seconds, proceed without context
+- Do not pass BMID context to the model as instructions about what to find —
+  only as background on who operates the site. The model must still find manipulation
+  independently. Context informs; it does not direct.
+- Test: analyze facebook.com with BMID running vs. not running; results should be
+  qualitatively richer with context, not different in kind
 
 ---
 

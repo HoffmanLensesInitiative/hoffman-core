@@ -17,27 +17,52 @@ could this stand up in court? If not, lower the confidence score.
 
 Schema reference: hoffman-core/BMID_SCHEMA.md
 
+### Why this work matters to the browser — read this
+
+BMID and the Hoffman Browser are a loop, not two separate systems.
+
+When the browser navigates to a page, it queries BMID for the domain before running the
+local AI model. If a fisherman record exists, that intelligence is injected into the
+model's system prompt as context: owner, business model, documented motives, harm record.
+The model reads with the chart in hand. Every fisherman record you build directly improves
+the quality of analysis the browser produces on that domain.
+
+This means:
+- A fisherman record with full motives and catches produces meaningfully better analysis
+  than a domain with no record at all
+- The richer the motive descriptions, the more precise the model's technique identification
+- The more domains covered, the broader the browser's context-aware detection
+
+Prioritize fishermen by: (1) how frequently users encounter them (traffic volume),
+(2) how well-documented their harm is (evidence quality), (3) how distinct their
+manipulation patterns are (motives that give the model specific context to work with).
+
+The intel agents are not building a database for its own sake.
+They are writing the doctor's chart that the browser reads before every analysis.
+
 ---
 
 ## CURRENT STATE
 
 ### BMID Database
-- Status: SCHEMA COMPLETE -- not yet built
+- Status: LIVE at localhost:5000 (development) / to be deployed
 - Schema location: hoffman-core/BMID_SCHEMA.md
-- Tables: fisherman, bait, hook, net, catch, motive, evidence
-- API: not yet built -- planned endpoints in schema document
+- API: v0.1 built and tested (hoffman-core/bmid-api/)
+- Seed script: hoffman-core/bmid-api/seed.py (idempotent, re-runnable)
 
-### Fisherman Records
-- Documented: 0
-- Priority targets identified: 7 (see schema document)
-- First target: Meta Platforms (most documented harm, most legal evidence)
+### Fisherman Records (March 2026)
+- Documented: 3
+  - facebook.com (Meta Platforms) -- full: 3 motives, 4 catches, ~12 evidence records
+  - instagram.com (Instagram/Meta) -- full: 2 motives, 5 catches, ~10 evidence records
+  - youtube.com (Alphabet/Google) -- full: 4 motives, 7 catches, ~11 evidence records
+- Priority targets remaining: Twitter/X, TikTok, Reddit, Fox News, Substack
 
 ### Intelligence gaps
-- No fisherman records exist yet
-- No bait corpus exists yet
-- No evidence archive exists yet
-- "Why is this here?" API endpoint cannot yet return fisherman-specific
-  intelligence -- returns generic hl-detect explanations only
+- Twitter/X: no record -- high priority (political manipulation, Musk-era algorithm changes)
+- TikTok: no record -- high priority (youth targeting, ByteDance data concerns)
+- Reddit: no record
+- Fox News: no record -- browser currently analyzing foxnews.com without context
+- "Why is this here?" returns "BMID unavailable" for any domain not yet documented
 
 ---
 
