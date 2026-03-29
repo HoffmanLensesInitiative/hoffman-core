@@ -1,0 +1,44 @@
+name: Intelligence Agent Cycle
+
+on:
+  schedule:
+    - cron: '0 8 * * *'     # 8am UTC -- morning cycle
+    - cron: '0 20 * * *'    # 8pm UTC -- evening cycle
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are you running this manually?'
+        required: false
+
+jobs:
+  intel-cycle:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install anthropic
+
+      - name: Run intelligence cycle
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scripts/run_cycle.py intel
+
+      - name: Commit results
+        run: |
+          git config user.name "Hoffman Intel Agent"
+          git config user.email "intel-agent@hoffmanlenses.org"
+          git add HOFFMAN_INTEL.md reports/
+          git diff --staged --quiet || git commit -m "intel: auto cycle $(date -u +%Y-%m-%d-%H%M)"
+          git push

@@ -1,0 +1,48 @@
+{
+  "name": "hoffman",
+  "version": "0.1.0",
+  "description": "Research software for reading the web as it actually is.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "org.hoffmanlenses.hoffman",
+    "productName": "Hoffman",
+    "copyright": "Hoffman Lenses Initiative -- CC BY 4.0",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Utility"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "panel/**/*",
+      "models/**/*"
+    ],
+    "extraMetadata": {
+      "main": "src/main.js"
+    }
+  },
+  "dependencies": {
+    "node-llama-cpp": "^3.0.0"
+  },
+  "devDependencies": {
+    "electron": "^34.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "author": {
+    "name": "Norm Robichaud",
+    "email": "contact@hoffmanlenses.org"
+  },
+  "license": "MIT",
+  "homepage": "https://hoffmanlenses.org"
+}

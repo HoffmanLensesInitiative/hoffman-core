@@ -1,0 +1,39 @@
+name: Director Daily Briefing
+
+on:
+  schedule:
+    - cron: '0 22 * * *'    # 10pm UTC -- end of day summary
+  workflow_dispatch:
+
+jobs:
+  director-briefing:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install anthropic
+
+      - name: Generate director briefing
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scripts/run_cycle.py summary
+
+      - name: Commit briefing
+        run: |
+          git config user.name "Hoffman Director Briefing"
+          git config user.email "briefing@hoffmanlenses.org"
+          git add reports/
+          git diff --staged --quiet || git commit -m "briefing: director summary $(date -u +%Y-%m-%d)"
+          git push

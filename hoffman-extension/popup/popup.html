@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hoffman Lenses</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="logo">
+      <span class="logo-icon">o</span>
+      <div>
+        <div class="logo-name">HOFFMAN LENSES</div>
+        <div class="logo-tag">Making the invisible visible.</div>
+      </div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="active" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+  <div class="site-row">
+    <span class="site-label">Current site</span>
+    <span class="site-val" id="site">--</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Session</div><div class="stat-val" id="duration">0:00</div></div>
+    <div class="stat"><div class="stat-label">Scanned</div><div class="stat-val" id="scanned">0</div></div>
+    <div class="stat"><div class="stat-label">Flagged</div><div class="stat-val danger" id="flagged">0</div></div>
+    <div class="stat"><div class="stat-label">Escalation</div><div class="stat-val" id="escalation">--</div></div>
+  </div>
+
+  <div class="patterns-header">Pattern breakdown</div>
+  <div class="patterns" id="patterns">
+    <div class="pattern-empty">No flags this session.</div>
+  </div>
+
+  <div class="actions">
+    <button id="reset">Reset session</button>
+    <a href="https://hoffmanlenses.org" target="_blank">hoffmanlenses.org</a>
+  </div>
+
+  <div class="footer">v0.2.0 -- Universal -- hoffmanlenses.org</div>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>

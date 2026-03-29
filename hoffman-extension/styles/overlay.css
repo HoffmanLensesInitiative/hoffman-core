@@ -1,0 +1,308 @@
+/* Hoffman Lenses - Universal Overlay Styles */
+
+#hl-bar {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 2147483647 !important;
+  background: rgba(6, 10, 16, 0.97) !important;
+  border-top: 1px solid rgba(26, 58, 92, 0.5) !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 -2px 20px rgba(0,0,0,0.4) !important;
+}
+
+.hl-bar-inner {
+  max-width: 1400px !important;
+  margin: 0 auto !important;
+  padding: 6px 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+}
+
+.hl-bar-logo {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.18em !important;
+  color: #8B1A1A !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.hl-bar-stats {
+  display: flex !important;
+  align-items: center !important;
+  flex: 1 !important;
+  flex-wrap: wrap !important;
+}
+
+.hl-bar-stat {
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 12px !important;
+  gap: 1px !important;
+}
+
+.hl-bar-label {
+  font-size: 8px !important;
+  color: #3A5060 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+}
+
+.hl-bar-val {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #8A9AAA !important;
+}
+
+.hl-bar-sep {
+  width: 1px !important;
+  height: 24px !important;
+  background: rgba(26,58,92,0.4) !important;
+  flex-shrink: 0 !important;
+}
+
+.hl-good   { color: #3AAA70 !important; }
+.hl-warn   { color: #D08030 !important; }
+.hl-danger { color: #E04040 !important; }
+.hl-muted  { color: #3A5060 !important; }
+
+.hl-bar-btn {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.15em !important;
+  padding: 4px 10px !important;
+  border: 1px solid #3AAA70 !important;
+  background: rgba(58,170,112,0.1) !important;
+  color: #3AAA70 !important;
+  cursor: pointer !important;
+  border-radius: 2px !important;
+  flex-shrink: 0 !important;
+}
+
+.hl-bar-btn.hl-off {
+  border-color: #3A5060 !important;
+  background: transparent !important;
+  color: #3A5060 !important;
+}
+
+.hl-flagged-danger {
+  border-left: 3px solid rgba(224,64,64,0.7) !important;
+  padding-left: 4px !important;
+}
+
+.hl-flagged-warn {
+  border-left: 3px solid rgba(208,128,48,0.6) !important;
+  padding-left: 4px !important;
+}
+
+.hl-annotation {
+  background: rgba(6,10,16,0.97) !important;
+  border-left: 3px solid transparent !important;
+  border-top: 1px solid rgba(26,58,92,0.3) !important;
+  border-bottom: 1px solid rgba(26,58,92,0.3) !important;
+  padding: 10px 14px !important;
+  margin: 4px 0 8px 0 !important;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace !important;
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3) !important;
+}
+
+.hl-annotation-danger { border-left-color: #E04040 !important; }
+.hl-annotation-warn   { border-left-color: #D08030 !important; }
+.hl-annotation-info   { border-left-color: #4A80D0 !important; }
+
+.hl-annotation-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 8px !important;
+  padding-bottom: 6px !important;
+  border-bottom: 1px solid rgba(26,58,92,0.3) !important;
+}
+
+.hl-annotation-logo {
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.15em !important;
+  color: #3A5060 !important;
+  text-transform: uppercase !important;
+}
+
+.hl-annotation-count {
+  font-size: 9px !important;
+  color: #3A5060 !important;
+}
+
+.hl-flag {
+  display: flex !important;
+  gap: 10px !important;
+  align-items: flex-start !important;
+  padding: 5px 0 !important;
+  border-bottom: 1px solid rgba(26,58,92,0.12) !important;
+}
+
+.hl-flag:last-child { border-bottom: none !important; padding-bottom: 0 !important; }
+
+.hl-dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  margin-top: 4px !important;
+}
+
+.hl-dot-danger { background: #E04040 !important; }
+.hl-dot-warn   { background: #D08030 !important; }
+.hl-dot-info   { background: #4A80D0 !important; }
+
+.hl-flag-text { flex: 1 !important; }
+
+.hl-flag-label {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  margin-bottom: 2px !important;
+  letter-spacing: 0.04em !important;
+}
+
+.hl-flag-danger .hl-flag-label { color: #E07070 !important; }
+.hl-flag-warn   .hl-flag-label { color: #D09040 !important; }
+.hl-flag-info   .hl-flag-label { color: #6A90D0 !important; }
+
+.hl-flag-explanation {
+  font-size: 10px !important;
+  color: #5A7080 !important;
+  line-height: 1.6 !important;
+}
+
+.hl-conf {
+  font-size: 9px !important;
+  color: #3A5060 !important;
+  font-weight: 400 !important;
+}
+
+/* ── Clickable flagged count ── */
+.hl-clickable {
+  cursor: pointer !important;
+  text-decoration: underline !important;
+  text-decoration-style: dotted !important;
+  text-underline-offset: 3px !important;
+}
+
+.hl-clickable:hover { opacity: 0.8 !important; }
+
+/* ── Flag navigator ── */
+#hl-navigator {
+  position: fixed !important;
+  bottom: 44px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 2147483646 !important;
+  background: rgba(6, 10, 16, 0.98) !important;
+  border: 1px solid rgba(224, 64, 64, 0.4) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.5) !important;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace !important;
+  min-width: 320px !important;
+  max-width: 480px !important;
+}
+
+.hl-nav-inner {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 8px 14px !important;
+  flex-wrap: wrap !important;
+}
+
+.hl-nav-label {
+  font-size: 8px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.18em !important;
+  color: #E04040 !important;
+  flex-shrink: 0 !important;
+}
+
+.hl-nav-counter {
+  font-size: 11px !important;
+  color: #C0D0E0 !important;
+  font-weight: 600 !important;
+  flex-shrink: 0 !important;
+}
+
+.hl-nav-controls {
+  display: flex !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
+}
+
+.hl-nav-btn {
+  font-family: inherit !important;
+  font-size: 12px !important;
+  width: 28px !important;
+  height: 24px !important;
+  border: 1px solid rgba(26,58,92,0.6) !important;
+  background: rgba(26,58,92,0.2) !important;
+  color: #C0D0E0 !important;
+  cursor: pointer !important;
+  border-radius: 2px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+
+.hl-nav-btn:hover {
+  background: rgba(26,58,92,0.5) !important;
+  border-color: #C0D0E0 !important;
+}
+
+.hl-nav-close {
+  font-family: inherit !important;
+  font-size: 10px !important;
+  width: 24px !important;
+  height: 24px !important;
+  border: 1px solid rgba(139,26,26,0.4) !important;
+  background: rgba(139,26,26,0.1) !important;
+  color: #E04040 !important;
+  cursor: pointer !important;
+  border-radius: 2px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+
+.hl-nav-close:hover {
+  background: rgba(139,26,26,0.25) !important;
+}
+
+.hl-nav-preview {
+  width: 100% !important;
+  font-size: 10px !important;
+  color: #6A8090 !important;
+  padding-top: 4px !important;
+  border-top: 1px solid rgba(26,58,92,0.2) !important;
+  margin-top: 2px !important;
+}
+
+.hl-nav-flag-label {
+  color: #D09040 !important;
+  font-weight: 600 !important;
+}
+
+.hl-nav-more {
+  color: #3A5060 !important;
+  margin-left: 6px !important;
+}
+
+/* ── Active annotation highlight ── */
+.hl-annotation-active {
+  border-left-color: #FFD700 !important;
+  box-shadow: 0 0 0 1px rgba(255,215,0,0.3), 0 4px 20px rgba(255,215,0,0.15) !important;
+}

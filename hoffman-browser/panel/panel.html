@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0D1117;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    color: #E8EEF4;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid rgba(255,255,255,0.08);
+  }
+
+  /* Header */
+  .panel-header {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+
+  .panel-logo {
+    color: #FF5555;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    margin-bottom: 10px;
+  }
+
+  .panel-logo span { color: #5A8090; }
+
+  .hostname {
+    color: #5A8090;
+    font-size: 10px;
+    margin-bottom: 10px;
+    min-height: 14px;
+  }
+
+  /* Analyze button */
+  #analyze-btn {
+    width: 100%;
+    padding: 10px;
+    background: rgba(255,85,85,0.12);
+    border: 1px solid rgba(255,85,85,0.35);
+    border-radius: 5px;
+    color: #FF5555;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+
+  #analyze-btn:hover {
+    background: rgba(255,85,85,0.2);
+    border-color: rgba(255,85,85,0.6);
+  }
+
+  #analyze-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  #analyze-btn.analyzing {
+    color: #FFB040;
+    border-color: rgba(255,176,64,0.35);
+    background: rgba(255,176,64,0.08);
+    animation: thinking 1.5s ease-in-out infinite;
+  }
+
+  @keyframes thinking {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Model status */
+  #model-section {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+  }
+
+  .model-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    color: #5A8090;
+  }
+
+  .model-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #5A8090;
+    flex-shrink: 0;
+  }
+
+  .model-dot.ready   { background: #5ABF8A; }
+  .model-dot.loading { background: #FFB040; animation: pulse 0.8s ease-in-out infinite; }
+  .model-dot.error   { background: #FF5555; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  #load-model-btn {
+    margin-top: 8px;
+    width: 100%;
+    padding: 7px;
+    background: rgba(90,176,138,0.1);
+    border: 1px solid rgba(90,176,138,0.3);
+    border-radius: 4px;
+    color: #5ABF8A;
+    font-family: ui-monospace, monospace;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  #load-model-btn:hover { background: rgba(90,176,138,0.2); }
+
+  .progress-bar-wrap {
+    margin-top: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    height: 4px;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: #5ABF8A;
+    border-radius: 3px;
+    transition: width 0.3s;
+    width: 0%;
+  }
+
+  /* Results area */
+  #results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+  }
+
+  #results::-webkit-scrollbar { width: 4px; }
+  #results::-webkit-scrollbar-track { background: transparent; }
+  #results::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+  /* States */
+  .state-idle {
+    color: #3A5060;
+    font-size: 10px;
+    line-height: 1.8;
+    padding-top: 8px;
+  }
+
+  .summary-block {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 5px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    font-size: 10px;
+    color: #A8C4C4;
+    line-height: 1.6;
+  }
+
+  .summary-block.clean {
+    border-color: rgba(90,176,138,0.3);
+    background: rgba(90,176,138,0.06);
+    color: #5ABF8A;
+  }
+
+  .summary-block.manipulative {
+    border-color: rgba(255,85,85,0.3);
+    background: rgba(255,85,85,0.06);
+    color: #FF5555;
+  }
+
+  /* Flag cards */
+  .flag-card {
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 5px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+
+  .flag-header {
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .flag-header:hover { background: rgba(255,255,255,0.04); }
+
+  .flag-technique {
+    font-weight: 700;
+    font-size: 11px;
+  }
+
+  .flag-severity {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .severity-high   { background: rgba(255,85,85,0.2);  color: #FF5555;  }
+  .severity-medium { background: rgba(255,176,64,0.2); color: #FFB040; }
+  .severity-low    { background: rgba(90,154,238,0.2); color: #5A9AEE; }
+
+  .flag-body {
+    padding: 0 12px 10px;
+    display: none;
+  }
+
+  .flag-body.open { display: block; }
+
+  .flag-quote {
+    font-size: 10px;
+    color: #FFB040;
+    background: rgba(255,176,64,0.08);
+    border-left: 2px solid #FFB040;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    border-radius: 0 3px 3px 0;
+    line-height: 1.5;
+    font-style: italic;
+  }
+
+  .flag-explanation {
+    font-size: 10px;
+    color: #A8C4C4;
+    line-height: 1.7;
+  }
+
+  /* Severity colors for flag headers */
+  .flag-card.high   { border-left: 3px solid #FF5555; }
+  .flag-card.medium { border-left: 3px solid #FFB040; }
+  .flag-card.low    { border-left: 3px solid #5A9AEE; }
+
+  .high .flag-technique   { color: #FF5555; }
+  .medium .flag-technique { color: #FFB040; }
+  .low .flag-technique    { color: #5A9AEE; }
+
+  .count-badge {
+    display: inline-block;
+    background: rgba(255,85,85,0.2);
+    color: #FF5555;
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .count-badge.zero {
+    background: rgba(90,176,138,0.2);
+    color: #5ABF8A;
+  }
+</style>
+</head>
+<body>
+
+<div class="panel-header">
+  <div class="panel-logo">o <span>HOFFMAN</span></div>
+  <div class="hostname" id="hostname">--</div>
+  <button id="analyze-btn">Analyze this page</button>
+</div>
+
+<div id="model-section">
+  <div class="model-status">
+    <div class="model-dot" id="model-dot"></div>
+    <span id="model-label">Model not loaded</span>
+  </div>
+  <button id="load-model-btn" style="display:none">Download Hoffman model (2.2 GB, one time)</button>
+  <div class="progress-bar-wrap" id="progress-wrap" style="display:none">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+</div>
+
+<div id="results">
+  <div class="state-idle">
+    Navigate to any page.<br>
+    Click <strong>Analyze</strong> to read the room.
+  </div>
+</div>
+
+<script>
+  const analyzeBtn   = document.getElementById('analyze-btn');
+  const hostnameEl   = document.getElementById('hostname');
+  const resultsEl    = document.getElementById('results');
+  const modelDot     = document.getElementById('model-dot');
+  const modelLabel   = document.getElementById('model-label');
+  const loadModelBtn = document.getElementById('load-model-btn');
+  const progressWrap = document.getElementById('progress-wrap');
+  const progressBar  = document.getElementById('progress-bar');
+
+  let modelReady = false;
+
+  // ── Analyze button ──────────────────────────────────────
+  analyzeBtn.addEventListener('click', () => {
+    if (!modelReady) {
+      // Prompt to load model
+      loadModelBtn.style.display = 'block';
+      return;
+    }
+    window.hoffman.analyzePage();
+  });
+
+  // ── Model management ────────────────────────────────────
+  loadModelBtn.addEventListener('click', () => {
+    loadModelBtn.style.display = 'none';
+    progressWrap.style.display = 'block';
+    window.hoffman.loadModel();
+  });
+
+  window.hoffman.onModelStatus((status) => {
+    if (status.ready) {
+      setModelReady();
+    } else if (status.downloaded) {
+      modelDot.className = 'model-dot';
+      modelLabel.textContent = 'Model downloaded -- click Analyze to load';
+      modelDot.style.background = '#FFB040';
+    } else {
+      modelDot.className = 'model-dot';
+      modelLabel.textContent = 'Model not downloaded';
+      loadModelBtn.style.display = 'block';
+    }
+  });
+
+  window.hoffman.onModelLoading((progress) => {
+    modelDot.className = 'model-dot loading';
+    if (progress.stage === 'downloading') {
+      modelLabel.textContent = progress.message || 'Downloading...';
+      progressBar.style.width = (progress.percent || 0) + '%';
+    } else {
+      modelLabel.textContent = progress.message || 'Loading model...';
+      progressBar.style.width = '99%';
+    }
+  });
+
+  window.hoffman.onModelReady(() => {
+    setModelReady();
+    progressWrap.style.display = 'none';
+    progressBar.style.width = '100%';
+  });
+
+  window.hoffman.onModelError((msg) => {
+    modelDot.className = 'model-dot error';
+    modelLabel.textContent = 'Error: ' + msg;
+  });
+
+  function setModelReady() {
+    modelReady = true;
+    modelDot.className = 'model-dot ready';
+    modelLabel.textContent = 'Hoffman model ready';
+    loadModelBtn.style.display = 'none';
+  }
+
+  // ── Page navigation ─────────────────────────────────────
+  window.hoffman.onPageChanged((data) => {
+    hostnameEl.textContent = data.hostname || data.url;
+    // Clear results on navigation
+    resultsEl.innerHTML = '<div class="state-idle">Navigate to any page.<br>Click <strong>Analyze</strong> to read the room.</div>';
+  });
+
+  // ── Analysis results ────────────────────────────────────
+  window.hoffman.onAnalysisStarted(() => {
+    analyzeBtn.disabled = true;
+    analyzeBtn.className = 'analyzing';
+    analyzeBtn.textContent = 'Reading the room...';
+    resultsEl.innerHTML = '<div class="state-idle">Analyzing page content...</div>';
+  });
+
+  window.hoffman.onAnalysisComplete((results) => {
+    analyzeBtn.disabled = false;
+    analyzeBtn.className = '';
+    analyzeBtn.textContent = 'Analyze this page';
+    renderResults(results);
+  });
+
+  window.hoffman.onAnalysisError((msg) => {
+    analyzeBtn.disabled = false;
+    analyzeBtn.className = '';
+    analyzeBtn.textContent = 'Analyze this page';
+    resultsEl.innerHTML = '<div class="state-idle" style="color:#FF5555">Error: ' + escHtml(msg) + '</div>';
+  });
+
+  function renderResults(r) {
+    if (!r) return;
+
+    let html = '';
+
+    // No model loaded yet
+    if (r.method === 'no-model') {
+      html = '<div class="state-idle">Load the Hoffman model to analyze this page.<br><br>' +
+             'Text length: ' + r.textLength + ' characters.</div>';
+      resultsEl.innerHTML = html;
+      loadModelBtn.style.display = 'block';
+      return;
+    }
+
+    // Summary
+    const flags = r.flags || [];
+    const count = flags.length;
+    const summaryClass = r.manipulation_found === false ? 'clean' : count > 0 ? 'manipulative' : '';
+
+    html += '<div class="count-badge ' + (count === 0 ? 'zero' : '') + '">';
+    html += count === 0 ? 'No manipulation detected' : count + ' flag' + (count !== 1 ? 's' : '');
+    html += '</div>';
+
+    if (r.summary) {
+      html += '<div class="summary-block ' + summaryClass + '">' + escHtml(r.summary) + '</div>';
+    }
+
+    // Flag cards
+    flags.forEach((flag, i) => {
+      const sev = (flag.severity || 'medium').toLowerCase();
+      html += '<div class="flag-card ' + sev + '">';
+      html +=   '<div class="flag-header" onclick="toggleFlag(' + i + ')">';
+      html +=     '<span class="flag-technique">' + escHtml(flag.technique || 'Flag') + '</span>';
+      html +=     '<span class="flag-severity severity-' + sev + '">' + sev + '</span>';
+      html +=   '</div>';
+      html +=   '<div class="flag-body" id="flag-' + i + '">';
+      if (flag.quote) {
+        html += '<div class="flag-quote">' + escHtml(flag.quote) + '</div>';
+      }
+      if (flag.explanation) {
+        html += '<div class="flag-explanation">' + escHtml(flag.explanation) + '</div>';
+      }
+      html +=   '</div>';
+      html += '</div>';
+    });
+
+    // Open first flag automatically
+    resultsEl.innerHTML = html;
+    if (flags.length > 0) toggleFlag(0);
+  }
+
+  function toggleFlag(i) {
+    const el = document.getElementById('flag-' + i);
+    if (el) el.classList.toggle('open');
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // Initialize
+  window.hoffman.getModelStatus();
+</script>
+</body>
+</html>
