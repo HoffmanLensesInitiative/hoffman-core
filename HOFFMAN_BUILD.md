@@ -23,46 +23,64 @@ All JS files must be ASCII-clean (no unicode above 127).
 
 ## CURRENT STATE
 
+### Hoffman Browser [PRIMARY PRODUCT]
+- Version: 0.1.0 (pre-release)
+- Location: hoffman-browser/ in hoffman-core monorepo
+- Status: ACTIVE DEVELOPMENT
+- LLM: Llama 3.2 3B Instruct Q4_K_M -- CPU only, on-device, ~2.2GB
+- Text extraction: content-aware selectors (article/main/p) before body fallback
+- Analysis pipeline: grammar-constrained JSON via completeJson(), 4096-token context
+- BMID integration: "Why is this here?" wired end-to-end via localhost:5000
+- Known issues:
+  - 3B model returns empty flags array while correctly identifying manipulation in summary
+  - Two-pass analysis (brief in BUILD QUEUE item 1) will fix this
+  - OCR not yet built -- image-embedded text not yet analyzed
+
 ### hl-detect
 - Version: 0.1.0
 - Location: hoffman-core/hl-detect/
-- Status: STABLE -- 64/64 tests passing
+- Status: STABLE -- 64/64 tests passing. Maintenance only.
+- Role: fast pre-screen in the browser pipeline (not primary engine)
 - Patterns: 7 (suppression_framing, false_urgency, incomplete_hook,
   outrage_engineering, false_authority, tribal_activation, engagement_directive)
-- Known gaps: multilingual support (v0.2 target), coordinated_language
-  requires session context (deferred)
 
-### Universal Extension
-- Version: 0.2.3
-- Location: hoffman-lenses-extension/
-- Status: WORKING -- validated on foxnews.com and facebook.com
-- Features: icon-based annotations, fixed-position popup, flag navigator,
-  session bar, background worker, popup panel
-- Known issues:
-  - Session export not yet built
-  - "Why is this here?" button not yet built
-  - Icon placeholder (not real Hoffman Lenses glasses icon)
-  - Annotation icons sometimes appear below image elements not headlines
+### Universal Extension [HALTED]
+- Version: 0.2.3 -- last working state
+- Status: HALTED March 2026. Do not assign new work.
+- Reason: DOM fragmentation, platform countermeasures, image-text gap.
+  Full reasoning in HOFFMAN.md Decisions Log 2026-03-29.
+- Code preserved in hoffman-core/hoffman-extension/ for reference.
+
+### BMID API
+- Version: 0.1.0
+- Location: hoffman-core/bmid-api/
+- Status: RUNNING at localhost:5000
+- Data: 3 fishermen (facebook.com, instagram.com, youtube.com),
+  9 motives, 16 catches, 33 evidence records
+- Seed script: bmid-api/seed.py (idempotent, re-runnable)
 
 ### hoffmanlenses.org
 - Status: LIVE on Cloudflare Pages
-- Missing pages: /whitepaper, /families, /research, /remembrance, /extension
-
-### BMID API
-- Status: NOT YET BUILT -- schema exists at hoffman-core/BMID_SCHEMA.md
-- Next: build database layer and API endpoints
+- Missing pages: /families, /research, /remembrance, /extension
 
 ---
 
 ## BUILD QUEUE (priority order)
 
-1. **[BROWSER] Two-pass analysis -- Hoffman Browser LLM reliability** (see brief below)
-2. Session export -- download session as JSON/CSV from popup
-3. "Why is this here?" button -- Claude API integration in popup
-4. BMID API v0.1 -- basic read/write endpoints, SQLite initially
-5. hl-detect v0.2 -- coordinated_language pattern, multilingual stub
-6. hoffmanlenses.org missing pages
-7. Hoffman Electron browser (Stage 3 -- deferred until extension stable)
+### Hoffman Browser (primary track)
+1. **Two-pass LLM analysis** -- reliable flag extraction (see brief below)
+2. **OCR integration** -- tesseract.js reads image-embedded text (see brief below)
+3. **hl-detect pre-screen** -- run hl-detect before LLM, pass technique hints
+4. **Model upgrade path** -- evaluate Llama 3.2 7B or Mistral 7B for better extraction;
+   document min hardware requirements
+
+### Supporting systems
+5. hoffmanlenses.org missing pages: /families, /research, /remembrance
+6. BMID: expand database -- Twitter/X, TikTok, Reddit fishermen
+7. hl-detect v0.2 -- coordinated_language, multilingual stub (low priority -- stable)
+
+### Do not work on
+- Universal extension -- HALTED. See HOFFMAN.md Decisions Log 2026-03-29.
 
 ---
 
@@ -104,6 +122,36 @@ Both passes use small prompts fitting comfortably in the 4096-token context.
 - The `flags` array shape must remain: `{ quote, technique, explanation, severity }`
 - Test by running the browser (`cd hoffman-browser && npm start`) and analyzing
   foxnews.com, a Facebook page, and one news article. All three should return flags.
+
+---
+
+## BUILD BRIEF: OCR integration for image-embedded text
+
+**Why this matters**: Platforms increasingly deliver content as images specifically to
+defeat text-based analysis. A post that says "STOLEN ELECTION -- SHARE NOW" as a JPEG
+is invisible to DOM extraction and to the current analyzer. OCR closes this gap.
+
+**Approach**:
+- Library: `tesseract.js` -- pure JavaScript, no native binaries, npm installable,
+  runs in Node.js inside Electron. `npm install tesseract.js`
+- Capture: `browserView.webContents.capturePage()` returns a `NativeImage` of the
+  visible viewport. Convert to PNG buffer: `nativeImage.toPNG()`
+- Process: pass buffer to `tesseract.js` `recognize()` -- returns extracted text
+- Merge: append OCR text to the content-selector text extraction before passing to analyzer
+- Scope: only run OCR when the user clicks Analyze (not continuously -- CPU cost)
+
+**Where to make changes**:
+- `hoffman-browser/src/main.js` -- in the `analyze-page` IPC handler, after extracting
+  text via executeJavaScript, also call capturePage() and run OCR, merge results
+- New file: `hoffman-browser/src/ocr.js` -- wraps tesseract.js, exposes
+  `extractTextFromImage(pngBuffer)` returning a promise of string
+
+**Constraints**:
+- OCR runs only on Analyze click, never in background
+- If tesseract.js fails or times out (>10s), log the error and continue with DOM text only
+- OCR text should be labeled in logs: `[Hoffman] OCR extracted N chars`
+- Test: navigate to a page with a text-heavy image (meme, infographic, screenshot of tweet),
+  click Analyze, verify OCR text appears in the console log
 
 ---
 

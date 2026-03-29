@@ -54,20 +54,39 @@ Not trying to reach everyone. Trying to reach people who are ready to see. The g
 
 ### The Three-Stage Build Plan
 
-#### Stage 1 — hl-detect (CURRENT STAGE)
+#### Stage 1 — hl-detect (COMPLETE)
 A standalone JavaScript library that takes text as input and returns structured analysis of manipulation patterns present in that text.
 Platform-agnostic. DOM-agnostic. No dependencies.
-The brain of everything that comes after.
+Status: v0.1.0 shipped, 64/64 tests passing.
+Role going forward: fast pre-screen in the browser pipeline. Not the primary detection engine — the LLM is — but a first-pass filter that identifies likely techniques and passes them as hints to the model.
 
-#### Stage 2 — Universal Extension
-A browser extension (Chrome + Firefox) that injects hl-detect into every page the user visits. Reads rendered text. Annotates manipulation patterns in real time. Runs on every website, not just social media.
-Replaces the Facebook-specific extension (v0.1.0) already built.
+#### Stage 2 — Universal Extension (HALTED)
+A browser extension (Chrome + Firefox) that injects hl-detect into every page the user visits.
+Status: v0.2.3 built and functional. Development halted March 2026.
 
-#### Stage 3 — Hoffman Browser
-A Chromium-based browser with hl-detect running natively.
-Initial target: Electron-based (JavaScript, no C++ required).
-Later: Native Chromium fork if performance requires it.
-Platforms: Windows, Mac, Linux, Android.
+Why halted:
+- Fragmentation: Chrome, Firefox, Safari, and Edge all have different extension models and requirements, creating permanent maintenance burden
+- DOM inconsistency: platforms use inconsistent and deliberately obfuscated DOM structure, making reliable text extraction impossible across sites
+- Active countermeasures: platforms intentionally change their DOM syntax specifically to prevent tools like ours from reading page text
+- Manifest V3: Chrome's extension architecture further limits what content scripts can do, with a trajectory toward more restriction, not less
+- Image text: extensions cannot read text embedded in images — a tactic platforms increasingly use to deliver content that bypasses text-based detection
+
+The extension work is not wasted. Detection algorithms, BMID wiring, and UI patterns all inform browser development.
+
+#### Stage 3 — Hoffman Browser (CURRENT STAGE)
+A Chromium-based desktop browser with manipulation detection built in.
+Built on Electron (JavaScript, no C++ required).
+Platforms: Windows, Mac, Linux.
+
+Why the browser wins where the extension loses:
+- Text extraction reads what the user actually sees (rendered output), not DOM markup. Platforms cannot obfuscate rendered text without breaking their own product.
+- OCR capability: the browser can screenshot its own viewport and run on-device OCR, reading text embedded in images — a detection surface extensions cannot reach
+- No per-browser fragmentation: one Electron codebase runs identically everywhere
+- The page is never aware it is being analyzed
+- Local LLM runs on-device: no data leaves the machine, no network dependency, no platform can block it
+
+Current capabilities: text extraction, two-pass LLM analysis, BMID "Why is this here?" integration.
+Next capability: OCR via tesseract.js for image-embedded text.
 
 ### Supporting Systems (parallel to all stages)
 - Research database — anonymized session data from users who opt in
@@ -449,33 +468,27 @@ The library MUST NOT:
 ### What Exists
 - hoffmanlenses.org — live on Cloudflare, deployed
 - White paper v2 — complete, cited, 25 references
-- Browser extension v0.1.0 — working on Facebook
-  - Detects: sponsored content, inserted posts, not-in-network,
-    old content, engagement bait
-  - Session bar running at bottom of page
-  - Popup panel with session stats
-  - Background worker tracking session state
-  - Files: manifest.json, background/worker.js, content/core.js,
-    content/overlay.js, content/platforms/facebook.js,
-    styles/overlay.css, popup/*
-- GitHub repositories:
-  - HoffmanLensesInitiative/hoffman-lenses-website
-  - HoffmanLensesInitiative/hoffman-lenses-extension
-- Project list — 7 workstreams documented
+- hl-detect v0.1.0 — standalone manipulation detection library, 64/64 tests passing
+- Browser extension v0.2.3 — HALTED. Functional but no longer the primary product.
+  Last working state: foxnews.com, facebook.com validated. Session export built.
+- Hoffman Browser (Electron) — PRIMARY PRODUCT, active development
+  - Location: hoffman-browser/ in hoffman-core repo
+  - LLM: Llama 3.2 3B Instruct Q4_K_M, runs on CPU, on-device only
+  - Text extraction: content-aware (article/main/p selectors before body fallback)
+  - Analysis: grammar-constrained JSON, two-pass approach in progress
+  - BMID: "Why is this here?" wired end-to-end, localhost:5000
+  - Status: running, needs two-pass LLM reliability improvement and OCR
+- BMID API v0.1 — Python/Flask/SQLite, running at localhost:5000
+  - 3 fishermen: facebook.com, instagram.com, youtube.com
+  - 9 motives, 16 catches, 33 evidence records
+  - Sourced from March 2026 intel/investigate agent cycles
+- GitHub: HoffmanLensesInitiative/hoffman-core (monorepo)
 
 ### What Needs to Be Built Next
-1. hl-detect v0.1 — the standalone detection library (THIS STAGE)
-2. Test suite for hl-detect
-3. Universal extension using hl-detect
-4. Session export functionality
-5. Hoffman Electron browser (Stage 3)
-
-### Known Issues in Extension v0.1.0
-- Annotation panel positioning — appears beside post not below it
-- Post detection overcounting — Groups widgets counted as posts
-- "From your network" stat meaningless on empty accounts
-- Flag descriptions too technical — need plain language rewrites
-- Icons are placeholders — need real Hoffman Lenses sunglasses icon
+1. Two-pass LLM analysis — browser detects reliably, extracts precise quotes (brief in HOFFMAN_BUILD.md)
+2. OCR integration — tesseract.js reads text from images in the viewport
+3. hl-detect pre-screen integration — fast first pass in browser pipeline before LLM
+4. hoffmanlenses.org missing pages: /extension, /families, /research, /remembrance
 
 ---
 
@@ -512,6 +525,35 @@ Director: Norm Robichaud
 **2026-03-25: Agent loop architecture**
 Decision: Use agentic loop with this document as the central memory store. AI agents read HOFFMAN.md, act, write results back.
 Director directs and reviews between cycles.
+Director: Norm Robichaud
+
+**2026-03-29: Extension development halted — browser is the primary product**
+Decision: Stop all extension development. The Hoffman Browser (Electron) is now the
+sole primary build target. Intel, investigation, BMID, and advocacy work continue unchanged.
+Reason: (1) Extension fragmentation — Chrome/Firefox/Safari/Edge each have different
+requirements, creating permanent multi-platform maintenance burden. (2) DOM inconsistency —
+platforms use inconsistent and deliberately obfuscated DOM syntax, making reliable text
+extraction impossible. (3) Active platform countermeasures — platforms change their DOM
+specifically to defeat tools like ours. (4) Image text — platforms increasingly deliver
+content as images; extensions cannot read it. The browser solves all of these: it reads
+rendered screen output (what the user sees), not DOM markup, and can run OCR on the viewport
+to read image-embedded text. Platforms cannot block either without breaking their own product.
+Director: Norm Robichaud
+
+**2026-03-29: OCR as next major browser capability**
+Decision: Integrate tesseract.js for on-device OCR of viewport screenshots.
+`browserView.webContents.capturePage()` captures the visible area as NativeImage;
+tesseract.js reads it without native binaries or network calls.
+OCR output is merged with rendered text extraction before being passed to the LLM.
+This closes the image-text detection gap that is a primary platform countermeasure.
+Director: Norm Robichaud
+
+**2026-03-29: hl-detect role redefined**
+Decision: hl-detect is no longer the primary detection engine. Its role is fast
+pre-screening in the browser pipeline — run first (milliseconds, no LLM), pass
+detected technique names as hints to the LLM so the model focuses on explanation
+and quote extraction rather than blind detection. The LLM remains the primary
+analysis engine. hl-detect improves its reliability.
 Director: Norm Robichaud
 
 **2026-03-25: Research tool framing for Phase 1**
@@ -752,10 +794,11 @@ for size/accuracy tradeoff when that stage arrives
 DIRECTOR (Norm Robichaud)
     |
     |-- SUPERVISOR: BUILD         (HOFFMAN_BUILD.md)
-    |       |-- hl-detect agent
-    |       |-- Extension agent
-    |       |-- Website agent
+    |       |-- Hoffman Browser agent  [PRIMARY -- Electron, LLM, OCR]
     |       |-- BMID API agent
+    |       |-- Website agent
+    |       |-- hl-detect agent        [maintenance only -- library is stable]
+    |       |-- Extension agent        [HALTED -- do not assign work]
     |
     |-- SUPERVISOR: INTELLIGENCE  (HOFFMAN_INTEL.md)
     |       |-- Database agent
