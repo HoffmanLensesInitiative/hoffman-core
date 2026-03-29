@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0D1117;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    color: #E8EEF4;
+    user-select: none;
+    -webkit-app-region: drag;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  button {
+    -webkit-app-region: no-drag;
+    background: none;
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #A8C4C4;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  button:hover { background: rgba(255,255,255,0.06); color: #E8EEF4; }
+  button:active { background: rgba(255,255,255,0.1); }
+  button:disabled { opacity: 0.3; cursor: default; }
+
+  .nav-buttons { display: flex; gap: 4px; }
+
+  #url-bar {
+    -webkit-app-region: no-drag;
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: #E8EEF4;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  #url-bar:focus {
+    border-color: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.08);
+  }
+
+  .logo {
+    color: #FF5555;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    padding: 0 4px;
+  }
+
+  .logo span { color: #5A8090; }
+
+  #loading-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #5ABF8A;
+    opacity: 0;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+  }
+
+  #loading-indicator.active {
+    opacity: 1;
+    background: #FFB040;
+    animation: pulse 0.8s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  #panel-btn.active {
+    background: rgba(255,85,85,0.15);
+    border-color: rgba(255,85,85,0.4);
+    color: #FF5555;
+  }
+</style>
+</head>
+<body>
+
+  <div class="logo">o <span>HOFFMAN</span></div>
+
+  <div class="nav-buttons">
+    <button id="back-btn" title="Back">&#8592;</button>
+    <button id="fwd-btn"  title="Forward">&#8594;</button>
+    <button id="reload-btn" title="Reload">&#8635;</button>
+  </div>
+
+  <input id="url-bar" type="text" value="https://www.google.com" placeholder="Enter address or search..." spellcheck="false">
+
+  <div id="loading-indicator"></div>
+
+  <button id="panel-btn" class="active" title="Toggle Hoffman panel">Hoffman</button>
+
+<script>
+  const urlBar    = document.getElementById('url-bar');
+  const backBtn   = document.getElementById('back-btn');
+  const fwdBtn    = document.getElementById('fwd-btn');
+  const reloadBtn = document.getElementById('reload-btn');
+  const panelBtn  = document.getElementById('panel-btn');
+  const loader    = document.getElementById('loading-indicator');
+
+  backBtn.addEventListener('click',   () => window.hoffman.goBack());
+  fwdBtn.addEventListener('click',    () => window.hoffman.goForward());
+  reloadBtn.addEventListener('click', () => window.hoffman.reload());
+  panelBtn.addEventListener('click',  () => window.hoffman.togglePanel());
+
+  urlBar.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      window.hoffman.navigate(urlBar.value);
+      urlBar.blur();
+    }
+  });
+
+  urlBar.addEventListener('focus', () => urlBar.select());
+
+  window.hoffman.onUrlChanged((url) => { urlBar.value = url; });
+  window.hoffman.onLoading((v) => {
+    loader.classList.toggle('active', v);
+  });
+  window.hoffman.onPanelState((visible) => {
+    panelBtn.classList.toggle('active', visible);
+  });
+</script>
+</body>
+</html>
