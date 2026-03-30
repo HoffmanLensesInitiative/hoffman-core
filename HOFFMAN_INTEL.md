@@ -3287,3 +3287,128 @@ Twitter/X (x.com, twitter.com) — Priority target based on INTELLIGENCE QUEUE g
 #### e088-staff-reduction-reporting
 
 ```json
+---
+
+## INTEL BRIEF: Evidence expansion -- receipts for existing fishermen
+
+### What and why
+
+The three seeded fishermen (facebook.com, instagram.com, youtube.com) have motive and
+catch records, but their evidence records are thin. The BMID is only as credible as
+the documents behind it. This brief directs an intel agent to locate, verify, and add
+primary-source evidence records for claims already in the database.
+
+The standard: every factual claim the BMID makes about a fisherman must be traceable
+to a public document a user could read themselves. Court filings, regulatory decisions,
+parliamentary reports, and internal documents entered into the public record via
+whistleblower disclosures or litigation are the gold standard.
+
+### What counts as a receipt (in priority order)
+
+1. **Court documents** -- coroner reports, court filings, consent decrees, judgments.
+   Official findings of fact. Confidence: 0.95-1.0.
+
+2. **Regulatory decisions** -- FTC orders, GDPR enforcement decisions (EU DPC), ICO fines,
+   COPPA settlements. Government agencies making formal findings. Confidence: 0.90-0.95.
+
+3. **Internal company documents entered into public record** -- Frances Haugen disclosures
+   (filed with SEC, released to Congress), documents produced in litigation discovery,
+   documents cited in official complaints. The company's own words. Confidence: 0.90-0.95.
+
+4. **Parliamentary / congressional records** -- committee reports, formal testimony
+   transcripts (not news summaries -- the actual transcript). Confidence: 0.85-0.90.
+
+5. **Peer-reviewed academic research** -- published in indexed journals, citing primary
+   data. Confidence: 0.80-0.90 depending on journal and replication status.
+
+6. **Major investigative journalism** -- WSJ, NYT, The Guardian, ProPublica with named
+   sources and document links. Confidence: 0.75-0.85.
+
+### Priority receipts to locate and add
+
+#### Meta Platforms (facebook.com + instagram.com)
+
+- **FTC consent decree 2019** -- $5B settlement. Full text at FTC.gov. Findings of fact
+  on data misuse, deceptive practices. Add as evidence on Meta's data_harvesting motive.
+  Source type: `regulatory_decision`. Confidence: 0.98.
+
+- **Frances Haugen -- Internal Instagram research on teen girls** -- "Teen Girls Body Image
+  and Social Comparison" internal slide deck, entered into the congressional record 2021.
+  Key finding: "We make body image issues worse for one in three teen girls." This is
+  Meta's own researchers. Add as evidence on instagram.com's harm_to_minors catch.
+  Source type: `internal_document`. Confidence: 0.95.
+
+- **Massachusetts AG complaint 2023** -- Commonwealth of Massachusetts v. Meta Platforms.
+  Public court filing citing internal documents by name. Add as evidence on
+  targeting_minors motive. Source type: `court_filing`. Confidence: 0.95.
+
+- **41-state AG coalition complaint 2023** -- Filed in federal court. Cites internal
+  Meta research on addictive design features. Add as evidence on engagement_addiction
+  catch. Source type: `court_filing`. Confidence: 0.95.
+
+- **UK ICO fine against Meta** -- Enforcement decision on Instagram children's data.
+  Published at ico.org.uk. Add as evidence on data_harvesting motive for instagram.com.
+  Source type: `regulatory_decision`. Confidence: 0.95.
+
+- **EU DPC fine 2023 -- EUR 1.2B** -- Meta's transfer of EU user data to US servers.
+  Full decision published by the Irish Data Protection Commission. Add as evidence on
+  data_harvesting motive for facebook.com. Source type: `regulatory_decision`.
+  Confidence: 0.98.
+
+#### YouTube / Google (youtube.com)
+
+- **FTC-YouTube COPPA settlement 2019** -- $170M for collecting children's data without
+  parental consent. Full consent order at FTC.gov. Add as evidence on targeting_minors
+  motive and COPPA_violation catch. Source type: `regulatory_decision`. Confidence: 0.98.
+
+- **Guillaume Chaslot testimony** -- Former YouTube recommendation engineer, testified
+  before the Senate Commerce Committee on algorithmic radicalization. Transcript at
+  congress.gov. Add as evidence on radicalization catch. Source type: `testimony`.
+  Confidence: 0.90.
+
+- **Amnesty International: Surveillance Giants report 2019** -- Chapter on YouTube.
+  Covers data harvesting and advertiser targeting. Add as evidence on
+  behavioral_advertising motive. Source type: `ngo_report`. Confidence: 0.85.
+
+- **Pew Research: News Algorithm Study** -- Documents how YouTube recommendation
+  algorithm shapes news consumption. Add as evidence on algorithmic_amplification motive.
+  Source type: `academic_research`. Confidence: 0.85.
+
+### How to add evidence records
+
+Evidence records go in bmid-api/seed.py. The seed script is idempotent -- add new
+INSERT blocks at the bottom. Each evidence record links to a catch or motive via
+entity_id and entity_type ('catch' or 'motive').
+
+The evidence table schema:
+```
+evidence_id     TEXT PRIMARY KEY (use uuid.uuid4())
+entity_id       TEXT NOT NULL (catch_id or motive_id from seed data)
+entity_type     TEXT NOT NULL ('catch' or 'motive')
+source_type     TEXT NOT NULL (see types above)
+url             TEXT (direct link to the document -- prefer official sources)
+archive_url     TEXT (perma.cc or archive.org link for permanence -- add if possible)
+title           TEXT (official title of the document)
+author          TEXT (person or agency)
+publication     TEXT (court name, regulatory body, journal, outlet)
+published_date  TEXT (YYYY-MM-DD)
+summary         TEXT (2-3 sentences: what the document says and why it matters here)
+direct_quote    TEXT (exact quote under 50 words, or null -- use the entity's own words)
+confidence      REAL (see scoring guide above)
+```
+
+### What the agent must NOT do
+
+- Do not add records without a real, publicly accessible URL
+- Do not paraphrase findings as direct quotes -- use the entity's own words or null
+- Do not add records for claims not already in the database -- evidence supports
+  existing claims, it does not introduce new ones (that requires a separate research brief)
+- Do not touch any browser source files
+- Do not modify any API routes or existing records -- append to seed.py only
+
+### Deliverable
+
+An updated bmid-api/seed.py with new evidence INSERT blocks for the receipts listed
+above. Run the seed after writing to verify no SQL errors. Report which URLs resolved
+and which could not be verified.
+
