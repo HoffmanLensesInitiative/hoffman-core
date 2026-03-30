@@ -9,7 +9,7 @@ import sqlite3
 import json
 import uuid
 from datetime import datetime
-from flask import Flask, request, jsonify, g
+from flask import Flask, request, jsonify, g, render_template
 
 app = Flask(__name__)
 
@@ -415,6 +415,148 @@ def health():
         'evidence': db.execute('SELECT COUNT(*) FROM evidence').fetchone()[0],
     }
     return jsonify({'status': 'ok', 'version': '0.1.0', 'counts': counts})
+
+
+# ── Admin GUI (read-only) ─────────────────────────────────
+
+@app.route('/admin')
+def admin_dashboard():
+    db = get_db()
+    counts = {
+        'fishermen': db.execute('SELECT COUNT(*) FROM fisherman').fetchone()[0],
+        'motives':   db.execute('SELECT COUNT(*) FROM motive').fetchone()[0],
+        'catches':   db.execute('SELECT COUNT(*) FROM catch').fetchone()[0],
+        'evidence':  db.execute('SELECT COUNT(*) FROM evidence').fetchone()[0],
+    }
+    recent_catches = db.execute(
+        '''SELECT c.*, f.domain FROM catch c
+           JOIN fisherman f ON c.fisherman_id = f.fisherman_id
+           ORDER BY c.created_at DESC LIMIT 5'''
+    ).fetchall()
+    return render_template('admin/index.html',
+                           counts=counts,
+                           recent_catches=[dict(r) for r in recent_catches],
+                           active_page='dashboard')
+
+
+@app.route('/admin/fishermen')
+def admin_fishermen():
+    db = get_db()
+    rows = db.execute(
+        '''SELECT f.*,
+           (SELECT COUNT(*) FROM motive WHERE fisherman_id = f.fisherman_id) AS motive_count,
+           (SELECT COUNT(*) FROM catch  WHERE fisherman_id = f.fisherman_id) AS catch_count
+           FROM fisherman f ORDER BY f.domain'''
+    ).fetchall()
+    return render_template('admin/fishermen.html',
+                           fishermen=[dict(r) for r in rows],
+                           active_page='fishermen')
+
+
+@app.route('/admin/fishermen/<fisherman_id>')
+def admin_fisherman_detail(fisherman_id):
+    db = get_db()
+    fisherman = db.execute(
+        'SELECT * FROM fisherman WHERE fisherman_id = ?', [fisherman_id]
+    ).fetchone()
+    if not fisherman:
+        return 'Fisherman not found', 404
+
+    fisherman = dict(fisherman)
+    fid = fisherman['fisherman_id']
+
+    motives = [dict(r) for r in db.execute(
+        'SELECT * FROM motive WHERE fisherman_id = ? ORDER BY confidence_score DESC', [fid]
+    ).fetchall()]
+
+    catches_raw = db.execute(
+        'SELECT * FROM catch WHERE fisherman_id = ? ORDER BY created_at DESC', [fid]
+    ).fetchall()
+    catches = []
+    for c in catches_raw:
+        c = dict(c)
+        c['evidence_count'] = db.execute(
+            'SELECT COUNT(*) FROM evidence WHERE entity_id = ?', [c['catch_id']]
+        ).fetchone()[0]
+        catches.append(c)
+
+    top_patterns = [r[0] for r in db.execute(
+        '''SELECT pattern_type FROM hook WHERE fisherman_id = ?
+           GROUP BY pattern_type ORDER BY COUNT(*) DESC LIMIT 5''', [fid]
+    ).fetchall()]
+
+    catch_count  = len(catches)
+    motive_count = len(motives)
+    if catch_count >= 3:
+        intel_level = 'full'
+    elif catch_count >= 1:
+        intel_level = 'partial'
+    elif motive_count >= 1:
+        intel_level = 'pattern_only'
+    else:
+        intel_level = 'none'
+
+    api_response = {
+        'domain': fisherman['domain'],
+        'intelligence_level': intel_level,
+        'fisherman': {k: fisherman[k] for k in ('domain', 'display_name', 'owner', 'business_model')},
+        'motives': [{'type': m['motive_type'], 'description': m['description']} for m in motives],
+        'top_patterns': top_patterns,
+        'catch_summary': {'total_documented': catch_count},
+    }
+
+    return render_template('admin/fisherman_detail.html',
+                           fisherman=fisherman,
+                           motives=motives,
+                           catches=catches,
+                           top_patterns=top_patterns,
+                           catch_count=catch_count,
+                           motive_count=motive_count,
+                           api_response=api_response,
+                           active_page='fishermen')
+
+
+@app.route('/admin/catches')
+def admin_catches():
+    db = get_db()
+    filter_fisherman = request.args.get('fisherman', '')
+    filter_harm      = request.args.get('harm', '')
+
+    query = '''SELECT c.*, f.domain FROM catch c
+               JOIN fisherman f ON c.fisherman_id = f.fisherman_id
+               WHERE 1=1'''
+    params = []
+    if filter_fisherman:
+        query += ' AND f.domain = ?'
+        params.append(filter_fisherman)
+    if filter_harm:
+        query += ' AND c.harm_type = ?'
+        params.append(filter_harm)
+    query += ' ORDER BY c.created_at DESC'
+
+    catches_raw = db.execute(query, params).fetchall()
+    catches = []
+    for c in catches_raw:
+        c = dict(c)
+        c['evidence_count'] = db.execute(
+            'SELECT COUNT(*) FROM evidence WHERE entity_id = ?', [c['catch_id']]
+        ).fetchone()[0]
+        catches.append(c)
+
+    fishermen = [dict(r) for r in db.execute(
+        'SELECT fisherman_id, domain FROM fisherman ORDER BY domain'
+    ).fetchall()]
+    harm_types = [r[0] for r in db.execute(
+        'SELECT DISTINCT harm_type FROM catch ORDER BY harm_type'
+    ).fetchall()]
+
+    return render_template('admin/catches.html',
+                           catches=catches,
+                           fishermen=fishermen,
+                           harm_types=harm_types,
+                           filter_fisherman=filter_fisherman,
+                           filter_harm=filter_harm,
+                           active_page='catches')
 
 
 # ── Seed data: first fisherman record ─────────────────────

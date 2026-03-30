@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}BMID Admin{% endblock %} - Hoffman Lenses</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0D1117;
+      color: #E6EDF3;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: #161B22;
+      border-right: 1px solid #30363D;
+      padding: 20px 0;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid #30363D;
+      margin-bottom: 20px;
+    }
+
+    .sidebar-header h1 { font-size: 16px; font-weight: 600; color: #58A6FF; }
+    .sidebar-header span { font-size: 11px; color: #8B949E; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .nav-section { padding: 0 12px; margin-bottom: 20px; }
+
+    .nav-section-title {
+      font-size: 11px;
+      color: #8B949E;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 8px;
+      margin-bottom: 4px;
+    }
+
+    .nav-link {
+      display: block;
+      padding: 10px 12px;
+      color: #E6EDF3;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: background 0.15s;
+    }
+
+    .nav-link:hover { background: #21262D; }
+    .nav-link.active { background: #1F6FEB; color: #FFFFFF; }
+
+    .main-content { margin-left: 220px; flex: 1; padding: 32px; min-height: 100vh; }
+
+    .page-header { margin-bottom: 32px; }
+    .page-header h2 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+    .page-header p { color: #8B949E; font-size: 14px; }
+
+    .card {
+      background: #161B22;
+      border: 1px solid #30363D;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      font-size: 12px;
+      color: #8B949E;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .card-value { font-size: 32px; font-weight: 600; color: #E6EDF3; }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #30363D; }
+
+    th {
+      font-size: 12px;
+      color: #8B949E;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    td { font-size: 14px; }
+    tr:hover { background: #161B22; }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-full    { background: #238636; color: #FFFFFF; }
+    .badge-partial { background: #9E6A03; color: #FFFFFF; }
+    .badge-pattern { background: #1F6FEB; color: #FFFFFF; }
+    .badge-none    { background: #30363D; color: #8B949E; }
+
+    .badge-high   { background: #DA3633; color: #FFFFFF; }
+    .badge-medium { background: #9E6A03; color: #FFFFFF; }
+    .badge-low    { background: #1F6FEB; color: #FFFFFF; }
+
+    .badge-novel { background: #8957E5; color: #FFFFFF; }
+
+    a { color: #58A6FF; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .text-muted { color: #8B949E; }
+    .text-small { font-size: 12px; }
+    .mt-4 { margin-top: 32px; }
+    .mb-4 { margin-bottom: 32px; }
+
+    .empty-state { text-align: center; padding: 48px; color: #8B949E; }
+
+    .filter-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+
+    .filter-bar select {
+      padding: 8px 12px;
+      background: #21262D;
+      border: 1px solid #30363D;
+      border-radius: 6px;
+      color: #E6EDF3;
+      font-size: 14px;
+    }
+
+    .filter-bar select:focus { outline: none; border-color: #58A6FF; }
+
+    .accordion {
+      border: 1px solid #30363D;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .accordion-header {
+      padding: 16px;
+      background: #161B22;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    .accordion-header:hover { background: #21262D; }
+
+    .accordion-content {
+      padding: 16px;
+      border-top: 1px solid #30363D;
+      display: none;
+    }
+
+    .accordion.open .accordion-content { display: block; }
+
+    .accordion-arrow { transition: transform 0.2s; }
+    .accordion.open .accordion-arrow { transform: rotate(90deg); }
+
+    .json-panel {
+      background: #0D1117;
+      border: 1px solid #30363D;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .profile-label { font-size: 12px; color: #8B949E; margin-bottom: 4px; }
+    .profile-value { font-size: 14px; color: #E6EDF3; }
+
+    .catch-card {
+      background: #0D1117;
+      border: 1px solid #30363D;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .catch-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .catch-title { font-weight: 600; margin-bottom: 4px; }
+    .catch-meta { font-size: 12px; color: #8B949E; }
+    .back-link { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <span>Hoffman Lenses</span>
+      <h1>BMID Admin</h1>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">Overview</div>
+      <a href="/admin" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">Data</div>
+      <a href="/admin/fishermen" class="nav-link {% if active_page == 'fishermen' %}active{% endif %}">Fishermen</a>
+      <a href="/admin/catches" class="nav-link {% if active_page == 'catches' %}active{% endif %}">Catches</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">API</div>
+      <a href="/api/v1/health" class="nav-link" target="_blank">Health Check</a>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    document.querySelectorAll('.accordion-header').forEach(function(header) {
+      header.addEventListener('click', function() {
+        this.parentElement.classList.toggle('open');
+      });
+    });
+  </script>
+</body>
+</html>

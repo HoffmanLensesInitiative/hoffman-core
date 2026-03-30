@@ -1,0 +1,131 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ fisherman.domain }}{% endblock %}
+
+{% block content %}
+<a href="/admin/fishermen" class="back-link">&larr; Back to fishermen</a>
+
+<div class="page-header">
+  <h2>{{ fisherman.domain }}</h2>
+  <p>{{ fisherman.owner or fisherman.display_name or 'Owner unknown' }}</p>
+</div>
+
+<div class="card">
+  <div class="card-header">Profile</div>
+  <div class="profile-grid" style="margin-top: 16px;">
+    <div>
+      <div class="profile-label">Domain</div>
+      <div class="profile-value">{{ fisherman.domain }}</div>
+    </div>
+    <div>
+      <div class="profile-label">Owner</div>
+      <div class="profile-value">{{ fisherman.owner or 'Not documented' }}</div>
+    </div>
+    <div>
+      <div class="profile-label">Display Name</div>
+      <div class="profile-value">{{ fisherman.display_name or fisherman.domain }}</div>
+    </div>
+    <div>
+      <div class="profile-label">Intelligence Level</div>
+      <div class="profile-value">
+        {% if catch_count >= 3 %}
+        <span class="badge badge-full">Full</span>
+        {% elif catch_count >= 1 %}
+        <span class="badge badge-partial">Partial</span>
+        {% elif motive_count >= 1 %}
+        <span class="badge badge-pattern">Pattern Only</span>
+        {% else %}
+        <span class="badge badge-none">None</span>
+        {% endif %}
+      </div>
+    </div>
+    <div>
+      <div class="profile-label">Business Model</div>
+      <div class="profile-value">{{ fisherman.business_model or 'Not documented' }}</div>
+    </div>
+    <div>
+      <div class="profile-label">Top Hook Patterns</div>
+      <div class="profile-value">
+        {% if top_patterns %}
+        {{ top_patterns | join(', ') }}
+        {% else %}
+        Not documented
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Motives ({{ motives|length }})</div>
+  {% if motives %}
+  <div style="margin-top: 16px;">
+    {% for m in motives %}
+    <div class="accordion">
+      <div class="accordion-header">
+        <span>{{ m.motive_type }}</span>
+        <span class="accordion-arrow">&#9654;</span>
+      </div>
+      <div class="accordion-content">
+        <p><strong>Description:</strong> {{ m.description or 'No description' }}</p>
+        {% if m.revenue_model %}
+        <p style="margin-top: 12px;"><strong>Revenue model:</strong> {{ m.revenue_model }}</p>
+        {% endif %}
+        {% if m.beneficiary %}
+        <p style="margin-top: 12px;"><strong>Beneficiary:</strong> {{ m.beneficiary }}</p>
+        {% endif %}
+        {% if m.documented_evidence %}
+        <p style="margin-top: 12px;"><strong>Evidence:</strong> {{ m.documented_evidence }}</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p>No motives documented</p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">Catches ({{ catches|length }})</div>
+  {% if catches %}
+  <div style="margin-top: 16px;">
+    {% for c in catches %}
+    <div class="catch-card">
+      <div class="catch-header">
+        <div>
+          <div class="catch-title">{{ c.harm_type }}</div>
+          <div class="catch-meta">{{ c.victim_demographic or '' }} &middot; {{ c.date_documented or c.created_at[:10] }}</div>
+        </div>
+        {% if c.severity_score >= 8 %}
+        <span class="badge badge-high">{{ c.severity_score }}/10</span>
+        {% elif c.severity_score >= 5 %}
+        <span class="badge badge-medium">{{ c.severity_score }}/10</span>
+        {% else %}
+        <span class="badge badge-low">{{ c.severity_score }}/10</span>
+        {% endif %}
+      </div>
+      {% if c.documented_outcome %}
+      <p class="text-small" style="color: #8B949E;">{{ c.documented_outcome[:300] }}{% if c.documented_outcome|length > 300 %}...{% endif %}</p>
+      {% endif %}
+      {% if c.legal_case_id %}
+      <p class="text-small" style="margin-top: 8px;"><strong>Case:</strong> {{ c.legal_case_id }}</p>
+      {% endif %}
+      <p class="text-small" style="margin-top: 8px;"><strong>Evidence records:</strong> {{ c.evidence_count }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p>No catches documented yet</p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">Raw API Response</div>
+  <div class="json-panel" style="margin-top: 16px;">{{ api_response | tojson(indent=2) }}</div>
+</div>
+{% endblock %}

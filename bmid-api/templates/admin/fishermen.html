@@ -1,0 +1,52 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Fishermen{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Fishermen</h2>
+  <p>Publishers and platforms documented in the intelligence database</p>
+</div>
+
+<div class="card">
+  {% if fishermen %}
+  <table>
+    <thead>
+      <tr>
+        <th>Domain</th>
+        <th>Owner</th>
+        <th>Intelligence</th>
+        <th>Motives</th>
+        <th>Catches</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in fishermen %}
+      <tr>
+        <td><a href="/admin/fishermen/{{ f.fisherman_id }}">{{ f.domain }}</a></td>
+        <td>{{ f.owner or f.display_name or 'Unknown' }}</td>
+        <td>
+          {% if f.catch_count >= 3 %}
+          <span class="badge badge-full">Full</span>
+          {% elif f.catch_count >= 1 %}
+          <span class="badge badge-partial">Partial</span>
+          {% elif f.motive_count >= 1 %}
+          <span class="badge badge-pattern">Pattern Only</span>
+          {% else %}
+          <span class="badge badge-none">None</span>
+          {% endif %}
+        </td>
+        <td>{{ f.motive_count }}</td>
+        <td>{{ f.catch_count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <p>No fishermen documented yet</p>
+    <p class="text-small text-muted mt-4">Run seed.py to populate initial data</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

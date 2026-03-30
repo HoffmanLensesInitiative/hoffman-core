@@ -1,0 +1,76 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Dashboard</h2>
+  <p>Behavioral Manipulation Intelligence Database overview</p>
+</div>
+
+<div class="card-grid">
+  <div class="card">
+    <div class="card-header">Fishermen</div>
+    <div class="card-value">{{ counts.fishermen }}</div>
+  </div>
+  <div class="card">
+    <div class="card-header">Motives</div>
+    <div class="card-value">{{ counts.motives }}</div>
+  </div>
+  <div class="card">
+    <div class="card-header">Catches</div>
+    <div class="card-value">{{ counts.catches }}</div>
+  </div>
+  <div class="card">
+    <div class="card-header">Evidence</div>
+    <div class="card-value">{{ counts.evidence }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Recent Catches</div>
+  {% if recent_catches %}
+  <table>
+    <thead>
+      <tr>
+        <th>Harm Type</th>
+        <th>Fisherman</th>
+        <th>Severity</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in recent_catches %}
+      <tr>
+        <td>{{ c.harm_type }}</td>
+        <td><a href="/admin/fishermen/{{ c.fisherman_id }}">{{ c.domain }}</a></td>
+        <td>
+          {% if c.severity_score >= 8 %}
+          <span class="badge badge-high">{{ c.severity_score }}/10</span>
+          {% elif c.severity_score >= 5 %}
+          <span class="badge badge-medium">{{ c.severity_score }}/10</span>
+          {% else %}
+          <span class="badge badge-low">{{ c.severity_score }}/10</span>
+          {% endif %}
+        </td>
+        <td class="text-muted text-small">{{ c.date_documented or c.created_at[:10] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <p>No catches documented yet</p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">Quick Links</div>
+  <p style="margin-top: 12px;">
+    <a href="/admin/fishermen">View all fishermen</a> &middot;
+    <a href="/admin/catches">View all catches</a> &middot;
+    <a href="/api/v1/health" target="_blank">API health</a>
+  </p>
+</div>
+{% endblock %}
