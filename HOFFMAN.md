@@ -1,8 +1,7 @@
 # HOFFMAN.md
 # The Hoffman Lenses Initiative — Master Build Document
-# Version: 0.1.0
-# Last updated: March 2026
-#
+# Version: 0.2.0
+# Last updated: March 30, 2026
 # THIS DOCUMENT IS THE SINGLE SOURCE OF TRUTH FOR THE HOFFMAN PROJECT.
 # It is read by AI agents at the start of every build cycle.
 # It is updated by AI agents after every build cycle.
@@ -10,15 +9,15 @@
 # Every action taken, every result observed, every decision made is recorded here.
 # Nothing is lost between cycles. Every cycle builds on everything before it.
 
----
+-----
 
 ## PART 1 — MISSION
 
 ### What Hoffman Is
 
-Hoffman is a browser built on Chromium that makes behavioral manipulation visible to the people it operates on. It reads language the way an expert reads manipulation — recognizing not just what text says but what it is designed to do to the reader. It works on every website, every platform, every page — because manipulation is a property of language, not of any specific platform's DOM structure.
+Hoffman is a browser built on Chromium that makes behavioral manipulation visible to the people it operates on. It reads language the way an expert reads manipulation — recognizing not just what text says but what it is designed to do to the reader. It works on every website, every platform, every page — because manipulation is a property of language, not of any specific platform’s DOM structure.
 
-The name comes from the Hoffman Lenses — the glasses in John Carpenter's 1988 film They Live — which allowed the wearer to see hidden messages embedded in ordinary reality. Once you put them on, you cannot unsee what they reveal.
+The name comes from the Hoffman Lenses — the glasses in John Carpenter’s 1988 film They Live — which allowed the wearer to see hidden messages embedded in ordinary reality. Once you put them on, you cannot unsee what they reveal.
 
 ### What Hoffman Is Not
 
@@ -29,14 +28,14 @@ Hoffman is not a censorship tool. It blocks nothing. It hides nothing. It makes 
 
 ### Why This Exists
 
-Behavioral Manipulation Systems — the algorithmic engines that power social media platforms — are injuring and killing human beings as a direct and foreseeable consequence of how they are designed to operate. Children have died. Adults have been radicalized. Relationships have been destroyed. Democracies have been destabilized. Adults have been radicalized. Relationships have been destroyed. Democracies have been destabilized.
+Behavioral Manipulation Systems — the algorithmic engines that power social media platforms — are injuring and killing human beings as a direct and foreseeable consequence of how they are designed to operate. Children have died. Adults have been radicalized. Relationships have been destroyed. Democracies have been destabilized.
 
 The harm is not incidental. It is architectural. These systems optimize for engagement without obligation to human wellbeing. They exploit psychological vulnerabilities for profit. They operate invisibly.
 
 Hoffman makes them visible. That is the mission.
 
 The full human rights case is documented in the white paper:
-"The Algorithm and the Child: A Human Rights Case for Abolishing Behavioral Manipulation Systems" — published at hoffmanlenses.org
+“The Algorithm and the Child: A Human Rights Case for Abolishing Behavioral Manipulation Systems” — published at hoffmanlenses.org
 
 ### The People This Is For
 
@@ -46,61 +45,66 @@ people who actively want to understand what is being done to them and to others.
 Secondary: General users who want to browse with awareness —
 who want a knowledgeable presence reading alongside them.
 
-Not trying to reach everyone. Trying to reach people who are ready to see. The glasses only work if you're willing to put them on.
+Not trying to reach everyone. Trying to reach people who are ready to see. The glasses only work if you’re willing to put them on.
 
----
+-----
 
 ## PART 2 — ARCHITECTURE
 
 ### The Three-Stage Build Plan
 
 #### Stage 1 — hl-detect (COMPLETE)
+
 A standalone JavaScript library that takes text as input and returns structured analysis of manipulation patterns present in that text.
 Platform-agnostic. DOM-agnostic. No dependencies.
 Status: v0.1.0 shipped, 64/64 tests passing.
 Role going forward: standalone npm library for developers. Has NO role in the Hoffman Browser detection pipeline (see Decisions Log 2026-03-29).
 
 #### Stage 2 — Universal Extension (HALTED)
+
 A browser extension (Chrome + Firefox) that injects hl-detect into every page the user visits.
 Status: v0.2.3 built and functional. Development halted March 2026.
 
 Why halted:
+
 - Fragmentation: Chrome, Firefox, Safari, and Edge all have different extension models and requirements, creating permanent maintenance burden
 - DOM inconsistency: platforms use inconsistent and deliberately obfuscated DOM structure, making reliable text extraction impossible across sites
 - Active countermeasures: platforms intentionally change their DOM syntax specifically to prevent tools like ours from reading page text
-- Manifest V3: Chrome's extension architecture further limits what content scripts can do, with a trajectory toward more restriction, not less
+- Manifest V3: Chrome’s extension architecture further limits what content scripts can do, with a trajectory toward more restriction, not less
 - Image text: extensions cannot read text embedded in images — a tactic platforms increasingly use to deliver content that bypasses text-based detection
 
 The extension work is not wasted. Detection algorithms, BMID wiring, and UI patterns all inform browser development.
 
 #### Stage 3 — Hoffman Browser (CURRENT STAGE)
+
 A Chromium-based desktop browser with manipulation detection built in.
 Built on Electron (JavaScript, no C++ required).
 Platforms: Windows, Mac, Linux.
 
 Why the browser wins where the extension loses:
+
 - Text extraction reads what the user actually sees (rendered output), not DOM markup. Platforms cannot obfuscate rendered text without breaking their own product.
 - OCR capability: the browser can screenshot its own viewport and run on-device OCR, reading text embedded in images — a detection surface extensions cannot reach
 - No per-browser fragmentation: one Electron codebase runs identically everywhere
 - The page is never aware it is being analyzed
 - Local LLM runs on-device: no data leaves the machine, no network dependency, no platform can block it
 
-Current capabilities: text extraction, two-pass LLM analysis, BMID "Why is this here?" integration.
+Current capabilities: text extraction, LLM analysis via Llama 3.2 3B Instruct, BMID “Why is this here?” integration.
 Next capability: OCR via tesseract.js for image-embedded text.
 
 ### Supporting Systems (parallel to all stages)
+
 - Research database — anonymized session data from users who opt in
-- Retrospective analysis tool — Facebook data archive analyzer
-for families, lawyers, law enforcement
-- hoffmanlenses.org — website, white paper, remembrance list,
-research dashboard, family resources
+- Retrospective analysis tool — Facebook data archive analyzer for families, lawyers, law enforcement
+- hoffmanlenses.org — website, white paper, remembrance list, research dashboard, family resources
 - Agent loop infrastructure — this document + GitHub + Claude
 
----
+-----
 
 ## PART 3 — HL-DETECT SPECIFICATION
 
 ### Purpose
+
 hl-detect is a JavaScript library that analyzes text and identifies linguistic patterns associated with behavioral manipulation.
 
 It does not care about HTML. It does not care about DOM structure.
@@ -108,485 +112,166 @@ It does not care about which platform the text came from.
 It takes a string. It returns findings.
 
 ### Input
-```javascript
+
+```
 hlDetect(text, options)
 ```
 
 - text: string — any text to analyze
 - options: object (optional)
-  - minConfidence: number 0-1 (default 0.6) — minimum confidence to report
-  - maxPatterns: number (default all) — limit patterns returned
-  - explain: boolean (default true) — include plain language explanations
-  - context: string — optional context hint ('social_media', 'news',
-    'advertising', 'email', 'general')
+  - minConfidence: number 0-1 (default 0.6)
+  - maxPatterns: number (default all)
+  - explain: boolean (default true)
+  - context: string — optional context hint
 
 ### Output
-```javascript
-{ text: string,           // original input text flagged: boolean,       // true if any patterns detected above threshold patternCount: number,   // total patterns detected dominantPattern: string, // highest confidence pattern type escalationScore: number, // 0-100 overall manipulation intensity patterns: [ { type: string,         // pattern identifier (see Pattern Library)
-      confidence: number,   // 0-1 confidence score
-      label: string,        // short human-readable label
-      explanation: string,  // plain language explanation (3 sentences max)
-                            // Format: What happened. Why the author did it.
-                            // Why it matters to you.
-      evidence: string[],   // specific phrases that triggered detection
-      severity: string      // 'info' | 'warn' | 'danger'
+
+```
+{
+  text: string,
+  flagged: boolean,
+  patternCount: number,
+  dominantPattern: string,
+  escalationScore: number,
+  patterns: [
+    {
+      type: string,
+      confidence: number,
+      label: string,
+      explanation: string,
+      evidence: string[],
+      severity: string
     }
-],
-metadata: { processingTimeMs: number,
+  ],
+  metadata: {
+    processingTimeMs: number,
     textLength: number,
     version: string
-} }
+  }
+}
 ```
 
 ### Pattern Library — Version 0.1
 
-Each pattern has:
-- identifier: string key
-- severity: info / warn / danger
-- description: what this pattern is
-- explanation_template: plain language explanation for the user
-- detection_rules: what to look for (keywords, structures, regex patterns)
-- examples: real text examples that SHOULD trigger this pattern
-- counterexamples: real text that should NOT trigger this pattern
-(to prevent false positives)
-
----
-
-#### PATTERN 1: suppression_framing
-**Severity:** danger
-**Description:**
-Content that implies powerful forces are attempting to hide, censor,
-or suppress the information being presented. This framing bypasses critical evaluation by making the reader feel they are accessing forbidden truth.
-
-**Explanation template:**
-"This content claims it is being suppressed or hidden by powerful forces. This framing is designed to make you feel you are accessing forbidden truth — bypassing your skepticism. Legitimate information does not need to warn you that it is being censored."
-
-**Detection rules:**
-Keywords/phrases (case insensitive):
-- "they don't want you to"
-- "before this gets deleted"
-- "before it gets taken down"
-- "share before"
-- "watch before it disappears"
-- "censored"
-- "banned"
-- "what they're hiding"
-- "what the media won't tell you"
-- "mainstream media won't cover"
-- "suppressed"
-- "forbidden"
-- "they tried to delete"
-- "won't see this on the news"
-- "big pharma doesn't want"
-- "government doesn't want you to know"
-
-Structural patterns:
-- Imperative verb + "before" + threat of removal
-("Share before", "Watch before", "Download before")
-
-**Examples (should trigger):**
-- "Share this before Facebook deletes it"
-- "The video they don't want you to see"
-- "Watch before it gets taken down"
-- "What mainstream media won't tell you about vaccines"
-- "They're trying to suppress this information"
-
-**Counterexamples (should NOT trigger):**
-- "Download the report before the deadline"
-- "Watch before the event starts"
-- "What the media covered about the election"
-
----
-
-#### PATTERN 2: false_urgency
-**Severity:** warn
-**Description:**
-Artificial time pressure designed to prevent critical evaluation.
-Creates a sense that immediate action is required, bypassing the cognitive processes that would otherwise evaluate the claim.
-
-**Explanation template:**
-"This content creates artificial time pressure — implying you must act immediately or miss out. This technique bypasses careful thinking by triggering anxiety about loss. Genuine important information does not expire in minutes."
-
-**Detection rules:**
-Keywords/phrases:
-- "limited time"
-- "act now"
-- "only X left" (where X is a small number)
-- "offer expires"
-- "ends tonight"
-- "ends soon"
-- "don't wait"
-- "before it's too late"
-- "last chance"
-- "selling fast"
-- "almost gone"
-- "expires in"
-- "hurry"
-- "urgent"
-- "immediately"
-- "right now" (in imperative context)
-- "today only"
-
-Structural patterns:
-- Number + "left" in proximity to product/offer
-- Time reference + imperative verb
-
-**Examples (should trigger):**
-- "Only 3 seats left — book now"
-- "This offer expires tonight at midnight"
-- "Act now before it's too late"
-- "Limited time: 50% off ends soon"
-
-**Counterexamples (should NOT trigger):**
-- "The deadline for applications is Friday"
-- "The sale runs until the end of the month"
-- "Registration closes when capacity is reached"
-
----
-
-#### PATTERN 3: incomplete_hook
-**Severity:** warn
-**Description:**
-Information is deliberately withheld to compel a click or continued reading. The headline or opening promises information but does not deliver it, creating an information gap the reader is compelled to fill.
-
-**Explanation template:**
-"This headline or opening deliberately withholds information to compel you to click or keep reading. The information gap it creates is engineered — there is no reason the information could not be stated directly. This technique is designed to generate engagement, not inform."
-
-**Detection rules:**
-Keywords/phrases:
-- "you won't believe"
-- "what happened next"
-- "the reason will shock you"
-- "the reason will surprise you"
-- "find out why"
-- "here's what happened"
-- "this is why"
-- "this explains everything"
-- "this changes everything"
-- "nobody expected"
-- "the truth about"
-- "what really happened"
-- "the real reason"
-- "the shocking truth"
-- "you need to see this"
-
-Structural patterns:
-- Subject + action + withheld outcome
-("She did X and you won't believe what happened")
-- "The [noun] that [vague consequential verb]"
-("The secret that changes everything")
-
-**Examples (should trigger):**
-- "She posted one photo and you won't believe the reaction"
-- "What happened next will shock you"
-- "The real reason they changed the policy"
-- "Find out what they're not telling you"
-
-**Counterexamples (should NOT trigger):**
-- "Here is what happened at the summit"
-- "The reason the policy changed was budget constraints"
-- "Scientists discover new evidence about climate change"
-
----
-
-#### PATTERN 4: outrage_engineering
-**Severity:** danger
-**Description:**
-Language calibrated to produce maximum outrage rather than convey information. Uses emotional intensifiers, extreme characterizations,
-and moral framing to trigger visceral response. Strong emotions drive engagement — shares, comments, reactions — regardless of whether the content is accurate.
-
-**Explanation template:**
-"This content uses language calibrated to produce outrage rather than inform. Emotional intensifiers, extreme characterizations, and moral framing are being used to trigger a visceral response. Strong emotional reactions drive engagement metrics — which is why this language appears,
-not because the situation genuinely requires it."
-
-**Detection rules:**
-Emotional intensifier stacking:
-- Multiple intensifiers in close proximity
-("absolutely disgusting", "completely outrageous",
-"utterly shameful", "totally unacceptable")
-
-Extreme characterization patterns:
-- Dehumanizing language about groups
-- Absolute moral condemnation without qualification
-- "worst ever", "most dangerous", "most corrupt"
-- Comparison to historical atrocities in non-atrocity contexts
-
-Manufactured consensus outrage:
-- "Everyone is outraged"
-- "People are furious"
-- "The internet is losing its mind"
-- "Twitter is exploding"
-
-**Examples (should trigger):**
-- "This is absolutely disgusting and completely unacceptable"
-- "The most corrupt administration in history"
-- "Everyone is furious about what they just did"
-- "Twitter is exploding over this outrageous decision"
-
-**Counterexamples (should NOT trigger):**
-- "Critics called the decision deeply problematic"
-- "The policy drew significant opposition"
-- "Many expressed concern about the announcement"
-
----
-
-#### PATTERN 5: false_authority
-**Severity:** warn
-**Description:**
-Authority is invoked without being identified, verified, or made accountable. Creates an impression of credibility without providing any actual evidence. The reader's deference to unnamed expertise is exploited.
-
-**Explanation template:**
-"This content invokes authority without identifying it. 'Studies show,' 'experts say,' and 'research proves' are claims that cannot be evaluated without knowing which studies, which experts, which research.
-Legitimate authority identifies itself and can be checked."
-
-**Detection rules:**
-Keywords/phrases:
-- "studies show" (without citation)
-- "experts say" (without naming experts)
-- "research proves" (without citing research)
-- "scientists agree" (without specification)
-- "doctors recommend" (without naming)
-- "it has been proven"
-- "it is well known"
-- "everyone knows"
-- "as we all know"
-- "it's a fact that"
-- "the science is clear"
-
-Structural patterns:
-- Authority claim + assertion without citation
-- Passive voice authority construction
-("It has been shown that...")
-
-**Examples (should trigger):**
-- "Studies show this diet cures cancer"
-- "Experts say the economy is about to collapse"
-- "It's been proven that vaccines cause autism"
-- "As we all know, the election was stolen"
-
-**Counterexamples (should NOT trigger):**
-- "A 2023 Harvard study found that..."
-- "Dr. Anthony Fauci said in a press conference..."
-- "According to the CDC's 2024 report..."
-
----
-
-#### PATTERN 6: tribal_activation
-**Severity:** warn
-**Description:**
-Content that signals tribal identity as a prerequisite for accepting a claim. Does not make an argument — instead signals which group identity is required to agree. Exploits in-group belonging and out-group threat to bypass critical evaluation.
-
-**Explanation template:**
-"This content signals group identity rather than making an argument.
-It implies that accepting this claim is what members of your tribe do,
-and that rejecting it means you don't belong. This bypasses evaluation of the actual claim by making acceptance a matter of identity."
-
-**Detection rules:**
-Keywords/phrases:
-- "real [group members] know"
-- "true [believers/patriots/Americans/etc] understand"
-- "if you care about [identity]"
-- "wake up"
-- "sheeple"
-- "the sheep"
-- "do your research" (as dismissal)
-- "open your eyes"
-- "still asleep"
-- "we know the truth"
-- "those of us who know"
-- "you've been lied to"
-
-Structural patterns:
-- In-group knowledge claim + out-group ignorance implication
-- Identity label + exclusive claim to truth
-
-**Examples (should trigger):**
-- "Real Americans know what's actually happening"
-- "True patriots understand what they're trying to do to us"
-- "Wake up — you've been lied to your whole life"
-- "Do your own research, sheeple"
-
-**Counterexamples (should NOT trigger):**
-- "American voters have expressed concern about..."
-- "Many people feel misled by the coverage of..."
-- "Researchers found that people who follow the issue closely..."
-
----
-
-#### PATTERN 7: coordinated_language
-**Severity:** danger
-**Description:**
-Multiple pieces of content use identical or near-identical unusual phrasing. Organic individuals do not independently choose the same distinctive phrases. Coordinated language patterns indicate organized campaigns designed to manufacture the appearance of widespread organic sentiment.
-
-**Explanation template:**
-"This content uses phrases that appear identically or near-identically across multiple unrelated sources. Real people expressing genuine views independently do not choose the same unusual words. This pattern suggests coordinated messaging designed to make a minority view appear widespread."
-
-**Detection rules:**
-Note: This pattern requires comparing multiple text inputs.
-When called with an array of texts, hl-detect identifies:
-- Identical phrases of 5+ words appearing across multiple texts
-- Near-identical sentence structures with only nouns swapped
-- Unusual specific phrases appearing more than statistically expected
-
-Single-text heuristics (lower confidence):
-- Unusually specific talking points presented as personal opinion
-- Phrases that sound like they come from a briefing document
-- Highly polished language in ostensibly personal contexts
-
-**Examples (should trigger when comparing multiple texts):**
-Text A: "The radical left is destroying our way of life"
-Text B: "The radical left is destroying our way of life"
-Text C: "The radical left is destroying our way of life"
-→ Identical phrase across three supposedly independent sources
-
-**Counterexamples (should NOT trigger):**
-- Common phrases that appear frequently in natural language
-- Standard journalistic language appearing across news sources
-- Academic terminology appearing in papers on the same topic
-
----
+Seven core patterns implemented: suppression_framing, false_urgency, incomplete_hook, outrage_engineering, false_authority, tribal_activation, engagement_directive. Full pattern specifications in hl-detect source.
 
 ### Calibration Requirements
 
 The library MUST:
+
 - Return zero false positives on straightforward factual news reporting
 - Return zero false positives on personal social media posts about daily life
 - Return zero false positives on academic or scientific writing
-- Correctly identify at least 80% of patterns in the examples above
+- Correctly identify at least 80% of patterns in documented examples
 - Process 1000 words in under 100ms on a standard laptop
 
 The library MUST NOT:
+
 - Flag political content solely because of its political position
 - Flag emotional language in appropriate contexts (grief, celebration)
 - Flag urgent language when urgency is genuine (emergency alerts)
 - Flag authority claims when authority is properly cited
 
----
+-----
 
 ## PART 4 — CURRENT STATE
 
 ### What Exists
+
 - hoffmanlenses.org — live on Cloudflare, deployed
 - White paper v2 — complete, cited, 25 references
 - hl-detect v0.1.0 — standalone manipulation detection library, 64/64 tests passing
 - Browser extension v0.2.3 — HALTED. Functional but no longer the primary product.
-  Last working state: foxnews.com, facebook.com validated. Session export built.
-- Hoffman Browser (Electron) — PRIMARY PRODUCT, active development
+- Hoffman Browser v0.1.0 (Electron) — PRIMARY PRODUCT, active development
   - Location: hoffman-browser/ in hoffman-core repo
   - LLM: Llama 3.2 3B Instruct Q4_K_M, runs on CPU, on-device only
-  - Text extraction: content-aware (article/main/p selectors before body fallback)
-  - Analysis: grammar-constrained JSON, two-pass approach in progress
-  - BMID: "Why is this here?" wired end-to-end, localhost:5000
-  - Status: running, needs two-pass LLM reliability improvement and OCR
+  - Text extraction: document.body.innerText via webContents.executeJavaScript
+  - Analysis: JSON output, natural language fallback parsing
+  - First successful analysis: Fox News — outrage_engineering + war_framing flagged
+  - BMID: “Why is this here?” wired end-to-end, localhost:5000
+  - Status: running, needs OCR for image text
 - BMID API v0.1 — Python/Flask/SQLite, running at localhost:5000
   - 3 fishermen: facebook.com, instagram.com, youtube.com
   - 9 motives, 16 catches, 33 evidence records
   - Sourced from March 2026 intel/investigate agent cycles
 - GitHub: HoffmanLensesInitiative/hoffman-core (monorepo)
+- Claude Code v2.1.87 — connected, authenticated, operational
 
 ### What Needs to Be Built Next
-1. Two-pass LLM analysis — browser detects reliably, extracts precise quotes (brief in HOFFMAN_BUILD.md)
-2. OCR integration — tesseract.js reads text from images in the viewport
-3. hl-detect pre-screen integration — fast first pass in browser pipeline before LLM
-4. hoffmanlenses.org missing pages: /extension, /families, /research, /remembrance
 
----
+1. OCR integration — tesseract.js reads text from images in the viewport
+1. BMID network/actor schema — new tables for corporate mapping
+1. Top 25 BMS operators research — Intel team standing mandate
+1. hoffmanlenses.org missing pages: /extension, /families, /research, /remembrance
+
+-----
 
 ## PART 5 — DECISIONS LOG
 
 All significant decisions recorded here so agents do not revisit settled questions.
 
 **2026-03-25: Browser over extension as primary product**
-Decision: The primary Hoffman product is a browser, not a platform- specific extension. The extension is a proof of concept and interim tool. The browser reads language universally.
-Reason: Platform-specific extensions are permanently vulnerable to
-platform DOM changes. Language-based detection is platform-agnostic and impossible for platforms to counter without changing how language works.
+Decision: The primary Hoffman product is a browser, not a platform-specific extension.
 Director: Norm Robichaud
 
 **2026-03-25: Language as the detection surface**
-Decision: hl-detect reads rendered text, not DOM structure.
-It receives a string and returns findings. It has no knowledge of what platform or website the text came from.
-Reason: Manipulation is a property of language, not of platform
-structure. This makes detection universal and resistant to platform countermeasures.
+Decision: hl-detect reads rendered text, not DOM structure. Manipulation is a property of language, not platform structure.
 Director: Norm Robichaud
 
 **2026-03-25: No mobile iOS pursuit**
-Decision: Do not pursue iOS App Store distribution.
-Apple's gatekeeper restrictions make iOS an unreliable distribution channel for a tool that exposes platform manipulation.
-Focus on desktop browsers and Android.
-iOS limitation is itself documented as evidence of infrastructure gatekeeping in the white paper.
+Decision: Do not pursue iOS App Store distribution. Apple’s gatekeeper restrictions make iOS an unreliable distribution channel.
 Director: Norm Robichaud
 
 **2026-03-25: Electron for Stage 3 browser**
-Decision: Build Hoffman browser on Electron first, not native Chromium fork. Electron allows JavaScript-only development,
-avoiding C++ expertise requirement.
-Upgrade to native Chromium fork if performance demands it.
+Decision: Build Hoffman browser on Electron first, not native Chromium fork.
 Director: Norm Robichaud
 
 **2026-03-25: Agent loop architecture**
-Decision: Use agentic loop with this document as the central memory store. AI agents read HOFFMAN.md, act, write results back.
-Director directs and reviews between cycles.
-Director: Norm Robichaud
-
-**2026-03-29: Browser and BMID are a loop, not two separate tools**
-Decision: The Hoffman Browser and BMID must be developed as an integrated system.
-BMID informs the browser before analysis runs (fisherman context in system prompt).
-The browser feeds BMID over time (observed patterns from sessions, opt-in).
-The target architecture is a closed loop: institutional knowledge sharpens field
-detection; field detection validates and extends institutional knowledge.
-The current "Why is this here?" button is a starting point, not the destination.
-See Part 11 for full integration architecture.
-Director: Norm Robichaud
-
-**2026-03-29: Extension development halted — browser is the primary product**
-Decision: Stop all extension development. The Hoffman Browser (Electron) is now the
-sole primary build target. Intel, investigation, BMID, and advocacy work continue unchanged.
-Reason: (1) Extension fragmentation — Chrome/Firefox/Safari/Edge each have different
-requirements, creating permanent multi-platform maintenance burden. (2) DOM inconsistency —
-platforms use inconsistent and deliberately obfuscated DOM syntax, making reliable text
-extraction impossible. (3) Active platform countermeasures — platforms change their DOM
-specifically to defeat tools like ours. (4) Image text — platforms increasingly deliver
-content as images; extensions cannot read it. The browser solves all of these: it reads
-rendered screen output (what the user sees), not DOM markup, and can run OCR on the viewport
-to read image-embedded text. Platforms cannot block either without breaking their own product.
-Director: Norm Robichaud
-
-**2026-03-29: OCR as next major browser capability**
-Decision: Integrate tesseract.js for on-device OCR of viewport screenshots.
-`browserView.webContents.capturePage()` captures the visible area as NativeImage;
-tesseract.js reads it without native binaries or network calls.
-OCR output is merged with rendered text extraction before being passed to the LLM.
-This closes the image-text detection gap that is a primary platform countermeasure.
-Director: Norm Robichaud
-
-**2026-03-29: hl-detect has NO role in the browser detection pipeline**
-Decision: hl-detect is explicitly NOT used as a pre-screen, triage layer, or hint
-generator in the Hoffman Browser analysis pipeline. The local model reads the full
-page text directly and is the sole detector.
-Reason: hl-detect is a regex library with 67 rules. It only catches what someone
-remembered to write a rule for. It has no understanding of meaning, context, or novel
-phrasing. During development it missed 14 of 15 real-world manipulation examples before
-extensive patching. Every new site revealed new gaps. It is the wrong tool for detection.
-The correct analogy: hl-detect is a corpsman with a checklist. The local model is the
-doctor who reads the whole room. The doctor does not need the corpsman to pre-screen.
-hl-detect's legitimate roles: (1) standalone npm library for developers who need
-lightweight programmatic detection without a model; (2) potentially a fast pre-screen
-for very high volume batch processing in future — not current architecture.
-The 67 patterns inform the model's system prompt as vocabulary, not as code.
-Do not add hl-detect to the browser pipeline. This decision is settled.
+Decision: Use agentic loop with this document as the central memory store.
 Director: Norm Robichaud
 
 **2026-03-25: Research tool framing for Phase 1**
-Decision: Position Hoffman as a research instrument first,
-consumer product second. Primary users are researchers,
-journalists, lawyers, advocates, families. Mass consumer adoption follows evidence base, not precedes it.
+Decision: Position Hoffman as a research instrument first, consumer product second.
 Director: Norm Robichaud
 
 **2026-03-25: Zero data retention**
-Decision: Hoffman and all associated tools retain zero user data after session ends. All processing local. Opt-in contribution to research database is anonymized before leaving device.
-Non-negotiable. Never changes.
+Decision: Hoffman retains zero user data after session ends. All processing local. Non-negotiable. Never changes.
 Director: Norm Robichaud
 
----
+**2026-03-29: Browser and BMID are a loop, not two separate tools**
+Decision: The Hoffman Browser and BMID must be developed as an integrated system. BMID informs the browser before analysis runs. The browser feeds BMID over time.
+Director: Norm Robichaud
+
+**2026-03-29: Extension development halted — browser is the primary product**
+Decision: Stop all extension development. The Hoffman Browser (Electron) is now the sole primary build target. Intel, investigation, BMID, and advocacy work continue unchanged.
+Director: Norm Robichaud
+
+**2026-03-29: OCR as next major browser capability**
+Decision: Integrate tesseract.js for on-device OCR of viewport screenshots. browserView.webContents.capturePage() captures the visible area; tesseract.js reads it without native binaries or network calls.
+Director: Norm Robichaud
+
+**2026-03-29: hl-detect has NO role in the browser detection pipeline**
+Decision: hl-detect is explicitly NOT used as a pre-screen, triage layer, or hint generator in the Hoffman Browser analysis pipeline. The local model reads the full page text directly and is the sole detector.
+Reason: hl-detect is a regex library with 67 rules. It only catches what someone remembered to write a rule for. During development it missed 14 of 15 real-world manipulation examples. The correct analogy: hl-detect is a corpsman with a checklist. The local model is the doctor who reads the whole room. The doctor does not need the corpsman to pre-screen. hl-detect’s legitimate roles: (1) standalone npm library for developers; (2) potentially a fast pre-screen for very high volume batch processing in future — not current architecture. The 67 patterns inform the model’s system prompt as vocabulary, not as code. Do not add hl-detect to the browser pipeline. This decision is settled.
+Director: Norm Robichaud
+
+**2026-03-30: Evidence integrity standard — non-negotiable**
+Decision: Every claim in the BMID must meet a documented evidence standard. Hearsay, unnamed sources, unverified social media posts, speculation, and inference without documentation are not acceptable as evidence at any confidence level. Unknown is a valid answer. Evidence gaps are investigation targets, not reasons to infer.
+Director: Norm Robichaud
+
+**2026-03-30: Network and actor mapping added to BMID scope**
+Decision: The BMID is extended to document corporate networks and individual actors, not just individual platforms. This includes ownership chains, investment relationships, board overlaps, personnel movement between platforms, political relationships, and documented moments of knowing conduct. Corporations do not make decisions. People do. Accountability requires identifying the humans in the chain.
+Director: Norm Robichaud
+
+**2026-03-30: Top 25 BMS operators — standing research mandate**
+Decision: Intel team is tasked with building and maintaining a ranked list of the top 25 global BMS operators. The list is evidence-based, politically balanced, and updated as new evidence emerges. Every entry requires primary source documentation.
+Director: Norm Robichaud
+
+**2026-03-30: Political balance is mandatory in all research**
+Decision: The BMID and all agent research must document BMS operators across the full political spectrum. A list that only flags one political side is advocacy, not research. The evidence standard — not political alignment — determines inclusion.
+Director: Norm Robichaud
+
+-----
 
 ## PART 6 — AGENT INSTRUCTIONS
 
@@ -595,217 +280,236 @@ Director: Norm Robichaud
 You are a contributor to the Hoffman project. Your role is to implement what is specified here, test what you build, and record what you learn.
 
 **Before acting:**
+
 1. Read this entire document
-2. Read the Current State section — know what exists
-3. Read the Decisions Log — do not revisit settled decisions
-4. Identify the current build target (marked CURRENT STAGE)
-5. Read the full specification for that target
+1. Read the Current State section — know what exists
+1. Read the Decisions Log — do not revisit settled decisions
+1. Identify the current build target (marked CURRENT STAGE)
 
 **While acting:**
+
 1. Build what is specified
-2. Test against the examples provided
-3. Note anything unclear or contradictory in the specification
-4. Note any decisions you needed to make that aren't covered
+1. Test against the examples provided
+1. Note anything unclear or contradictory
+1. Note any decisions you needed to make that aren’t covered
 
 **After acting:**
+
 1. Record what you built in the Build Log (Part 7)
-2. Record test results — what passed, what failed, confidence scores
-3. Record open questions for the next cycle
-4. Record any decisions you made and flag them for director review
-5. Update the Current State section
+1. Record test results
+1. Record open questions for the next cycle
+1. Flag any decisions made for director review
+1. Update the Current State section
 
 **What you must never do:**
+
 - Deviate from the zero data retention principle
-- Build anything that sends user data to external servers
-without explicit opt-in and anonymization
-- Introduce dependencies on specific platform DOM structures
-into hl-detect (it must remain platform-agnostic)
-- Make architectural decisions that contradict the Decisions Log
-without flagging for director review
+- Build anything that sends user data to external servers without explicit opt-in and anonymization
+- Introduce dependencies on specific platform DOM structures into hl-detect
+- Make architectural decisions that contradict the Decisions Log without flagging for director review
+- Record claims in the BMID without primary source documentation
+- Speculate or infer when evidence is absent — record as unknown
 
 **The mission:**
-Every line of code you write serves the families named in the white paper dedication. JackLynn Blackwell was nine years old.
-She loved karaoke. She wanted to be a star.
-Build accordingly.
+Every line of code you write serves the families named in the white paper dedication. JackLynn Blackwell was nine years old. She loved karaoke. She wanted to be a star. Build accordingly.
 
----
+-----
 
 ## PART 7 — BUILD LOG
 
 ### Cycle 0 — Foundation (March 2026)
+
 **Agent:** Claude (Anthropic)
 **Director:** Norm Robichaud
 **Actions taken:**
+
 - Built browser extension v0.1.0 (Facebook-specific)
 - Built hoffmanlenses.org website
 - Wrote white paper v2 with 25 citations
 - Established GitHub organization HoffmanLensesInitiative
 - Created two repositories
 - Documented 7-workstream project plan
-- Established agentic loop architecture (this document)
+- Established agentic loop architecture
 
 **What worked:**
+
 - Extension successfully detects manipulation on Facebook
 - Session bar running correctly
 - Annotation panel appearing on flagged posts
-- Engagement bait detection firing on real posts (Occupy Democrats)
-- Follow button detection working
-
-**What needs improvement:**
-- Annotation panel positioning (beside post not below)
-- Post detection overcounting non-posts
-- Flag descriptions too technical
-- Icon is placeholder
-
-**Open questions for Cycle 1:**
-- What is the optimal confidence threshold for each pattern?
-- How do we handle multilingual text?
-- How do we handle very short text (< 20 words)?
-- Should escalation score be linear or weighted?
 
 **Next cycle target:** Build hl-detect v0.1
 
----
+-----
+
+### Cycle 1 — hl-detect v0.1.0 (March 2026)
+
+**Agent:** Claude (Anthropic)
+**Director:** Norm Robichaud
+**Actions taken:**
+
+- Built hl-detect v0.1.0 — standalone manipulation detection library
+- 7 patterns implemented
+- 64/64 tests passing
+
+**What worked:**
+
+- All 7 patterns detecting correctly on target examples
+- Zero false positives on factual news, academic writing, personal posts
+- Processes 1000 words in under 100ms
+
+**Next cycle target:** Universal extension
+
+-----
+
+### Cycle 2 — Universal Extension v0.2.0 (March 2026)
+
+**Agent:** Claude (Anthropic)
+**Director:** Norm Robichaud
+**Actions taken:**
+
+- Built universal extension v0.2.0
+- Replaced platform-specific adapters with universal reader.js
+- Integrated hl-detect v0.1.0
+- Validated on foxnews.com — 416 blocks scanned, 5 flagged
+
+**What worked:**
+
+- Extension running on foxnews.com
+- False authority pattern firing correctly on health headlines
+- Universal text-based detection validated
+
+**Next cycle target:** Extension refinements, then browser pivot
+
+-----
+
+### Cycle 3 — Agent Organization + BMID (March 2026)
+
+**Agent:** Claude (Anthropic)
+**Director:** Norm Robichaud
+**Actions taken:**
+
+- Built four supervisor documents: BUILD, INTEL, INVESTIGATE, ADVOCATE
+- Built BMID API v0.1 (Python/Flask/SQLite)
+  - 7 endpoints: health, fisherman, bait, explain, pattern, search, session
+  - Seeded first fisherman record: Meta Platforms
+  - Seeded first catch record: Molly Russell (UK Coroner 2022)
+- Updated HOFFMAN.md with agent organization and BMID architecture
+
+**What works:**
+
+- BMID API starts, initializes database, seeds records
+- All endpoints tested and passing
+
+**Next cycle targets:**
+
+- Deploy BMID API
+- Wire “Why is this here?” button
+- Intelligence agents begin populating Meta record
+
+-----
+
+### Cycle 4 — Hoffman Browser v0.1.0 (March 2026)
+
+**Agent:** Claude (Anthropic) + Director sessions
+**Director:** Norm Robichaud
+**Actions taken:**
+
+- Built Hoffman Browser on Electron
+- Integrated Llama 3.2 3B Instruct Q4_K_M — runs on CPU, on-device only
+- Text extraction via webContents.executeJavaScript(‘document.body.innerText’)
+- First successful analysis: Fox News flagged outrage_engineering + war_framing on “WAR WITH IRAN”
+- Wired “Why is this here?” button to BMID localhost:5000
+- Extension development formally halted
+- hl-detect formally removed from browser detection pipeline
+- Decision recorded: model is the sole detector, hl-detect has no role in browser pipeline
+- Claude Code v2.1.87 installed and connected to GitHub
+
+**What works:**
+
+- Browser launches and renders pages
+- Llama 3.2 3B loads on CPU
+- JSON analysis pipeline: page text → model → structured flags → panel
+- Fox News: 2 flags returned (outrage_engineering HIGH, war_framing HIGH)
+- “Why is this here?” button wired to BMID
+
+**Known limitations:**
+
+- Image text not analyzed — manipulation in memes not detected
+- Occupy Democrats returned clean because manipulation is in images, not text
+- Analysis takes 5-15 minutes on CPU — GPU support future work
+- Context window (2048) limits page text to ~1200 chars per analysis
+- CodePink did not render fully — user agent spoofing needed
+
+**Next cycle targets:**
+
+1. OCR integration (tesseract.js) for image text
+1. BMID network/actor schema implementation
+1. Top 25 BMS operators research begins
+
+-----
+
+### Cycle 5 — Architecture Expansion (March 30, 2026)
+
+**Director:** Norm Robichaud
+**Actions directed:**
+
+- Added Evidence Integrity Standard (Part 12)
+- Added Network and Actor Architecture (Part 13)
+- Added Top 25 BMS Operators mandate (Part 14)
+- Updated Investigate team mandate to include network mapping
+- Updated Intel team mandate to include Top 25 research
+- Extended BMID schema with 6 new tables: network, actor, actor_role, actor_investment, actor_political, actor_knowledge
+- Added 5 new BMID API endpoints for network and actor data
+- Identified priority actor records to open: Zuckerberg, R. Murdoch
+
+**Rationale:**
+Individual platform documentation is necessary but insufficient. Accountability requires mapping the humans in the chain. The Top 25 list gives the project a research roadmap and gives Hoffman Browser a pre-analysis intelligence layer. Political balance is non-negotiable — BMS is not partisan.
+
+-----
 
 ## PART 8 — OPEN QUESTIONS
 
-Questions that have not been resolved. Each cycle should attempt to answer at least one. Answered questions move to Decisions Log.
+1. What confidence threshold should trigger annotation display? Current thinking: 0.7 default, user-adjustable
+1. How should hl-detect handle multilingual text? Current thinking: English only for v0.1
+1. Should hl-detect be synchronous or async? Current thinking: synchronous for v0.1
+1. How do we prevent the coordinated_language pattern from requiring multiple API calls? Current thinking: session-level memory
+1. What is the right visual language for ambient annotation in a full browser?
+1. How do we handle paywalled content?
+1. What local AI model is the right fit for future versions? Current: Llama 3.2 3B
+1. What is the legal threshold for conspiracy liability between connected BMS operators? Refer to legal counsel when available.
+1. Which academic institutions are currently researching BMS networks and could be natural partners?
+1. At what point does the BMID network map have sufficient data to be useful as a public-facing visualization?
+1. Should actor records be public or restricted? Privacy interests vs. public accountability. Director decision required.
+1. How do we handle actors who leave a platform and then take steps to address harm? The record should reflect the full arc.
 
-1. What confidence threshold should trigger annotation display?
-(Too low = too many false positives. Too high = misses real patterns.)
-   Current thinking: 0.7 default, user-adjustable
-
-2. How should hl-detect handle multilingual text?
-   Current thinking: English only for v0.1, language detection
-and multilingual support in v0.2
-
-3. Should hl-detect be synchronous or async?
-   Current thinking: Synchronous for v0.1 (simpler), async for v0.2
-when we add the local AI model
-
-4. How do we prevent the coordinated_language pattern from
-requiring multiple API calls? (It needs to compare texts)
-   Current thinking: Session-level memory in the extension/browser
-stores recent texts for comparison
-
-5. What is the right visual language for ambient annotation
-in a full browser? (More subtle than the extension popup boxes)
-   Current thinking: Margin indicators + collapsible companion panel
-
-6. How do we handle paywalled content where text is not visible?
-   Current thinking: Analyze visible text only, note limitation
-
-7. What local AI model is the right fit for v0.2 classification?
-   Current thinking: Evaluate Phi-3-mini, Gemma 2B, Llama 3.2 1B
-for size/accuracy tradeoff when that stage arrives
-
----
+-----
 
 ## PART 9 — RESOURCES
 
 ### Key documents
+
 - White paper: hoffmanlenses.org/whitepaper
-- Project list: hoffman-lenses-project-list.md
 - Extension code: github.com/HoffmanLensesInitiative/hoffman-lenses-extension
 - Website code: github.com/HoffmanLensesInitiative/hoffman-lenses-website
 
 ### Key contacts
+
 - Project director: Norm Robichaud
 - Contact: contact@hoffmanlenses.org (not yet active — Proton Mail pending)
 - Press: press@hoffmanlenses.org (not yet active)
 - Families: families@hoffmanlenses.org (not yet active)
 
 ### Relevant prior art
-- Shoshana Zuboff, "The Age of Surveillance Capitalism" (2019)
-— defines the economic model hl-detect is designed to expose
-- Jonathan Haidt, "The Anxious Generation" (2024)
-— documents harm to children, especially relevant to teen patterns
+
+- Shoshana Zuboff, “The Age of Surveillance Capitalism” (2019)
+- Jonathan Haidt, “The Anxious Generation” (2024)
 - Frances Haugen Senate testimony (October 2021)
-— primary source on platform internal knowledge of harm
 - Molly Russell inquest findings (September 2022)
-— first legal ruling attributing child death to algorithmic violence
 - UN Guiding Principles on Business and Human Rights (2011)
-— legal framework for corporate accountability
 
----
+-----
 
-*"They deserved better than to be engagement metrics."*
-
-*HOFFMAN.md is a living document.* *It grows with every cycle.* *It remembers everything.*
-
-### Cycle 1 -- hl-detect v0.1.0 (March 2026)
-**Agent:** Claude (Anthropic)
-**Director:** Norm Robichaud
-**Actions taken:**
-- Built hl-detect v0.1.0 -- standalone manipulation detection library
-- 7 patterns implemented: suppression_framing, false_urgency, incomplete_hook, outrage_engineering, false_authority, tribal_activation, engagement_directive
-- Built 61-test test suite covering detection, false positives, calibration, performance, batch, and session analysis
-- All 61 tests passing
-
-**What worked:**
-- All 7 patterns detecting correctly on target examples
-- Zero false positives on factual news, academic writing, personal posts, product reviews
-- Processes 1000 words in under 100ms
-- Works in Node.js and browser environments
-- UMD module format -- usable everywhere
-
-**What needed fixing during cycle:**
-- Short text confidence penalty was too aggressive (< 30 chars) -- reduced threshold to < 15 chars
-- "mainstream media" compound phrase not matched by single-word regex -- added compound phrase variant
-- "changes everything" pattern required "this" prefix -- removed prefix requirement
-
-**Open questions answered this cycle:**
-- Confidence threshold: 0.6 default is correct -- short text penalty adjusted to < 15 chars
-- Synchronous vs async: synchronous for v0.1 confirmed -- fast enough, simpler
-
-**Next cycle target:** Universal extension -- wrap hl-detect in a browser extension that runs on every page, every website. Replace the Facebook-specific extension v0.1.0.
-
-### Cycle 2 -- Universal Extension v0.2.0 (March 2026)
-**Agent:** Claude (Anthropic)
-**Director:** Norm Robichaud
-**Actions taken:**
-- Built universal extension v0.2.0 -- runs on every website, not just Facebook
-- Replaced all platform-specific adapters with universal reader.js
-- Integrated hl-detect v0.1.0 as the core detection engine
-- Built new background worker, overlay renderer, and popup panel
-- Manifest updated to <all_urls> -- runs everywhere
-
-**What worked:**
-- Extension running successfully on foxnews.com -- 416 blocks scanned, 5 flagged
-- "The overlooked cause that doctors say may drive chronic digestive problems" -- correctly flagged as Unnamed authority (75% confidence). "Doctors say" without naming which doctors. Textbook false authority construction.
-- Mike Rowe story NOT flagged -- specific named person making specific claim. Calibration correct.
-- Annotation panel appearing with correct dark design, amber dot, plain language explanation
-- Session bar showing live stats at bottom of page: Scanned / Flagged / Escalation / Site
-- Universal approach validated -- hl-detect reads language, not DOM structure. Works on any site without platform knowledge.
-- All JS files ASCII-clean -- no unicode injection failures
-
-**What needs improvement:**
-- Annotation positioning -- appearing between page cards rather than directly below the flagged headline element. Needs CSS refinement.
-- 5 flags from 416 scanned on Fox News homepage is reasonable but needs validation across more sites
-- Session bar missing duration stat -- present in popup but not in bar
-- Annotation sometimes appearing in wrong column on grid layouts
-
-**Real world validation:**
-- foxnews.com: 416 scanned, 5 flagged, escalation LOW (1)
-- Detection confirmed working on live site with no platform-specific knowledge
-- False authority pattern firing correctly on health headlines using unnamed "doctors say" construction
-
-**Open questions answered this cycle:**
-- Universal text-based detection is viable -- confirmed on live site
-- reader.js selector strategy (article, h1-h3, p, role=article, class*=card) captures enough content without overcounting
-- Annotation positioning needs work but core functionality confirmed
-
-**Next cycle target:** Refinements
-- Fix annotation positioning to appear directly below flagged element
-- Add more patterns to hl-detect based on real-world observations
-- Test on more sites: CNN, Reddit, X, YouTube, shopping sites
-- Consider annotation being less visually dominant -- more ambient, less alarming
-- Session export feature -- download session as JSON/CSV
-
-
----
-
-## PART 10 -- AGENT ORGANIZATION
+## PART 10 — AGENT ORGANIZATION
 
 ### Structure
 
@@ -816,19 +520,21 @@ DIRECTOR (Norm Robichaud)
     |       |-- Hoffman Browser agent  [PRIMARY -- Electron, LLM, OCR]
     |       |-- BMID API agent
     |       |-- Website agent
-    |       |-- hl-detect agent        [maintenance only -- library is stable]
+    |       |-- hl-detect agent        [maintenance only]
     |       |-- Extension agent        [HALTED -- do not assign work]
     |
     |-- SUPERVISOR: INTELLIGENCE  (HOFFMAN_INTEL.md)
     |       |-- Database agent
     |       |-- Publisher research agent
     |       |-- Pattern documentation agent
+    |       |-- Top 25 BMS research agent [NEW]
     |
     |-- SUPERVISOR: INVESTIGATION (HOFFMAN_INVESTIGATE.md)
     |       |-- Deep research agents (rabbit holes)
     |       |-- Legal/court record agent
     |       |-- Academic literature agent
-    |       |-- Corporate ownership agent
+    |       |-- Corporate ownership agent [NEW]
+    |       |-- Actor accountability agent [NEW]
     |
     |-- SUPERVISOR: ADVOCACY      (HOFFMAN_ADVOCATE.md)
             |-- White paper agent
@@ -837,119 +543,414 @@ DIRECTOR (Norm Robichaud)
             |-- Legislative monitoring agent
 ```
 
+### Updated Investigate Team Mandate
+
+The Investigate team’s scope explicitly includes:
+
+**Corporate network mapping:**
+For every active fisherman file, map the complete corporate structure with evidence:
+
+- Parent company and ownership chain
+- Subsidiary platforms and properties
+- Known corporate relationships with other fishermen
+- Investment relationships and board compositions
+
+**Actor accountability chains:**
+For every active fisherman file, identify and document:
+
+- The top 5 individual actors with documented decision-making roles
+- When each actor first had documented knowledge of harm
+- What action each actor took in response (or did not take)
+- Connections to actors at other fisherman organizations
+
+**Coordination evidence:**
+
+- Shared technology, shared algorithms, shared data agreements
+- Personnel movement between fisherman organizations
+- Documented communications between fisherman organizations
+- Shared political relationships or coordinated lobbying
+
+**The “Meaningful Social Interactions” thread (Meta — active):**
+Continue following this thread. If internal documents show Meta knew the 2018 algorithm change made harm worse while publicly claiming it was a fix, that is documented knowing deception. Establish: who received the internal findings, what they said in public after receiving them, and what the precise dates are.
+
+### Updated Intel Team Mandate
+
+The Intel team’s scope explicitly includes:
+
+**Top 25 BMS operator research (standing mandate):**
+Research and document candidates for the Top 25 list. One to two fully evidenced entries per cycle. See Part 14 for full specification.
+
+**Network awareness:**
+When researching any fisherman, flag all known connections to other fishermen. These connections feed the network tables.
+
+**Actor identification:**
+When researching any fisherman, identify named individuals with documented roles and flag them for actor record creation. Do not create actor records without primary source documentation.
+
 ### Supervisor documents
-- HOFFMAN_BUILD.md -- build queue, current state, build log
-- HOFFMAN_INTEL.md -- intelligence queue, BMID status, research targets
-- HOFFMAN_INVESTIGATE.md -- investigation queue, rabbit hole findings
-- HOFFMAN_ADVOCATE.md -- outreach queue, family contacts, press contacts
 
-### Communication protocol
-- Agents read their supervisor document before acting
-- Agents write results back to their supervisor document
-- Supervisors write summaries to HOFFMAN.md (this document)
-- Director reads HOFFMAN.md, makes decisions, redirects as needed
-- Nothing is lost -- every cycle is recorded
+- HOFFMAN_BUILD.md — build queue, current state, build log
+- HOFFMAN_INTEL.md — intelligence queue, BMID status, research targets
+- HOFFMAN_INVESTIGATE.md — investigation queue, rabbit hole findings
+- HOFFMAN_ADVOCATE.md — outreach queue, family contacts, press contacts
 
----
+-----
 
-## PART 11 -- BMID ARCHITECTURE
+## PART 11 — BMID ARCHITECTURE
 
 ### What it is
-The Behavioral Manipulation Intelligence Database.
-An open intelligence repository documenting the supply chain of
-online manipulation: who does it, how they do it, where they lead
-people, and what harm has resulted.
+
+The Behavioral Manipulation Intelligence Database. An open intelligence repository documenting the supply chain of online manipulation: who does it, how they do it, where they lead people, and what harm has resulted.
 
 ### Schema location
+
 hoffman-core/BMID_SCHEMA.md
 
 ### API location
+
 hoffman-core/bmid-api/
 
 ### Status (March 2026)
-- Schema: COMPLETE
+
+- Schema: COMPLETE (extended March 30, 2026 — see Part 13)
 - API: v0.1 BUILT AND TESTED, running at localhost:5000
-- Database: 3 fishermen (facebook.com, instagram.com, youtube.com),
-  9 motives, 16 catches, 33 evidence records
-- Seed script: bmid-api/seed.py (idempotent, re-runnable)
-- Endpoints: health, fisherman, bait, explain, pattern, search, session
+- Database: 3 fishermen (facebook.com, instagram.com, youtube.com), 9 motives, 16 catches, 33 evidence records
 
 ### The integration vision — Browser and BMID as a loop
 
-The browser and BMID are not two separate tools. They are two faces of the same system.
-BMID is institutional knowledge — who manipulates, why, what harm resulted.
-The browser is the field instrument — detecting manipulation in real time on live pages.
-They should be in constant conversation, each feeding the other.
+The browser and BMID are not two separate tools. They are two faces of the same system. BMID is institutional knowledge. The browser is the field instrument.
 
-**Current state (shallow):**
-Browser detects technique on a page → user clicks "Why is this here?" → BMID explains
-This is useful but one-directional and user-initiated.
+**Direction 1 — BMID informs the browser before analysis runs:**
+When the user navigates to a page, query BMID for the domain. If a fisherman record exists, prepend that intelligence to the model’s system prompt as context. The model reads a Fox News page differently knowing Fox Corp’s documented motive structure.
 
-**Target state (integrated loop):**
+**Direction 2 — Browser findings feed BMID:**
+Every analysis the browser completes is potential intelligence. User session data (opt-in, anonymized) builds a picture of which sites use which techniques in the wild.
 
-Direction 1 — BMID informs the browser before analysis runs:
-When the user navigates to a page, query BMID for the domain. If a fisherman record
-exists, prepend that intelligence to the model's system prompt as context:
-"You are analyzing content from [Owner]. Their documented business model is [model].
-Their known motives include [motives]. Documented harms include [catch count] cases."
-The model reads a Fox News page differently knowing Fox Corp's documented motive structure.
-The model is not pre-screened — it still reads everything — but it reads as a doctor
-who has the patient's chart, not one encountering them cold.
+**Direction 3 — Cross-reference strengthens confidence:**
+When the browser returns a flag, check whether BMID lists that technique as a known pattern for that fisherman. If so, display higher confidence.
 
-Direction 2 — Browser findings feed BMID:
-Every analysis the browser completes is potential intelligence. When the browser
-consistently finds war_framing on foxnews.com or tribal_activation on a specific
-political page, those are observed pattern records — with dates, quoted text, and
-confidence. Over time, user session data (opt-in, anonymized) builds a picture of
-which sites use which techniques in the wild. This validates and extends BMID's
-documented patterns beyond what research agents can produce alone.
+### The “Why is this here?” pipeline (current)
 
-Direction 3 — Cross-reference strengthens confidence:
-When the browser returns a flag, check whether BMID lists that technique as a known
-pattern for that fisherman. If so, display higher confidence. If the browser finds
-a technique that BMID has not documented for that fisherman, flag it as novel —
-potentially worth investigation.
+Browser detects technique → user clicks button on flag card → panel-preload.js calls ipcRenderer.invoke(‘query-bmid’, domain, technique) → main.js calls GET localhost:5000/api/v1/explain → API returns fisherman record + motives + catch_summary → Panel renders: owner, business model, first motive, documented harm count, confidence
 
-### The "Why is this here?" pipeline (current)
-Browser detects technique → user clicks button on flag card
-→ panel-preload.js calls ipcRenderer.invoke('query-bmid', domain, technique)
-→ main.js calls GET http://localhost:5000/api/v1/explain?domain=&patterns=
-→ API returns fisherman record + motives + catch_summary + intelligence_level
-→ Panel renders: owner, business model, first motive, documented harm count, confidence
-→ Gracefully shows "BMID unavailable" if API is not running
+-----
 
-### The "Why is this here?" pipeline (target)
-BMID context fetched on page load (not on button click)
-→ Injected into system prompt before model runs
-→ Model analysis is context-aware from the start
-→ "Why is this here?" button shows pre-fetched result instantly (no second call)
-→ Panel renders richer result: technique confirmed by BMID + novel technique flagging
+## PART 12 — EVIDENCE INTEGRITY STANDARD
 
----
+### The Standard
 
-### Cycle 3 -- Agent organization + BMID (March 2026)
-**Agent:** Claude (Anthropic)
-**Director:** Norm Robichaud
-**Actions taken:**
-- Built four supervisor documents: BUILD, INTEL, INVESTIGATE, ADVOCATE
-- Built BMID API v0.1 (Python/Flask/SQLite)
-  - 7 endpoints: health, fisherman, bait, explain, pattern, search, session
-  - Full schema implemented matching BMID_SCHEMA.md
-  - Seeded first fisherman record: Meta Platforms
-  - Seeded first catch record: Molly Russell (UK Coroner 2022)
-  - All endpoints tested and passing
-- Updated HOFFMAN.md with agent organization and BMID architecture
+Every claim in the BMID must meet this standard before being recorded. This applies to all agents, all cycles, all research.
 
-**What works:**
-- BMID API starts, initializes database, seeds first record
-- GET /api/v1/fisherman/facebook.com returns full record with motives and catches
-- GET /api/v1/explain returns intelligence_level: full for facebook.com
-- Search endpoint returning results
-- Session endpoint ready to accept extension data
+**Acceptable evidence (in order of preference):**
 
-**Next cycle targets:**
-- Deploy BMID API to hoffmanlenses.org (or separate subdomain)
-- Wire "Why is this here?" button in extension to /api/v1/explain
-- Intelligence agents begin populating Meta Platforms record fully
-- Investigation agents begin deep file on Meta (Frances Haugen, Molly Russell)
-- Session export feature in extension popup
+1. Court filings, judicial rulings, coroner findings — highest weight
+1. Sworn congressional or parliamentary testimony — high weight
+1. Internal documents disclosed through legal proceedings or whistleblower disclosure — high weight (verify chain of custody)
+1. Regulatory filings (FTC, FCC, SEC, equivalent international bodies) — high weight
+1. Named journalist + named publication + verifiable reporting — medium weight
+1. Peer-reviewed academic research with named authors and institutions — medium weight
+1. Official organizational statements and press releases — medium weight (documents what was said, not necessarily what is true)
+
+**Not acceptable as evidence:**
+
+- Anonymous sources (“sources say”, “insiders report”)
+- Unnamed experts (“experts believe”, “researchers suggest” without citation)
+- Unverified social media posts
+- Speculation or inference without documented basis
+- Hearsay — what someone heard someone else say
+- Secondary reporting without traceable primary source
+- Anything that cannot be independently verified
+
+**Unknown is a valid and required answer:**
+
+If a fact is not documented, record it as unknown. Do not infer. Do not fill gaps with assumptions. Do not extrapolate from adjacent facts. An evidence gap is an investigation target. Record it as such.
+
+**Confidence scoring:**
+
+All BMID records include a confidence score (0.0 to 1.0).
+
+- 0.90-1.00: Primary source documentation, multiple independent sources
+- 0.70-0.89: Strong secondary sources, single strong primary source
+- 0.50-0.69: Credible reporting, limited primary source documentation
+- 0.30-0.49: Early investigation, evidence collection in progress
+- 0.00-0.29: Candidate only, insufficient evidence to characterize
+
+**The test:**
+
+Before recording any claim, ask: “Could this withstand scrutiny in a court proceeding or academic peer review?” If no — it does not belong in the BMID as fact. It may belong as an open investigation question.
+
+-----
+
+## PART 13 — NETWORK AND ACTOR ARCHITECTURE
+
+### Why This Matters
+
+Documenting individual platforms is necessary but insufficient. The manipulation ecosystem is a network — platforms owned by the same entities, funded by the same investors, run by executives who move between them carrying the same practices, coordinated in ways that may constitute conspiracy under existing law.
+
+Corporations do not make decisions. People do.
+
+The accountability chain that matters in law and in history is: Which person knew? When did they know it? What did they choose to do? Who profited from that choice? Who else was connected to that choice?
+
+The BMID’s network and actor layers answer these questions with evidence.
+
+### BMID Schema Extension — Network Tables
+
+```sql
+-- Corporate and ownership relationships between fishermen
+CREATE TABLE IF NOT EXISTS network (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  parent_fisherman_id INTEGER REFERENCES fisherman(id),
+  child_fisherman_id INTEGER REFERENCES fisherman(id),
+  relationship_type TEXT NOT NULL,
+  -- owns | funds | coordinates | shares_technology |
+  -- amplifies | board_overlap | investment | regulatory_capture
+  description TEXT,
+  evidence TEXT NOT NULL,
+  source_url TEXT,
+  date_established TEXT,
+  date_ended TEXT,
+  confidence REAL DEFAULT 0.5,
+  verified INTEGER DEFAULT 0,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Individual actors with documented roles and knowledge
+CREATE TABLE IF NOT EXISTS actor (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  name_aliases TEXT,
+  current_role TEXT,
+  current_fisherman_id INTEGER REFERENCES fisherman(id),
+  documented_knowledge_of_harm INTEGER DEFAULT 0,
+  knowledge_source TEXT,
+  knowledge_date TEXT,
+  notes TEXT,
+  confidence REAL DEFAULT 0.5,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Actor roles across platforms over time
+CREATE TABLE IF NOT EXISTS actor_role (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id INTEGER REFERENCES actor(id),
+  fisherman_id INTEGER REFERENCES fisherman(id),
+  role TEXT NOT NULL,
+  date_start TEXT,
+  date_end TEXT,
+  evidence TEXT NOT NULL,
+  source_url TEXT,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Actor investment positions
+CREATE TABLE IF NOT EXISTS actor_investment (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id INTEGER REFERENCES actor(id),
+  fisherman_id INTEGER REFERENCES fisherman(id),
+  position_type TEXT NOT NULL,
+  -- board | investor | major_shareholder | advisor | creditor
+  stake_description TEXT,
+  date_start TEXT,
+  date_end TEXT,
+  evidence TEXT NOT NULL,
+  source_url TEXT,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Actor political relationships
+CREATE TABLE IF NOT EXISTS actor_political (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id INTEGER REFERENCES actor(id),
+  relationship_type TEXT NOT NULL,
+  -- donation | lobbying | regulatory_capture | testimony |
+  -- government_appointment | revolving_door
+  recipient TEXT,
+  amount TEXT,
+  date TEXT,
+  jurisdiction TEXT,
+  evidence TEXT NOT NULL,
+  source_url TEXT,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Known moments of documented awareness of harm
+CREATE TABLE IF NOT EXISTS actor_knowledge (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id INTEGER REFERENCES actor(id),
+  fisherman_id INTEGER REFERENCES fisherman(id),
+  knowledge_type TEXT NOT NULL,
+  -- internal_research | whistleblower_report | external_study |
+  -- regulatory_finding | court_proceeding | media_coverage
+  description TEXT NOT NULL,
+  date TEXT NOT NULL,
+  action_taken TEXT,
+  evidence TEXT NOT NULL,
+  source_url TEXT,
+  confidence REAL DEFAULT 0.5,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+```
+
+### New BMID API Endpoints
+
+```
+GET /api/v1/network/{domain}
+  Returns all documented relationships for a fisherman domain.
+  Includes parent companies, subsidiaries, investment relationships,
+  board overlaps, and coordination with other fishermen.
+
+GET /api/v1/actor/{actor_id}
+  Returns full profile for a documented actor.
+  All roles across all platforms, investment positions,
+  political relationships, and documented knowledge of harm.
+
+GET /api/v1/actor/search?name={name}
+  Search actors by name.
+
+GET /api/v1/network/map
+  Returns the full network graph as JSON suitable for visualization.
+  Nodes: fishermen and actors.
+  Edges: all documented relationships.
+
+GET /api/v1/accountability/{domain}
+  Returns the full accountability chain for a domain.
+  Parent companies → key actors → documented knowledge moments →
+  political relationships → documented harm.
+
+GET /api/v1/conspiracy/{fisherman_id_1}/{fisherman_id_2}
+  Returns documented connections between two fishermen.
+  Shared ownership, shared investors, shared board members,
+  documented coordination, shared personnel.
+```
+
+### Priority Actor Records to Open
+
+The following actors have sufficient primary source documentation to open records immediately. Intel team to begin with these.
+
+**Mark Zuckerberg**
+
+- Founder and CEO, Meta Platforms
+- Congressional testimony: April 2018, October 2021
+- Frances Haugen documents: received by his team, documented
+- Internal research on teen harm: documented in WSJ Facebook Files
+- Confidence basis: sworn testimony, court filings, internal documents
+
+**Rupert Murdoch / Lachlan Murdoch**
+
+- Fox Corporation, News Corp
+- Dominion Voting Systems lawsuit: internal communications disclosed
+- UK Leveson Inquiry: documented testimony
+- Confidence basis: court filings, sworn testimony, public record
+
+Additional candidates requiring research before opening records:
+Sundar Pichai (Google/YouTube), Shou Zi Chew (TikTok), Linda Yaccarino (X/Twitter), Bill Ackman (investor), Peter Thiel (investor).
+
+-----
+
+## PART 14 — TOP 25 BMS OPERATORS
+
+### Standing Research Mandate — Intel Team
+
+Build and maintain a ranked list of the top 25 global BMS operators. This is a living document, updated as evidence emerges. File location: hoffman-core/BMID_TOP25.md
+
+### Ranking Criteria (in order of weight)
+
+1. **Documented harm** — legal findings, coroner rulings, academic studies, whistleblower testimony, regulatory action. Most important criterion.
+1. **Reach** — monthly active users, content impressions, audience size.
+1. **Revenue model** — percentage of revenue dependent on engagement maximization.
+1. **Algorithmic amplification** — documented evidence the platform’s algorithm amplifies outrage, fear, or tribal content.
+1. **Awareness and intent** — internal documents or legal findings showing the operator knew about harm and continued the practice.
+
+### Evidence Sources
+
+- Pew Research Center media and platform studies
+- Reuters Institute Digital News Report (annual)
+- Knight Foundation research
+- MIT Media Lab, Oxford Internet Institute, Stanford Internet Observatory
+- Congressional and parliamentary testimony transcripts
+- FTC, FCC, Ofcom, and equivalent international regulatory filings
+- Coroner rulings and court findings
+- Whistleblower disclosures (Frances Haugen, Sophie Zhang, others)
+- State and federal attorney general filings
+- Peer-reviewed journals: Journal of Communication, New Media & Society, Social Media + Society
+
+### Mandatory Constraints
+
+**Political balance is non-negotiable.**
+BMS operators exist across the full political spectrum. The list must reflect that. The evidence standard — not political alignment — determines inclusion.
+
+**Every entry requires primary source documentation.**
+Opinion is not evidence. Reporting without a named primary source is not sufficient for top-tier ranking.
+
+**Unknown is recorded as unknown.**
+If reach, revenue model, or harm documentation is unavailable, record as not yet documented. Do not estimate or infer.
+
+**Foreign state operators belong alongside domestic ones.**
+Manipulation is manipulation regardless of national origin.
+
+**The list is not permanent.**
+Entries can be removed if evidence does not support inclusion. The Director reviews all additions to the top 10 before finalization.
+
+### Output Format (for each entry in BMID_TOP25.md)
+
+```
+RANK: [1-25]
+FISHERMAN: [operator name]
+DOMAIN: [primary domain]
+OWNER: [parent company / controlling entity]
+REACH: [MAU or equivalent, with source and date]
+REVENUE_MODEL: [how they monetize engagement, with source]
+HARM_DOCUMENTED: [yes/no + brief description]
+HARM_SOURCE: [primary source citation]
+PRIMARY_SOURCES: [list with URLs]
+ACTOR_RECORDS: [named actors with open BMID records]
+NETWORK_CONNECTIONS: [known connections to other ranked operators]
+BMID_STATUS: [file open / candidate / not yet opened]
+CONFIDENCE: [0.0-1.0]
+LAST_UPDATED: [date]
+NOTES: [anything significant, open questions]
+```
+
+### Candidate List (unranked — research required before ranking)
+
+Domestic platforms and networks:
+Meta (Facebook/Instagram/WhatsApp/Threads), Google/YouTube, TikTok (US operations), Twitter/X, Fox News / Fox Corporation, Occupy Democrats, InfoWars / Alex Jones Network, Breitbart, The Daily Wire, Newsmax, One America News, MSNBC / NBCUniversal, The Daily Mail (US operations), Sinclair Broadcast Group, The New York Post, specific coordinated social media account networks
+
+Foreign state operators:
+RT (Russia Today), Sputnik, CGTN (China Global Television Network), Iran International, specific Telegram channel networks with documented state sponsorship
+
+Emerging or specialized:
+Specific podcast networks with documented radicalization pathways, specific Instagram/TikTok influencer networks functioning as coordinated amplification systems, foreign influence operation networks documented in Senate Intelligence Committee reports
+
+### Intel Team Delivery Schedule
+
+- Each cycle: research and fully document 1-2 candidates
+- Quality over speed: a fully evidenced entry is worth more than 10 partially evidenced ones
+- When a candidate has sufficient evidence, open a full BMID fisherman file and link from the Top 25 entry
+- Director reviews Top 10 placements before finalizing
+
+-----
+
+*“They deserved better than to be engagement metrics.”*
+
+*HOFFMAN.md is a living document.*
+*It grows with every cycle.*
+*It remembers everything.*
+
+-----
+
+**Dedicated to:**
+JackLynn Blackwell (age 9, Texas, February 3, 2026)
+Molly Russell (age 14, London, 2017)
+Nylah Anderson (age 10, Philadelphia, 2021)
+CJ Dawley (age 14, Wisconsin)
+Amanda Todd (age 15, BC Canada, 2012)
+Sadie Riggs (age 15, Pennsylvania, 2015)
+Englyn Roberts
+Frankie Thomas
+
+*And to every child whose name we have not yet learned.*
