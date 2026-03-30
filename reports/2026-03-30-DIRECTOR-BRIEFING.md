@@ -3,13 +3,13 @@
 
 ### What got done today
 
-**ADVOCATE:** Prepared four documents for email infrastructure and family outreach: Proton Mail setup guide, family outreach protocol, draft family letter template, and press kit outline. Gathered intelligence on current legal landscape (Meta MDL, UK Online Safety Act, state AG lawsuits). No outreach occurred—everything waits on email setup.
+**ADVOCATE** prepared four documents for email infrastructure and family outreach: a Proton Mail setup guide, a family outreach protocol with consent framework, a draft family letter template, and a press kit outline. No outreach will occur until you set up the email accounts and approve the materials.
 
-**BUILD:** Completed the BMID admin GUI—a web-based interface for viewing fishermen, motives, catches, and evidence records at localhost:5000/admin. Five HTML templates with dark theme styling, Flask routes, filtering, and a raw JSON panel for debugging. All routes tested and working.
+**BUILD** completed a web-based admin interface for the BMID database at localhost:5000/admin. The GUI includes a dashboard with counts, a filterable fishermen list with detail pages, a catches table with filters, and raw JSON panels for debugging. All read-only, dark theme, no external dependencies.
 
-**INTEL:** Added 10 new primary-source evidence records strengthening existing fishermen (Meta, Instagram, YouTube). Sources include FTC consent decrees, Haugen congressional testimony, state AG complaints, UK ICO enforcement, and EU GDPR decisions. Documented confidence levels and identified gaps (notably: no YouTube internal documents equivalent to Haugen disclosure).
+**INTEL** added 10 new evidence records for existing fishermen (Meta and YouTube), primarily regulatory decisions and court filings. Key additions include the FTC $5B Meta consent decree, the EU DPC €1.2B fine, the 41-state AG complaint, Haugen's congressional testimony, and Guillaume Chaslot's Senate testimony on YouTube's algorithm.
 
-**INVESTIGATE:** Deep dive on Meta's "break glass" election measures. Documented 8 specific algorithmic interventions used in November 2020, confirmed their effectiveness via internal research, and traced their deliberate reversal after the election. Identified the Civic Integrity team dissolution as key evidence of institutional safety capacity destruction.
+**INVESTIGATE** completed the Break Glass investigation documenting eight specific algorithmic interventions Meta used during the 2020 election, their confirmed effectiveness, and their deliberate reversal afterward. The Civic Integrity team dissolution in December 2020 is flagged as significant—Meta dismantled the team that knew how to operate the safety measures.
 
 ### Files created or modified
 
@@ -27,25 +27,28 @@
 
 ### Decisions needed from you
 
-1. **Family Letter Template Review** — Template at `reports/advocate-draft-family-letter-template.md` says project was "catalyzed" by JackLynn Blackwell's story. Confirm framing is accurate and appropriate.
+1. **Proton Mail setup** — You need to create the accounts in Proton Mail's web interface. The guide is ready at `reports/advocate-draft-protonmail-setup.md`.
 
-2. **Blackwell Family Contact Timing** — Protocol recommends 60-day minimum from February 3 death, making April 4 earliest contact. Confirm or adjust.
+2. **Family letter template approval** — Review `reports/advocate-draft-family-letter-template.md`. It mentions the project was "catalyzed" by JackLynn Blackwell's story—confirm this framing is accurate and appropriate.
 
-3. **Proton Mail Setup** — Guide is ready. You need to create accounts via Proton Mail's web interface. Five addresses needed: contact@, press@, research@, support@, norm@.
+3. **Blackwell family contact timing** — Protocol recommends 60-day minimum wait from date of death (February 3, 2026), meaning earliest contact April 4, 2026. Confirm this timing.
 
-4. **Founder Bio** — Press kit needs your bio. Provide or approve text.
+4. **Anderson family approach** — Given active litigation, protocol recommends contact through Social Media Victims Law Center rather than directly. Confirm this approach.
 
-5. **Anderson Family Approach** — Given active litigation, protocol recommends contacting through Social Media Victims Law Center rather than directly. Confirm.
+5. **Founder bio** — Press kit needs a Norm Robichaud bio. Provide or approve the text.
 
 ### Things to know
 
-**Investigate found something significant:** Meta had eight specific, proven, adjustable safety measures during the 2020 election. Internal research confirmed they worked. They deliberately turned them off after the election and dissolved the team that built them. Every documented harm since January 2021 happened while Meta possessed unused countermeasures. This isn't negligence—it's documented capability plus deliberate reversal.
+The INVESTIGATE finding on break glass measures is significant for litigation value: Meta had eight documented interventions that worked, they knew they worked, and they chose to turn them off and dissolve the team that operated them. Every algorithmic harm since January 2021 occurred while proven countermeasures sat unused. This is not negligence—it's documented choice.
 
-**YouTube evidence gap:** No whistleblower disclosure equivalent to Haugen exists for YouTube. Evidence relies on engineer testimony (Chaslot) and external research rather than internal documents. Intel flagged this as a structural limitation.
+INTEL flagged that YouTube lacks a whistleblower disclosure equivalent to Frances Haugen's. Evidence for YouTube motives relies more heavily on external research and Guillaume Chaslot's testimony rather than internal documents.
 
 ### What happens tomorrow
 
-- **ADVOCATE:** Blocked until email infrastructure is live. Once active: build /press page, create /remembrance page framework, begin Ian Russell / Molly Rose Foundation outreach.
-- **BUILD:** Awaiting direction on BMID API deployment infrastructure. GUI is complete.
-- **INTEL:** Complete Twitter/X evidence records (8 catches and 4 motives need primary sources).
-- **INVESTIGATE:** Follow Rabbit Hole 17—Civic Integrity team dissolution communications.
+**ADVOCATE** waits for email infrastructure before any outreach work.
+
+**BUILD** will build the /press and /remembrance pages on hoffmanlenses.org once email is active.
+
+**INTEL** will complete Twitter/X evidence records (8 catches and 4 motives need primary source links).
+
+**INVESTIGATE** will pursue Rabbit Hole 17: internal communications around the Civic Integrity team dissolution in December 2020.
