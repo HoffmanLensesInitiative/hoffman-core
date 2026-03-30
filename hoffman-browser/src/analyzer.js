@@ -89,12 +89,39 @@ class Analyzer {
       // A 3B model often writes manipulation_found:false then a summary describing manipulation.
       // Derive truth from the summary text and flags array.
       const flags = jsonResult.flags || [];
+
+      // Clean up noise in flag explanation fields.
+      // The 3B model sometimes fills string fields with the system prompt's "nothing found" text.
+      const TECHNIQUE_DESCRIPTIONS = {
+        'outrage_engineering': 'Language calibrated to produce maximum outrage rather than convey information.',
+        'false_authority':     'Authority invoked without being identified, verified, or made accountable.',
+        'tribal_activation':   'Content signals tribal identity rather than making an argument.',
+        'false_urgency':       'Artificial time pressure designed to prevent critical evaluation.',
+        'incomplete_hook':     'Information deliberately withheld to compel a click or continued reading.',
+        'dehumanization':      'Language that strips humanity from a person or group.',
+        'war_framing':         'Conflict framed as war to maximize alarm and urgency.',
+        'enemy_framing':       'Content defines a clear enemy to provoke fear or hostility.',
+        'complicity_framing':  'Content implies the reader is complicit if they do not act.',
+      };
+      const NOISE_PHRASES = ['no manipulation detected', 'no manipulation found', 'no manipulative'];
+      flags.forEach(flag => {
+        const expl = (flag.explanation || '').toLowerCase();
+        if (!flag.explanation || NOISE_PHRASES.some(p => expl.includes(p))) {
+          flag.explanation = TECHNIQUE_DESCRIPTIONS[flag.technique] || 'Manipulation technique identified.';
+        }
+      });
       const summarySignals = ['manipulat', 'outrage', 'tribal', 'dehumani', 'false authority',
         'false urgency', 'war framing', 'enemy framing', 'complicity', 'propaganda'];
       const summaryImpliesFound = summarySignals.some(s =>
         (jsonResult.summary || '').toLowerCase().includes(s)
       );
       const manipulation_found = flags.length > 0 || summaryImpliesFound;
+
+      // Fix summary when flags exist but summary is noise
+      let summary = jsonResult.summary || '';
+      if (flags.length > 0 && NOISE_PHRASES.some(p => summary.toLowerCase().includes(p))) {
+        summary = 'Detected: ' + [...new Set(flags.map(f => f.technique.replace(/_/g, ' ')))].join(', ') + '.';
+      }
 
       // If manipulation detected in summary but model returned no flags, synthesize one.
       if (manipulation_found && flags.length === 0 && jsonResult.summary) {
@@ -129,7 +156,7 @@ class Analyzer {
       }
 
       console.log('[Hoffman] flags:', flags.length, 'manipulation_found:', manipulation_found);
-      return { hostname, url, ...jsonResult, flags, manipulation_found, method: 'model', textLength: text.length };
+      return { hostname, url, ...jsonResult, summary, flags, manipulation_found, method: 'model', textLength: text.length };
 
     } catch (err) {
       console.log('[Hoffman] Error:', err.message);

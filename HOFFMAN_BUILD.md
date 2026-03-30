@@ -85,8 +85,10 @@ All JS files must be ASCII-clean (no unicode above 127).
 
 ### Supporting systems
 6. BMID: expand database -- Twitter/X, TikTok, Reddit fishermen
-7. hoffmanlenses.org missing pages: /families, /research, /remembrance
-8. hl-detect v0.2 -- maintenance only; do not add to browser pipeline
+7. **BMID GUI** -- web-based admin interface for viewing/editing fishermen, motives, catches,
+   and evidence records; served by the Flask app at localhost:5000/admin (see brief below)
+8. hoffmanlenses.org missing pages: /families, /research, /remembrance
+9. hl-detect v0.2 -- maintenance only; do not add to browser pipeline
 
 ### Architecture constraint — DO NOT violate
 The browser analysis pipeline is: page text → local model → structured JSON → panel.
@@ -4892,3 +4894,95 @@ With OCR, BMID context, and two-pass analysis all complete, the browser is ready
 - Measure latency (target: <10s total analysis time)
 - Capture screenshots for documentation
 - Note any UX issues
+
+---
+
+## BUILD BRIEF: BMID GUI (supporting systems priority 7)
+
+### What and why
+
+The BMID database currently has no visual interface. Adding fishermen, motives, catches,
+and evidence requires running seed.py directly. As the database grows (Twitter/X, TikTok,
+Fox News, Reddit...) the intel agents need a way to inspect what is on record, spot gaps,
+and verify that seed data loaded correctly. A GUI makes that possible without SQL or curl.
+
+This is an admin/research tool -- localhost only, no authentication required. It is not
+a public-facing product.
+
+### Where it lives
+
+Served by the existing Flask app (bmid-api/app.py) at /admin routes. All UI is
+static HTML/CSS/JS -- no frontend framework, no build step. The same pattern as
+panel.html and toolbar.html in the browser.
+
+### Deliverables
+
+**1. bmid-api/templates/admin/ directory** with:
+- `base.html` -- shared layout: dark theme (#0D1117 background matching browser),
+  left nav with links to each section, page title slot
+- `index.html` -- dashboard: counts card row (fishermen / motives / catches / evidence),
+  recent activity list (last 5 catches by created_at)
+- `fishermen.html` -- table of all fishermen: domain, display name, owner,
+  intelligence level, motive count, catch count; each row links to detail page
+- `fisherman_detail.html` -- single fisherman view: profile card (domain, owner,
+  business model, top patterns), motives accordion, catches list with evidence count,
+  raw JSON panel (the full /api/v1/explain response for this domain)
+- `catches.html` -- filterable table of all catch records: fisherman domain, headline,
+  technique, severity, date; filter by fisherman domain and technique
+
+**2. New Flask routes in bmid-api/app.py**:
+```
+GET /admin                  -> index.html (dashboard)
+GET /admin/fishermen        -> fishermen.html
+GET /admin/fishermen/<id>   -> fisherman_detail.html
+GET /admin/catches          -> catches.html
+```
+All routes query the existing SQLAlchemy models (Fisherman, Motive, Catch, Evidence).
+No new models needed.
+
+**3. Visual style**:
+- Background: #0D1117 (matches browser)
+- Text: #E6EDF3
+- Accent: #58A6FF (blue, matches browser panel)
+- Novel/new: #B464FF (purple, matches browser novel badge)
+- High severity: #FF4D4F, medium: #FFB347, low: #58A6FF
+- Card borders: #30363D
+- Font: system-ui, -apple-system, sans-serif
+- No external CDN dependencies -- all inline
+
+### Key data relationships to display correctly
+
+The SQLAlchemy models are in bmid-api/models.py. Relationships:
+- Fisherman has_many Motives, has_many Catches (via fisherman_id foreign key)
+- Catch has_many Evidence records
+- top_patterns is a JSON column on Fisherman (list of technique strings)
+- intelligence_level is derived from catch count (read the /api/v1/explain route
+  to see the derivation logic before writing the detail template)
+
+### What the agent must NOT do
+
+- Do not add authentication -- this is a local dev tool
+- Do not add write/edit functionality in this pass -- read-only only
+- Do not add external CSS frameworks (Bootstrap, Tailwind) -- inline styles only
+- Do not touch analyzer.js, main.js, panel.html, or any browser source files
+- Do not change any existing API routes (/api/v1/*)
+
+### Testing
+
+After implementation, the agent must verify:
+1. `python app.py` starts without errors
+2. `GET /admin` returns 200 with correct fisherman/motive/catch counts
+3. `GET /admin/fishermen` lists all 3 seeded fishermen (facebook.com, instagram.com, youtube.com)
+4. `GET /admin/fishermen/1` shows facebook.com's motives and catches
+5. `GET /admin/catches` shows all 16 seeded catches
+
+The seed script (bmid-api/seed.py) is idempotent -- run it to populate test data before testing.
+
+### Files to create/modify
+
+- CREATE: bmid-api/templates/admin/base.html
+- CREATE: bmid-api/templates/admin/index.html
+- CREATE: bmid-api/templates/admin/fishermen.html
+- CREATE: bmid-api/templates/admin/fisherman_detail.html
+- CREATE: bmid-api/templates/admin/catches.html
+- MODIFY: bmid-api/app.py -- add /admin routes only; do not modify /api/v1/* routes
