@@ -1,12 +1,23 @@
 # HOFFMAN.md
+
 # The Hoffman Lenses Initiative — Master Build Document
+
 # Version: 0.2.0
+
 # Last updated: March 30, 2026
+
+# 
+
 # THIS DOCUMENT IS THE SINGLE SOURCE OF TRUTH FOR THE HOFFMAN PROJECT.
+
 # It is read by AI agents at the start of every build cycle.
+
 # It is updated by AI agents after every build cycle.
+
 # It is updated by the project director (Norm Robichaud) with decisions and redirections.
+
 # Every action taken, every result observed, every decision made is recorded here.
+
 # Nothing is lost between cycles. Every cycle builds on everything before it.
 
 -----
