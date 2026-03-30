@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Hoffman Lenses -- Agent Cycle Runner
-Reads a supervisor document, sends it to Claude,
-writes results back to the document, commits to GitHub.
+Reads a supervisor document, sends it to Claude with file-writing tools,
+executes any tool calls (creating/modifying real files), then commits.
 
 Usage:
   python run_cycle.py build
@@ -10,13 +10,16 @@ Usage:
   python run_cycle.py investigate
   python run_cycle.py advocate
   python run_cycle.py all
+  python run_cycle.py summary
 """
 
 import os
 import sys
 import json
+import subprocess
 import anthropic
 from datetime import datetime, timezone
+from pathlib import Path
 
 # ── Configuration ─────────────────────────────────────────
 
@@ -27,15 +30,190 @@ SUPERVISOR_DOCS = {
     'advocate':    'HOFFMAN_ADVOCATE.md'
 }
 
-# How many times per day each team runs
-CYCLE_SCHEDULES = {
-    'build':       1,   # Once daily -- build cycles are substantial work
-    'intel':       2,   # Twice daily -- database population and verification
-    'investigate': 1,   # Once daily -- deep research takes time
-    'advocate':    1,   # Once daily -- outreach prep and monitoring
+# ── Tools ─────────────────────────────────────────────────
+
+# Available to all agents
+TOOL_WRITE_FILE = {
+    'name': 'write_file',
+    'description': (
+        'Write content to a file in the repository. '
+        'Creates parent directories as needed. '
+        'Overwrites the file if it already exists. '
+        'Use this to create every new file or update every existing file you build. '
+        'Do NOT just describe files in text -- call this tool to actually create them.'
+    ),
+    'input_schema': {
+        'type': 'object',
+        'properties': {
+            'path': {
+                'type': 'string',
+                'description': 'File path relative to the repo root (e.g. hoffman-browser/src/foo.js)'
+            },
+            'content': {
+                'type': 'string',
+                'description': 'Complete file content to write'
+            }
+        },
+        'required': ['path', 'content']
+    }
 }
 
-# What each agent is instructed to do in each cycle
+# Available to intel agent only: append structured records to seed.py
+TOOL_APPEND_SEED = {
+    'name': 'append_seed_records',
+    'description': (
+        'Append new BMID records to bmid-api/seed.py. '
+        'Provide a Python dict or list of dicts for each record type. '
+        'These will be inserted into the correct list (FISHERMEN, MOTIVES, CATCHES, or EVIDENCE) '
+        'and the seed will be run automatically. '
+        'Use this instead of write_file for BMID database records.'
+    ),
+    'input_schema': {
+        'type': 'object',
+        'properties': {
+            'fishermen': {
+                'type': 'array',
+                'description': 'List of fisherman record dicts to add',
+                'items': {'type': 'object'}
+            },
+            'motives': {
+                'type': 'array',
+                'description': 'List of motive record dicts to add',
+                'items': {'type': 'object'}
+            },
+            'catches': {
+                'type': 'array',
+                'description': 'List of catch record dicts to add',
+                'items': {'type': 'object'}
+            },
+            'evidence': {
+                'type': 'array',
+                'description': 'List of evidence record dicts to add',
+                'items': {'type': 'object'}
+            }
+        },
+        'required': []
+    }
+}
+
+TOOLS_BY_TEAM = {
+    'build':       [TOOL_WRITE_FILE],
+    'intel':       [TOOL_WRITE_FILE, TOOL_APPEND_SEED],
+    'investigate': [TOOL_WRITE_FILE],
+    'advocate':    [TOOL_WRITE_FILE],
+}
+
+# ── Tool execution ─────────────────────────────────────────
+
+def tool_write_file(path, content, files_written):
+    """Write a file to disk. Returns status string."""
+    try:
+        full_path = Path(path)
+        full_path.parent.mkdir(parents=True, exist_ok=True)
+        full_path.write_text(content, encoding='utf-8')
+        files_written.append(str(full_path))
+        print(f'  [tool] wrote {path} ({len(content)} chars)')
+        return f'OK: wrote {len(content)} chars to {path}'
+    except Exception as e:
+        print(f'  [tool] ERROR writing {path}: {e}')
+        return f'ERROR: {e}'
+
+
+def tool_append_seed(fishermen, motives, catches, evidence, files_written):
+    """Append records to seed.py lists and run the seed."""
+    seed_path = Path('bmid-api/seed.py')
+    if not seed_path.exists():
+        return 'ERROR: bmid-api/seed.py not found'
+
+    content = seed_path.read_text(encoding='utf-8')
+
+    additions = []
+
+    def make_block(label, records):
+        if not records:
+            return ''
+        lines = [f'\n    # -- appended by intel agent {datetime.now(timezone.utc).strftime("%Y-%m-%d")} --']
+        for rec in records:
+            lines.append('    ' + repr(rec) + ',')
+        return '\n'.join(lines)
+
+    # Insert before closing ] of each list
+    for list_name, records in [
+        ('FISHERMEN', fishermen or []),
+        ('MOTIVES',   motives   or []),
+        ('CATCHES',   catches   or []),
+        ('EVIDENCE',  evidence  or []),
+    ]:
+        if not records:
+            continue
+        block = make_block(list_name, records)
+        # Find last ] that closes the list definition
+        marker = f'{list_name} = ['
+        start = content.find(marker)
+        if start == -1:
+            return f'ERROR: could not find {list_name} list in seed.py'
+        # Find the matching closing bracket
+        depth = 0
+        i = start + len(marker)
+        close_pos = -1
+        while i < len(content):
+            if content[i] == '[':
+                depth += 1
+            elif content[i] == ']':
+                if depth == 0:
+                    close_pos = i
+                    break
+                depth -= 1
+            i += 1
+        if close_pos == -1:
+            return f'ERROR: could not find closing ] for {list_name}'
+        content = content[:close_pos] + block + '\n' + content[close_pos:]
+        additions.append(f'{len(records)} {list_name.lower()}')
+
+    seed_path.write_text(content, encoding='utf-8')
+    files_written.append(str(seed_path))
+    print(f'  [tool] appended to seed.py: {", ".join(additions)}')
+
+    # Run the seed
+    try:
+        result = subprocess.run(
+            ['python', 'seed.py'],
+            cwd='bmid-api',
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        if result.returncode == 0:
+            print('  [tool] seed.py ran successfully')
+            return f'OK: appended {", ".join(additions)}. Seed ran successfully.\n' + result.stdout[-500:]
+        else:
+            print(f'  [tool] seed.py failed: {result.stderr}')
+            return f'OK: appended records, but seed.py failed: {result.stderr[-300:]}'
+    except Exception as e:
+        return f'OK: appended records, but could not run seed.py: {e}'
+
+
+def execute_tool(tool_name, tool_input, files_written):
+    if tool_name == 'write_file':
+        return tool_write_file(
+            tool_input.get('path', ''),
+            tool_input.get('content', ''),
+            files_written
+        )
+    elif tool_name == 'append_seed_records':
+        return tool_append_seed(
+            tool_input.get('fishermen', []),
+            tool_input.get('motives', []),
+            tool_input.get('catches', []),
+            tool_input.get('evidence', []),
+            files_written
+        )
+    else:
+        return f'ERROR: unknown tool {tool_name}'
+
+
+# ── Agent prompts ──────────────────────────────────────────
+
 AGENT_PROMPTS = {
     'build': """You are the Hoffman Lenses Build Agent.
 
@@ -45,24 +223,27 @@ It contains your mission, current state, build queue, and build log.
 Your task for this cycle:
 1. Identify the top item in the BUILD QUEUE
 2. Build it -- write complete, working, tested code
-3. Verify it works (trace through the logic, check for errors)
-4. Record what you built, what you tested, and what you found
+3. Use the write_file tool to create EVERY file you build.
+   Do not describe files in text -- call write_file for each one.
+4. Verify your code (trace through the logic, check for errors)
+5. Record what you built, what you tested, and what you found
 
-Return your response in this exact format:
+CRITICAL: You must call write_file for every file you create or modify.
+Writing code in your text response without calling write_file accomplishes nothing.
+The file does not exist until write_file is called.
+
+Return your response in this format AFTER calling all write_file tools:
 
 ## CYCLE RESULT -- BUILD -- {date}
 
-### What I worked on
-[describe the build queue item you addressed]
-
 ### What I built
-[describe what was created or changed, with key code if relevant]
+[describe what was created or changed]
+
+### Files written
+[list every file written via the write_file tool]
 
 ### Test results
 [what was tested, what passed, what failed]
-
-### Code to add to repository
-[any new or changed files, with full content]
 
 ### Build queue update
 [which items are done, which are next]
@@ -77,43 +258,36 @@ Return your response in this exact format:
     'intel': """You are the Hoffman Lenses Intelligence Agent.
 
 Read the supervisor document above carefully.
-It contains your mission, intelligence queue, and what's known so far.
+It contains your mission, intelligence queue, and what is known so far.
 
 Your task for this cycle:
 1. Identify the top research target from the INTELLIGENCE QUEUE
-2. Research it using your training knowledge -- document what is known
-   about this publisher, their business model, documented harms,
-   ownership structure, advertising relationships
-3. Write structured BMID records matching the schema in BMID_SCHEMA.md
+2. Research it -- document what is known about this publisher,
+   their business model, documented harms, ownership structure
+3. Use the append_seed_records tool to add records to the database.
+   Do not just write records in your text response -- call append_seed_records.
+   The records will not exist in the database until you call that tool.
 4. Assign honest confidence scores -- never inflate
 
-Return your response in this exact format:
+CRITICAL: You must call append_seed_records with the actual records.
+Every fisherman, motive, catch, and evidence record must be passed
+to append_seed_records as a Python dict. Text descriptions accomplish nothing.
+
+After calling append_seed_records, return your response in this format:
 
 ## CYCLE RESULT -- INTEL -- {date}
 
 ### Target researched
 [which fisherman or pattern was researched]
 
-### Fisherman record
-[structured data matching BMID fisherman schema]
-
-### Motive records
-[structured data matching BMID motive schema, one per motive]
-
-### Catch records
-[structured data matching BMID catch schema, documented harms only]
-
-### Evidence records
-[primary sources for every factual claim]
+### Records added
+[list every record added via append_seed_records]
 
 ### Confidence assessment
 [honest assessment of what is well-documented vs uncertain]
 
 ### Gaps identified
 [what needs primary source verification, what is missing]
-
-### API calls to make
-[formatted as: POST /api/v1/fisherman with body: {...}]
 
 ### Next cycle recommendation
 [what the next intel cycle should focus on]
@@ -127,10 +301,14 @@ It contains your mission, investigation queue, and rabbit hole findings.
 Your task for this cycle:
 1. Pick the top investigation from the INVESTIGATION QUEUE
 2. Go deep -- follow threads, find primary sources, map connections
-3. Document unexpected findings as RABBIT HOLE FINDINGS
-4. Produce a structured intelligence file for the Intel team
+3. Use write_file to save your findings as a structured intelligence
+   file at reports/investigate-{slug}.md
+4. Document unexpected findings as RABBIT HOLE FINDINGS
 
-Return your response in this exact format:
+CRITICAL: Use write_file to save your intelligence file.
+Do not just write findings in your response -- call write_file.
+
+Return your response in this format after calling write_file:
 
 ## CYCLE RESULT -- INVESTIGATE -- {date}
 
@@ -140,20 +318,11 @@ Return your response in this exact format:
 ### Key findings
 [factual findings with primary source citations]
 
-### Primary sources found
-[URLs, titles, publication dates, what each proves]
-
 ### Rabbit hole findings
-[unexpected connections discovered -- flag each clearly]
+[unexpected connections discovered]
 
-### Corporate/ownership connections
-[documented ownership and financial relationships]
-
-### Recommended BMID records
-[structured data ready for Intel agent to enter]
-
-### Unresolved threads
-[what needs more investigation]
+### Files written
+[intelligence file saved via write_file]
 
 ### Next cycle recommendation
 [which thread to follow next]
@@ -166,16 +335,14 @@ It contains your mission, outreach queue, and contact information.
 
 Your task for this cycle:
 1. Review the ADVOCACY QUEUE for the highest priority item
-2. Prepare any communications, drafts, or research needed
-3. Monitor for new legal developments, academic papers, or news
-   relevant to the mission
-4. Draft any outreach materials for director review
+2. Prepare communications, drafts, or research as needed
+3. Use write_file to save any drafts at reports/advocate-draft-{slug}.md
+4. Monitor for new legal developments, academic papers, or news
 
-IMPORTANT: All family communications and legal communications
-must be flagged as REQUIRES DIRECTOR REVIEW before sending.
-Never send these autonomously.
+IMPORTANT: All family and legal communications must be flagged
+as REQUIRES DIRECTOR REVIEW. Never send these autonomously.
 
-Return your response in this exact format:
+Return your response in this format:
 
 ## CYCLE RESULT -- ADVOCATE -- {date}
 
@@ -188,9 +355,6 @@ Return your response in this exact format:
 ### Intelligence gathered
 [new legal cases, academic papers, news relevant to mission]
 
-### White paper updates needed
-[any new findings that should be added to the white paper]
-
 ### Requires director review
 [anything that needs Norm's decision before proceeding]
 
@@ -199,12 +363,11 @@ Return your response in this exact format:
 """
 }
 
-# ── Main cycle runner ─────────────────────────────────────
+# ── Main cycle runner ──────────────────────────────────────
 
 def run_cycle(team):
     if team not in SUPERVISOR_DOCS:
         print(f'Unknown team: {team}')
-        print(f'Valid teams: {", ".join(SUPERVISOR_DOCS.keys())}')
         return False
 
     doc_path = SUPERVISOR_DOCS[team]
@@ -216,12 +379,10 @@ def run_cycle(team):
     print(f'[{team.upper()}] Reading supervisor document: {doc_path}')
     supervisor_doc = open(doc_path, encoding='utf-8').read()
 
-    # Also read HOFFMAN.md for mission context
     mission_context = ''
     if os.path.exists('HOFFMAN.md'):
         mission_context = open('HOFFMAN.md', encoding='utf-8').read()
 
-    # Also read BMID schema for intel/investigate agents
     bmid_context = ''
     if team in ('intel', 'investigate') and os.path.exists('BMID_SCHEMA.md'):
         bmid_context = open('BMID_SCHEMA.md', encoding='utf-8').read()
@@ -229,7 +390,6 @@ def run_cycle(team):
     date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
     prompt = AGENT_PROMPTS[team].replace('{date}', date_str)
 
-    # Build the full message
     full_context = []
     if mission_context:
         full_context.append(f'# DIRECTOR DOCUMENT (HOFFMAN.md)\n\n{mission_context}')
@@ -239,53 +399,98 @@ def run_cycle(team):
     full_context.append(f'# YOUR INSTRUCTIONS FOR THIS CYCLE\n\n{prompt}')
 
     message_content = '\n\n---\n\n'.join(full_context)
-
     print(f'[{team.upper()}] Sending to Claude (context: {len(message_content)} chars)')
 
     api_key = os.environ.get('ANTHROPIC_API_KEY')
     if not api_key:
-        print('ERROR: ANTHROPIC_API_KEY environment variable not set')
+        print('ERROR: ANTHROPIC_API_KEY not set')
         return False
 
     client = anthropic.Anthropic(api_key=api_key)
+    tools = TOOLS_BY_TEAM.get(team, [])
+    messages = [{'role': 'user', 'content': message_content}]
+    files_written = []
+    result_text = ''
 
-    try:
-        response = client.messages.create(
-            model='claude-opus-4-5',
-            max_tokens=8000,
-            messages=[{
-                'role': 'user',
-                'content': message_content
-            }]
-        )
-    except Exception as e:
-        print(f'[{team.upper()}] Claude API error: {e}')
-        return False
+    # Agentic loop -- keep going until no more tool calls
+    max_turns = 20
+    turn = 0
+    while turn < max_turns:
+        turn += 1
+        try:
+            response = client.messages.create(
+                model='claude-opus-4-5',
+                max_tokens=8000,
+                tools=tools,
+                messages=messages
+            )
+        except Exception as e:
+            print(f'[{team.upper()}] Claude API error: {e}')
+            return False
 
-    result = response.content[0].text
-    print(f'[{team.upper()}] Got response ({len(result)} chars)')
+        # Collect text and tool calls from this response
+        tool_calls = []
+        for block in response.content:
+            if block.type == 'text':
+                result_text += block.text
+            elif block.type == 'tool_use':
+                tool_calls.append(block)
+
+        print(f'[{team.upper()}] Turn {turn}: stop_reason={response.stop_reason}, tool_calls={len(tool_calls)}')
+
+        if response.stop_reason == 'end_turn' or not tool_calls:
+            break
+
+        # Execute tool calls and feed results back
+        messages.append({'role': 'assistant', 'content': response.content})
+        tool_results = []
+        for tc in tool_calls:
+            print(f'  [tool] calling {tc.name}')
+            result = execute_tool(tc.name, tc.input, files_written)
+            tool_results.append({
+                'type': 'tool_result',
+                'tool_use_id': tc.id,
+                'content': result
+            })
+        messages.append({'role': 'user', 'content': tool_results})
+
+    print(f'[{team.upper()}] Got response ({len(result_text)} chars), files written: {len(files_written)}')
 
     # Append result to supervisor document
     timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
     separator = f'\n\n---\n\n<!-- AUTO CYCLE {timestamp} -->\n\n'
-
     with open(doc_path, 'a', encoding='utf-8') as f:
-        f.write(separator + result)
+        f.write(separator + result_text)
 
-    print(f'[{team.upper()}] Results written to {doc_path}')
-
-    # Save result to daily report file
+    # Save report
     report_dir = 'reports'
     os.makedirs(report_dir, exist_ok=True)
     date_slug = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-    report_path = f'{report_dir}/{date_slug}-{team}.md'
-
+    time_slug = datetime.now(timezone.utc).strftime('%H%M')
+    report_path = f'{report_dir}/{date_slug}-{team}-{time_slug}.md'
     with open(report_path, 'w', encoding='utf-8') as f:
         f.write(f'# Hoffman Lenses -- {team.upper()} Cycle Report\n')
         f.write(f'**Date:** {timestamp}\n\n')
-        f.write(result)
+        f.write(result_text)
 
     print(f'[{team.upper()}] Report saved to {report_path}')
+
+    # Commit everything: supervisor doc, report, and any files the agent wrote
+    all_changed = [doc_path, report_path] + files_written
+    if all_changed:
+        try:
+            subprocess.run(['git', 'add'] + all_changed, check=True)
+            commit_msg = (
+                f'{team}: auto cycle {date_slug}\n\n'
+                f'Files written by agent: {len(files_written)}\n'
+                + ('\n'.join(f'  {f}' for f in files_written) if files_written else '  (none)')
+            )
+            subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
+            subprocess.run(['git', 'push'], check=True)
+            print(f'[{team.upper()}] Committed and pushed ({len(files_written)} files written)')
+        except subprocess.CalledProcessError as e:
+            print(f'[{team.upper()}] Git error: {e}')
+
     return True
 
 
@@ -307,13 +512,10 @@ def run_all():
 
 
 def generate_daily_summary():
-    """
-    Reads all reports from today and generates a
-    plain-language summary for the director.
-    """
     import glob
     date_slug = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     reports = glob.glob(f'reports/{date_slug}-*.md')
+    reports = [r for r in reports if 'DIRECTOR' not in r]
 
     if not reports:
         print('No reports found for today')
@@ -321,9 +523,8 @@ def generate_daily_summary():
 
     combined = []
     for report_path in sorted(reports):
-        team = report_path.split('-')[-1].replace('.md', '')
         content = open(report_path, encoding='utf-8').read()
-        combined.append(f'## {team.upper()} TEAM\n\n{content}')
+        combined.append(content)
 
     summary_input = '\n\n---\n\n'.join(combined)
 
@@ -338,12 +539,11 @@ def generate_daily_summary():
             'content': f"""You are summarizing the daily activity of the Hoffman Lenses
 agent organization for the Director (Norm Robichaud).
 
-Here are today's cycle reports from all teams:
+Here are today's cycle reports:
 
 {summary_input}
 
-Write a concise director's briefing -- plain language, no jargon.
-Format:
+Write a concise director's briefing. Format:
 
 # Hoffman Lenses -- Director Briefing
 ## {date_slug}
@@ -351,21 +551,23 @@ Format:
 ### What got done today
 [2-3 sentences per team, only what actually happened]
 
+### Files created or modified
+[list any actual files the agents wrote]
+
 ### Decisions needed from you
-[anything flagged as REQUIRES DIRECTOR REVIEW]
+[anything flagged REQUIRES DIRECTOR REVIEW]
 
 ### Things to know
 [anything unexpected, concerning, or worth noting]
 
 ### What happens tomorrow
-[what the agents will work on in the next cycles]
+[what the agents will work on next]
 """
         }]
     )
 
     summary = response.content[0].text
     summary_path = f'reports/{date_slug}-DIRECTOR-BRIEFING.md'
-
     with open(summary_path, 'w', encoding='utf-8') as f:
         f.write(summary)
 
@@ -375,7 +577,7 @@ Format:
     print('='*50)
 
 
-# ── Entry point ───────────────────────────────────────────
+# ── Entry point ────────────────────────────────────────────
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
