@@ -1,87 +1,171 @@
 /**
- * Hoffman Browser - BMID Client
- * Queries the Behavioral Manipulation Intelligence Database for publisher context.
- * Called before analysis runs so the model reads with the chart, not cold.
+ * hoffman-browser/src/bmid-client.js
+ * Hoffman Browser -- BMID API client
+ *
+ * Queries the BMID API for domain intelligence before page analysis runs.
+ * All queries are non-blocking with a hard timeout so BMID unavailability
+ * never delays or breaks the analysis pipeline.
+ *
+ * ASCII-clean: no unicode above codepoint 127.
  */
 
 'use strict';
 
-const http = require('http');
+var http = require('http');
+var url  = require('url');
 
-const BMID_API = 'http://localhost:5000/api/v1';
-const TIMEOUT_MS = 2000;
+var DEFAULT_BASE_URL = 'http://localhost:5000';
+var DEFAULT_TIMEOUT_MS = 2000;
 
-function extractDomain(url) {
-  try {
-    const hostname = new URL(url).hostname;
-    return hostname.replace(/^www\./, '').replace(/^m\./, '');
-  } catch (e) {
-    return null;
-  }
-}
+// ---------------------------------------------------------------------------
+// Internal HTTP GET helper
+// ---------------------------------------------------------------------------
 
-// Query BMID for domain intelligence.
-// Returns a Promise that resolves to the response object or null.
-// Never rejects -- failure always resolves to null so analysis proceeds normally.
-function queryDomain(url) {
-  const domain = extractDomain(url);
-  if (!domain) return Promise.resolve(null);
+/**
+ * Perform a GET request and resolve with parsed JSON.
+ * Rejects on timeout, network error, non-200 status, or parse failure.
+ *
+ * @param {string} requestUrl
+ * @param {number} timeoutMs
+ * @returns {Promise<object>}
+ */
+function getJson(requestUrl, timeoutMs) {
+  return new Promise(function(resolve, reject) {
+    var parsed = url.parse(requestUrl);
+    var options = {
+      hostname: parsed.hostname,
+      port:     parsed.port ? parseInt(parsed.port, 10) : 80,
+      path:     parsed.path || '/',
+      method:   'GET',
+      headers:  { 'Accept': 'application/json' }
+    };
 
-  const apiUrl = BMID_API + '/explain?domain=' + encodeURIComponent(domain);
+    var timedOut = false;
 
-  return new Promise((resolve) => {
-    const req = http.get(apiUrl, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
+    var req = http.request(options, function(res) {
+      var body = '';
+      res.setEncoding('utf8');
+      res.on('data', function(chunk) { body += chunk; });
+      res.on('end', function() {
+        if (timedOut) return;
+        if (res.statusCode !== 200) {
+          reject(new Error('BMID HTTP ' + res.statusCode));
+          return;
+        }
         try {
-          const parsed = JSON.parse(data);
-          console.log('[BMID] Intelligence level for', domain + ':', parsed.intelligence_level);
-          resolve(parsed);
+          resolve(JSON.parse(body));
         } catch (e) {
-          console.log('[BMID] Invalid JSON response');
-          resolve(null);
+          reject(new Error('BMID JSON parse error: ' + e.message));
         }
       });
     });
 
-    req.on('error', (err) => {
-      console.log('[BMID] Query failed:', err.message);
-      resolve(null);
+    var timer = setTimeout(function() {
+      timedOut = true;
+      req.abort();
+      reject(new Error('BMID timeout after ' + timeoutMs + 'ms'));
+    }, timeoutMs);
+
+    req.on('error', function(err) {
+      if (timedOut) return;
+      clearTimeout(timer);
+      reject(err);
     });
 
-    req.setTimeout(TIMEOUT_MS, () => {
-      console.log('[BMID] Query timed out after', TIMEOUT_MS, 'ms');
-      req.destroy();
-      resolve(null);
+    req.on('response', function() {
+      clearTimeout(timer);
     });
+
+    req.end();
   });
 }
 
-// Check whether a technique is already documented for this fisherman.
-// Returns false if no BMID data -- novelty cannot be determined without intelligence.
-function isTechniqueKnown(bmidResponse, technique) {
-  if (!bmidResponse || bmidResponse.intelligence_level === 'none') return false;
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
-  if (bmidResponse.top_patterns && Array.isArray(bmidResponse.top_patterns)) {
-    return bmidResponse.top_patterns.includes(technique);
+/**
+ * Query BMID for domain intelligence.
+ * Returns a structured result object in all cases -- never throws.
+ *
+ * Result shape on success:
+ * {
+ *   available: true,
+ *   intelligence_level: 'full'|'partial'|'minimal'|'none',
+ *   fisherman: { name, owner, business_model, ... } | null,
+ *   motives: [...],
+ *   catch_summary: { total_documented, ... },
+ *   top_patterns: [...]
+ * }
+ *
+ * Result shape when BMID is unavailable or domain unknown:
+ * { available: false, reason: string }
+ *
+ * @param {string} domain      Hostname, e.g. 'foxnews.com'
+ * @param {string} [baseUrl]   Override API base URL (default localhost:5000)
+ * @param {number} [timeoutMs] Override timeout (default 2000ms)
+ * @returns {Promise<object>}  Always resolves, never rejects
+ */
+function queryDomain(domain, baseUrl, timeoutMs) {
+  baseUrl    = baseUrl    || DEFAULT_BASE_URL;
+  timeoutMs  = timeoutMs  || DEFAULT_TIMEOUT_MS;
+
+  if (!domain) {
+    return Promise.resolve({ available: false, reason: 'no domain provided' });
   }
 
-  // Infer from motive types when top_patterns not populated
-  if (bmidResponse.motives && Array.isArray(bmidResponse.motives)) {
-    const motiveToTechnique = {
-      'audience_capture':         ['outrage_engineering', 'tribal_activation'],
-      'advertising_revenue':      ['false_urgency', 'engagement_directive'],
-      'engagement_maximization':  ['engagement_directive', 'incomplete_hook'],
-      'vulnerability_exploitation':['outrage_engineering', 'tribal_activation'],
-    };
-    for (const motive of bmidResponse.motives) {
-      const techniques = motiveToTechnique[motive.motive_type] || [];
-      if (techniques.includes(technique)) return true;
-    }
-  }
+  // Normalise: strip www. prefix for lookup, lowercase
+  var lookupDomain = domain.toLowerCase().replace(/^www\./, '');
+  var endpoint = baseUrl + '/api/v1/explain?domain=' + encodeURIComponent(lookupDomain);
 
-  return false;
+  return getJson(endpoint, timeoutMs).then(function(data) {
+    // Attach flag indicating BMID responded
+    data.available = true;
+    return data;
+  }).catch(function(err) {
+    console.log('[Hoffman] BMID query failed for ' + domain + ': ' + err.message);
+    return { available: false, reason: err.message };
+  });
 }
 
-module.exports = { queryDomain, isTechniqueKnown };
+/**
+ * Query the BMID /explain endpoint and return top_patterns list.
+ * Returns empty array if BMID unavailable or domain unknown.
+ *
+ * @param {string} domain
+ * @param {string} [baseUrl]
+ * @param {number} [timeoutMs]
+ * @returns {Promise<string[]>}
+ */
+function getTopPatterns(domain, baseUrl, timeoutMs) {
+  return queryDomain(domain, baseUrl, timeoutMs).then(function(data) {
+    if (!data.available) return [];
+    return (data.top_patterns && Array.isArray(data.top_patterns))
+      ? data.top_patterns
+      : [];
+  });
+}
+
+/**
+ * Check whether BMID is running and healthy.
+ * Resolves true if healthy, false otherwise.
+ *
+ * @param {string} [baseUrl]
+ * @param {number} [timeoutMs]
+ * @returns {Promise<boolean>}
+ */
+function healthCheck(baseUrl, timeoutMs) {
+  baseUrl   = baseUrl   || DEFAULT_BASE_URL;
+  timeoutMs = timeoutMs || DEFAULT_TIMEOUT_MS;
+  return getJson(baseUrl + '/api/v1/health', timeoutMs)
+    .then(function(data) { return data.status === 'ok'; })
+    .catch(function()    { return false; });
+}
+
+// ---------------------------------------------------------------------------
+
+module.exports = {
+  queryDomain:    queryDomain,
+  getTopPatterns: getTopPatterns,
+  healthCheck:    healthCheck
+};

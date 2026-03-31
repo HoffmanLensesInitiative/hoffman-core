@@ -1,290 +1,367 @@
 /**
- * Hoffman Browser - Analyzer
- * The doctor. Reads the room. Works with whatever the model says.
+ * hoffman-browser/src/analyzer.js
+ * LLM analysis pipeline for the Hoffman Browser.
  *
- * Architecture: single pass. Full page text in, grammar-constrained JSON out.
- * No pre-screening. No routing. The model reads everything and returns what it finds.
- * BMID context is prepended to the system prompt when available -- the doctor with the
- * chart -- but the model still detects independently.
+ * Pipeline:
+ *   page text (+ optional BMID context) -> local Llama model -> structured JSON -> flags
+ *
+ * Architecture constraint (HOFFMAN.md 2026-03-29):
+ *   ONE model call. Full page text in. Grammar-constrained JSON out.
+ *   No pre-screening. No hl-detect. The model is the sole detector.
+ *
+ * BMID context (HOFFMAN_BUILD_BROWSER.md item 1):
+ *   If bmidContext is supplied, it is prepended to the system prompt.
+ *   It informs the model; it does not constrain what the model may find.
+ *   Model must still find manipulation independently.
+ *
+ * Novel technique flagging (HOFFMAN_BUILD_BROWSER.md item 2):
+ *   After analysis, each flag is compared against BMID's documented top_patterns.
+ *   Flags not in that list receive novel:true.
+ *
+ * ASCII-clean: no unicode above codepoint 127.
  */
 
 'use strict';
 
-const { isTechniqueKnown } = require('./bmid-client.js');
-const { buildContext }     = require('./context-builder.js');
+var { getLlamaInstance } = require('./model-manager');
+var prompts              = require('./prompts');
 
-const BASE_SYSTEM_PROMPT = `You are a media manipulation detection API. You respond only with a valid JSON object.
+// ---------------------------------------------------------------------------
+// Grammar schema
+// ---------------------------------------------------------------------------
 
-Analyze the provided webpage text for manipulation techniques. Return this JSON structure:
-
-{
-  "manipulation_found": true,
-  "summary": "Brief description of what manipulation is present",
-  "flags": [
-    {
-      "quote": "exact phrase from the text",
-      "technique": "technique name",
-      "explanation": "why this is manipulative",
-      "severity": "high|medium|low"
+// Grammar-constrained JSON schema. LlamaJsonSchemaGrammar forces the model
+// to output only this shape -- no prose, no markdown, no escape hatches.
+var ANALYSIS_SCHEMA = {
+  type: 'object',
+  properties: {
+    manipulation_found: { type: 'boolean' },
+    summary: { type: 'string' },
+    flags: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          quote:       { type: 'string' },
+          technique:   { type: 'string' },
+          explanation: { type: 'string' },
+          severity:    { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] }
+        },
+        required: ['quote', 'technique', 'explanation', 'severity']
+      }
     }
-  ]
+  },
+  required: ['manipulation_found', 'summary', 'flags']
+};
+
+// ---------------------------------------------------------------------------
+// Text truncation
+// ---------------------------------------------------------------------------
+
+// 4096 token context window. Rough estimate: 1 token ~= 4 chars.
+// Reserve ~800 tokens for system prompt + response headroom.
+// Remaining: ~3296 tokens -> ~13184 chars for page text.
+var MAX_TEXT_CHARS = 13000;
+
+/**
+ * Truncate text to fit within the model's context window.
+ * Preserves the beginning and end of the document (titles and CTAs
+ * often carry the most manipulation signal).
+ *
+ * @param {string} text
+ * @returns {string}
+ */
+function truncateText(text) {
+  if (!text || text.length <= MAX_TEXT_CHARS) return text || '';
+
+  // Take first 75% from the front, last 25% from the back.
+  var frontLen = Math.floor(MAX_TEXT_CHARS * 0.75);
+  var backLen  = MAX_TEXT_CHARS - frontLen;
+  var front    = text.slice(0, frontLen);
+  var back     = text.slice(text.length - backLen);
+  return front + '\n\n[... content truncated for analysis ...]\n\n' + back;
 }
 
-Techniques: outrage_engineering, false_authority, tribal_activation, false_urgency, incomplete_hook, dehumanization, war_framing, enemy_framing, complicity_framing.
+// ---------------------------------------------------------------------------
+// Summary fallback -- handles 3B model inconsistency
+// ---------------------------------------------------------------------------
 
-If no manipulation is found return: {"manipulation_found": false, "summary": "No manipulation detected.", "flags": []}
+// Phrases in the summary field that strongly signal manipulation even when
+// manipulation_found is false (known 3B model inconsistency).
+var SUMMARY_SIGNAL_PHRASES = [
+  'outrage', 'fear', 'manipulat', 'tribal', 'us vs', 'us-vs', 'them',
+  'emotionally charged', 'emotional language', 'designed to', 'intended to',
+  'provoke', 'incite', 'inflame', 'sensational', 'war framing', 'urgency',
+  'suppress', 'false authority', 'engagement bait', 'click', 'share this',
+  'mislead', 'deceptive', 'radicali'
+];
 
-Return only the JSON object. No explanation. No markdown. No text before or after the JSON.`;
-
-class Analyzer {
-  constructor(modelManager) {
-    this.modelManager = modelManager;
-    this._lastBmidResponse = null;
-  }
-
-  setModel(model) {}
-
-  // Called by main.js after BMID query completes (runs in parallel with text extraction)
-  setBmidResponse(bmidResponse) {
-    this._lastBmidResponse = bmidResponse;
-  }
-
-  async analyze(pageText, context) {
-    const { url, hostname } = context;
-    const cleaned = this.cleanText(pageText);
-
-    if (!cleaned || cleaned.length < 50) {
-      return { hostname, url, manipulation_found: false, summary: 'No readable text.', flags: [], method: 'empty' };
-    }
-
-    if (!this.modelManager.isReady()) {
-      return { hostname, url, manipulation_found: null, summary: 'Load the Hoffman model to analyze this page.', flags: [], method: 'no-model' };
-    }
-
-    return await this.analyzeWithModel(cleaned, context);
-  }
-
-  async analyzeWithModel(text, context) {
-    const { url, hostname } = context;
-    const excerpt = text.length > 2400 ? text.substring(0, 2400) : text;
-
-    // Build system prompt -- prepend BMID context if available
-    const bmidContext = buildContext(this._lastBmidResponse);
-    const systemPrompt = bmidContext
-      ? bmidContext + BASE_SYSTEM_PROMPT
-      : BASE_SYSTEM_PROMPT;
-
-    if (bmidContext) {
-      console.log('[Hoffman] Analyzing with BMID context (' + bmidContext.length + ' chars)');
-    }
-
-    try {
-      // Single pass -- grammar-constrained JSON -- model physically cannot output non-JSON tokens
-      const jsonResult = await this.modelManager.completeJson(
-        systemPrompt,
-        `Analyze this text from ${hostname}:\n\n${excerpt}`
-      );
-
-      // Normalize: don't trust the boolean the model committed to before analyzing.
-      // A 3B model often writes manipulation_found:false then a summary describing manipulation.
-      // Derive truth from the summary text and flags array.
-      const flags = jsonResult.flags || [];
-
-      // Clean up noise in flag explanation fields.
-      // The 3B model sometimes fills string fields with the system prompt's "nothing found" text.
-      const TECHNIQUE_DESCRIPTIONS = {
-        'outrage_engineering': 'Language calibrated to produce maximum outrage rather than convey information.',
-        'false_authority':     'Authority invoked without being identified, verified, or made accountable.',
-        'tribal_activation':   'Content signals tribal identity rather than making an argument.',
-        'false_urgency':       'Artificial time pressure designed to prevent critical evaluation.',
-        'incomplete_hook':     'Information deliberately withheld to compel a click or continued reading.',
-        'dehumanization':      'Language that strips humanity from a person or group.',
-        'war_framing':         'Conflict framed as war to maximize alarm and urgency.',
-        'enemy_framing':       'Content defines a clear enemy to provoke fear or hostility.',
-        'complicity_framing':  'Content implies the reader is complicit if they do not act.',
-      };
-      const NOISE_PHRASES = ['no manipulation detected', 'no manipulation found', 'no manipulative'];
-      flags.forEach(flag => {
-        const expl = (flag.explanation || '').toLowerCase();
-        if (!flag.explanation || NOISE_PHRASES.some(p => expl.includes(p))) {
-          flag.explanation = TECHNIQUE_DESCRIPTIONS[flag.technique] || 'Manipulation technique identified.';
-        }
-      });
-      const summarySignals = ['manipulat', 'outrage', 'tribal', 'dehumani', 'false authority',
-        'false urgency', 'war framing', 'enemy framing', 'complicity', 'propaganda'];
-      const summaryImpliesFound = summarySignals.some(s =>
-        (jsonResult.summary || '').toLowerCase().includes(s)
-      );
-      const manipulation_found = flags.length > 0 || summaryImpliesFound;
-
-      // Fix summary when flags exist but summary is noise
-      let summary = jsonResult.summary || '';
-      if (flags.length > 0 && NOISE_PHRASES.some(p => summary.toLowerCase().includes(p))) {
-        summary = 'Detected: ' + [...new Set(flags.map(f => f.technique.replace(/_/g, ' ')))].join(', ') + '.';
-      }
-
-      // If manipulation detected in summary but model returned no flags, synthesize one.
-      if (manipulation_found && flags.length === 0 && jsonResult.summary) {
-        const techniqueMap = {
-          'outrage':         'outrage_engineering',
-          'tribal':          'tribal_activation',
-          'false urgency':   'false_urgency',
-          'false authority': 'false_authority',
-          'dehumani':        'dehumanization',
-          'war framing':     'war_framing',
-          'enemy framing':   'enemy_framing',
-          'complicity':      'complicity_framing',
-        };
-        let technique = 'outrage_engineering';
-        const lsummary = jsonResult.summary.toLowerCase();
-        for (const [kw, tech] of Object.entries(techniqueMap)) {
-          if (lsummary.includes(kw)) { technique = tech; break; }
-        }
-        flags.push({
-          quote: excerpt.split('\n').find(l => l.trim().length > 40) || excerpt.substring(0, 100),
-          technique,
-          explanation: jsonResult.summary,
-          severity: 'high'
-        });
-      }
-
-      // Mark novel techniques -- ones not previously documented for this fisherman in BMID
-      if (this._lastBmidResponse && this._lastBmidResponse.intelligence_level !== 'none') {
-        flags.forEach(flag => {
-          flag.novel = !isTechniqueKnown(this._lastBmidResponse, flag.technique);
-        });
-      }
-
-      console.log('[Hoffman] flags:', flags.length, 'manipulation_found:', manipulation_found);
-      return { hostname, url, ...jsonResult, summary, flags, manipulation_found, method: 'model', textLength: text.length };
-
-    } catch (err) {
-      console.log('[Hoffman] Error:', err.message);
-      return { hostname, url, manipulation_found: null, summary: 'Error: ' + err.message, flags: [], method: 'error' };
+/**
+ * Returns true if the summary text contains any manipulation signal phrases.
+ *
+ * @param {string} summary
+ * @returns {boolean}
+ */
+function summarySignalsManipulation(summary) {
+  if (!summary) return false;
+  var lower = summary.toLowerCase();
+  for (var i = 0; i < SUMMARY_SIGNAL_PHRASES.length; i++) {
+    if (lower.indexOf(SUMMARY_SIGNAL_PHRASES[i]) !== -1) {
+      return true;
     }
   }
+  return false;
+}
 
-  // Try to extract JSON from model response
-  extractJson(text) {
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    if (start === -1 || end === -1 || end <= start) return null;
-    try {
-      return JSON.parse(text.substring(start, end + 1));
-    } catch(e) {
-      return null;
+/**
+ * Synthesize a flag from the summary when manipulation_found is false but
+ * the summary text contradicts that assessment.
+ *
+ * @param {string} summary
+ * @returns {object}  A flag object compatible with ANALYSIS_SCHEMA
+ */
+function synthesizeFlagFromSummary(summary) {
+  return {
+    quote:       summary.slice(0, 200),
+    technique:   'unspecified_manipulation',
+    explanation: summary,
+    severity:    'MEDIUM',
+    synthesized: true   // internal marker -- not in schema but harmless
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Novel technique detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Mark flags that describe techniques not in BMID's documented top_patterns
+ * for this domain. Adds novel:true to each such flag.
+ *
+ * @param {object[]} flags        Parsed flags from model output
+ * @param {object|null} bmidData  Raw BMID intel response (may be null)
+ * @returns {object[]}            Flags with novel property set
+ */
+function applyNovelFlags(flags, bmidData) {
+  if (!flags || flags.length === 0) return flags;
+
+  // Extract documented patterns from BMID intel response.
+  // The /explain endpoint returns top_patterns in catch_summary or as a
+  // top-level array. Try both locations.
+  var documented = [];
+
+  if (bmidData) {
+    // Top-level top_patterns array
+    if (Array.isArray(bmidData.top_patterns)) {
+      documented = documented.concat(bmidData.top_patterns);
     }
-  }
-
-  // Parse natural language response -- no JSON required
-  parseNaturalResponse(text, hostname, url, textLength) {
-    const lower = text.toLowerCase();
-
-    // Determine if manipulation was found
-    const foundSignals = [
-      'manipulation found', 'manipulative', 'outrage', 'tribal', 'dehumani',
-      'false authority', 'false urgency', 'war framing', 'enemy framing',
-      'incomplete hook', 'complicity', 'propaganda', 'inflammatory'
-    ];
-    const cleanSignals = [
-      'no manipulation', 'does not contain', 'no manipulative',
-      'not manipulative', 'straightforward', 'factual reporting'
-    ];
-
-    const foundScore  = foundSignals.filter(s => lower.includes(s)).length;
-    const cleanScore  = cleanSignals.filter(s => lower.includes(s)).length;
-    const manipulation_found = foundScore > cleanScore;
-
-    // Extract flags from the text by looking for quoted content + technique mentions
-    const flags = [];
-    const techniqueMap = {
-      'outrage engineering': 'outrage_engineering',
-      'outrage':             'outrage_engineering',
-      'false authority':     'false_authority',
-      'tribal activation':   'tribal_activation',
-      'tribal':              'tribal_activation',
-      'false urgency':       'false_urgency',
-      'incomplete hook':     'incomplete_hook',
-      'dehumanization':      'dehumanization',
-      'dehumanizing':        'dehumanization',
-      'war framing':         'war_framing',
-      'enemy framing':       'enemy_framing',
-      'complicity framing':  'complicity_framing',
-      'complicity':          'complicity_framing',
-      'manipulative':        'outrage_engineering'
-    };
-
-    // Find quoted phrases in the response
-    const quoteRegex = /"([^"]{10,200})"/g;
-    let match;
-    while ((match = quoteRegex.exec(text)) !== null) {
-      const quote = match[1];
-      const surroundingText = text.substring(Math.max(0, match.index - 200), match.index + 200).toLowerCase();
-
-      // Find what technique is mentioned near this quote
-      let technique = 'outrage_engineering';
-      let severity = 'medium';
-      for (const [keyword, tech] of Object.entries(techniqueMap)) {
-        if (surroundingText.includes(keyword)) {
-          technique = tech;
-          break;
-        }
-      }
-      if (surroundingText.includes('high') || surroundingText.includes('strong') || surroundingText.includes('extreme')) {
-        severity = 'high';
-      }
-
-      // Get the explanation -- text after the quote
-      const afterQuote = text.substring(match.index + match[0].length, match.index + match[0].length + 200).trim();
-
-      if (flags.length < 10) {
-        flags.push({
-          quote,
-          technique,
-          explanation: afterQuote.substring(0, 200) || 'Identified as manipulative content.',
-          severity
-        });
-      }
+    // catch_summary.top_patterns
+    if (bmidData.catch_summary && Array.isArray(bmidData.catch_summary.top_patterns)) {
+      documented = documented.concat(bmidData.catch_summary.top_patterns);
     }
-
-    // If no quoted flags but manipulation found, create a summary flag
-    if (manipulation_found && flags.length === 0) {
-      flags.push({
-        quote: 'See summary',
-        technique: 'outrage_engineering',
-        explanation: text.substring(0, 300),
-        severity: 'medium'
+    // motives[].type fields also carry technique vocabulary
+    if (Array.isArray(bmidData.motives)) {
+      bmidData.motives.forEach(function (m) {
+        if (m.type) documented.push(m.type);
       });
     }
+  }
 
-    // Summary -- first 2 sentences of response
-    const sentences = text.split(/[.!?]/).filter(s => s.trim().length > 20);
-    const summary = sentences.slice(0, 2).join('. ').trim().substring(0, 300);
+  // Normalize to lowercase for comparison
+  var docLower = documented.map(function (p) {
+    return typeof p === 'string' ? p.toLowerCase().trim() : '';
+  });
 
+  return flags.map(function (flag) {
+    var technique = (flag.technique || '').toLowerCase().trim();
+    var isDocumented = docLower.some(function (d) {
+      return d && (d === technique || technique.indexOf(d) !== -1 || d.indexOf(technique) !== -1);
+    });
+    return Object.assign({}, flag, { novel: !isDocumented && documented.length > 0 });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// System prompt builder
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the system prompt, optionally prepending BMID intelligence context.
+ *
+ * @param {object|null} bmidContext  Formatted BMID intel (see buildBmidContextString)
+ * @returns {string}
+ */
+function buildSystemPrompt(bmidContext) {
+  var base = prompts.getAnalysisSystemPrompt();
+
+  if (!bmidContext) return base;
+
+  var intel = buildBmidContextString(bmidContext);
+  if (!intel) return base;
+
+  return intel + '\n\n' + base;
+}
+
+/**
+ * Format BMID intel data into a system prompt prefix.
+ * Returns empty string if data is insufficient to add value.
+ *
+ * @param {object} data  Raw BMID /explain response
+ * @returns {string}
+ */
+function buildBmidContextString(data) {
+  if (!data) return '';
+
+  // Require at minimum a fisherman record and intelligence level
+  if (!data.fisherman || data.intelligence_level === 'none') return '';
+
+  var lines = [
+    'KNOWN INTELLIGENCE ON THIS DOMAIN:',
+    'Owner: '          + (data.fisherman.owner          || 'unknown'),
+    'Business model: ' + (data.fisherman.business_model || 'unknown')
+  ];
+
+  // Primary motive
+  if (Array.isArray(data.motives) && data.motives.length > 0) {
+    lines.push('Documented primary motive: ' + data.motives[0].description);
+  }
+
+  // Documented harm count
+  if (data.catch_summary && typeof data.catch_summary.total_documented === 'number') {
+    lines.push('Documented harms on record: ' + data.catch_summary.total_documented + ' cases');
+  }
+
+  // Known techniques
+  var patterns = [];
+  if (Array.isArray(data.top_patterns) && data.top_patterns.length > 0) {
+    patterns = data.top_patterns;
+  } else if (data.catch_summary && Array.isArray(data.catch_summary.top_patterns)) {
+    patterns = data.catch_summary.top_patterns;
+  }
+  if (patterns.length > 0) {
+    lines.push('Known techniques: ' + patterns.slice(0, 5).join(', '));
+  }
+
+  lines.push('Use this intelligence as background context. Identify ALL manipulation present, whether or not it matches known patterns.');
+
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Core analysis function
+// ---------------------------------------------------------------------------
+
+/**
+ * Analyze page text using the local LLM.
+ *
+ * @param {string}      pageText    Extracted text from the page
+ * @param {object|null} bmidData    Raw BMID intel response (may be null)
+ * @returns {Promise<object>}       Structured analysis result
+ *
+ * Return shape:
+ * {
+ *   manipulation_found: boolean,
+ *   summary: string,
+ *   flags: [{ quote, technique, explanation, severity, novel, synthesized? }],
+ *   bmid_context_used: boolean,
+ *   processing_time_ms: number,
+ *   text_length: number,
+ *   model_version: string
+ * }
+ */
+async function analyze(pageText, bmidData) {
+  var startTime = Date.now();
+  var bmidContextUsed = false;
+
+  // --- Build input ----------------------------------------------------------
+  var textToAnalyze = truncateText(pageText || '');
+
+  if (!textToAnalyze || textToAnalyze.trim().length < 20) {
     return {
-      hostname, url,
-      manipulation_found,
-      summary: summary || text.substring(0, 200),
-      flags,
-      method: 'model',
-      textLength
+      manipulation_found: false,
+      summary:            'Page contained insufficient text for analysis.',
+      flags:              [],
+      bmid_context_used:  false,
+      processing_time_ms: Date.now() - startTime,
+      text_length:        (pageText || '').length,
+      model_version:      'Llama-3.2-3B-Instruct-Q4_K_M'
     };
   }
 
-  cleanText(text) {
-    return text
-      .replace(/\t/g, ' ')
-      .replace(/ {3,}/g, '  ')
-      .split('\n')
-      .filter(line => {
-        const l = line.trim();
-        if (l.length < 3) return false;
-        if (/^\d+(\.\d+)?[KM]?$/.test(l)) return false;
-        return true;
-      })
-      .join('\n')
-      .trim();
+  // --- Build system prompt -------------------------------------------------
+  var contextString = '';
+  if (bmidData && bmidData.intelligence_level && bmidData.intelligence_level !== 'none') {
+    contextString    = buildBmidContextString(bmidData);
+    bmidContextUsed  = contextString.length > 0;
   }
+  var systemPrompt = buildSystemPrompt(bmidContextUsed ? bmidData : null);
+
+  // --- Model call ----------------------------------------------------------
+  var result = null;
+  try {
+    var llama = getLlamaInstance();
+    if (!llama) throw new Error('Model not loaded');
+
+    result = await llama.completeJson(
+      systemPrompt,
+      'Analyze the following page text for behavioral manipulation:\n\n' + textToAnalyze,
+      ANALYSIS_SCHEMA
+    );
+  } catch (e) {
+    console.error('[Hoffman Analyzer] Model error:', e.message);
+    return {
+      manipulation_found: false,
+      summary:            'Analysis failed: ' + e.message,
+      flags:              [],
+      bmid_context_used:  bmidContextUsed,
+      processing_time_ms: Date.now() - startTime,
+      text_length:        textToAnalyze.length,
+      model_version:      'Llama-3.2-3B-Instruct-Q4_K_M',
+      error:              true
+    };
+  }
+
+  // --- Handle 3B model inconsistency (summary contradicts manipulation_found) --
+  var flags = Array.isArray(result.flags) ? result.flags : [];
+
+  if (!result.manipulation_found && flags.length === 0) {
+    if (summarySignalsManipulation(result.summary)) {
+      console.log('[Hoffman Analyzer] Summary-flag synthesis triggered');
+      flags = [synthesizeFlagFromSummary(result.summary)];
+      result.manipulation_found = true;
+    }
+  }
+
+  // --- Novel technique flagging -------------------------------------------
+  flags = applyNovelFlags(flags, bmidData);
+
+  var processingTime = Date.now() - startTime;
+
+  console.log('[Hoffman Analyzer] Done. manipulation_found=' + result.manipulation_found +
+    ', flags=' + flags.length +
+    ', novel=' + flags.filter(function (f) { return f.novel; }).length +
+    ', bmid_context=' + bmidContextUsed +
+    ', ms=' + processingTime);
+
+  return {
+    manipulation_found: result.manipulation_found || flags.length > 0,
+    summary:            result.summary || '',
+    flags:              flags,
+    bmid_context_used:  bmidContextUsed,
+    processing_time_ms: processingTime,
+    text_length:        textToAnalyze.length,
+    model_version:      'Llama-3.2-3B-Instruct-Q4_K_M'
+  };
 }
 
-module.exports = Analyzer;
+// ---------------------------------------------------------------------------
+
+module.exports = {
+  analyze:                    analyze,
+  truncateText:               truncateText,
+  summarySignalsManipulation: summarySignalsManipulation,
+  synthesizeFlagFromSummary:  synthesizeFlagFromSummary,
+  applyNovelFlags:            applyNovelFlags,
+  buildBmidContextString:     buildBmidContextString,
+  ANALYSIS_SCHEMA:            ANALYSIS_SCHEMA
+};
