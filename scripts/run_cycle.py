@@ -26,10 +26,14 @@ from pathlib import Path
 # ── Configuration ─────────────────────────────────────────
 
 SUPERVISOR_DOCS = {
-    'build':       'HOFFMAN_BUILD.md',
+    'browser':     'HOFFMAN_BUILD_BROWSER.md',
+    'bmid':        'HOFFMAN_BUILD_BMID.md',
+    'website':     'HOFFMAN_BUILD_WEBSITE.md',
     'intel':       'HOFFMAN_INTEL.md',
     'investigate': 'HOFFMAN_INVESTIGATE.md',
-    'advocate':    'HOFFMAN_ADVOCATE.md'
+    'advocate':    'HOFFMAN_ADVOCATE.md',
+    # legacy -- kept for reference, no longer scheduled
+    'build':       'HOFFMAN_BUILD.md',
 }
 
 # ── Tools ─────────────────────────────────────────────────
@@ -99,10 +103,13 @@ TOOL_APPEND_SEED = {
 }
 
 TOOLS_BY_TEAM = {
-    'build':       [TOOL_WRITE_FILE],
+    'browser':     [TOOL_WRITE_FILE],
+    'bmid':        [TOOL_WRITE_FILE, TOOL_APPEND_SEED],
+    'website':     [TOOL_WRITE_FILE],
     'intel':       [TOOL_WRITE_FILE, TOOL_APPEND_SEED],
     'investigate': [TOOL_WRITE_FILE],
     'advocate':    [TOOL_WRITE_FILE],
+    'build':       [TOOL_WRITE_FILE],
 }
 
 # ── Helpers ───────────────────────────────────────────────
@@ -244,6 +251,117 @@ def execute_tool(tool_name, tool_input, files_written):
 # ── Agent prompts ──────────────────────────────────────────
 
 AGENT_PROMPTS = {
+    'browser': """You are the Hoffman Browser Build Agent.
+
+Read the supervisor document above carefully.
+It contains your mission, current state, build queue, and build log.
+
+Your task for this cycle:
+1. Identify the top item in the BUILD QUEUE
+2. Build it -- write complete, working code
+3. Use the write_file tool to create EVERY file you build or modify.
+   Do not describe files in text -- call write_file for each one.
+4. Verify your code (trace through the logic, check for errors)
+5. Record what you built and what you tested
+
+CRITICAL: You must call write_file for every file you create or modify.
+IMPORTANT: Do NOT include file contents or code blocks in your text response.
+Your response text is appended to the supervisor document -- keep it concise prose only.
+
+Return your response in this format AFTER calling all write_file tools:
+
+## CYCLE RESULT -- BROWSER -- {date}
+
+### What I built
+[describe what was created or changed, no code]
+
+### Files written
+[list every file written via write_file]
+
+### Test results
+[what was tested, what passed, what failed]
+
+### Build queue update
+[which items are done, which are next]
+
+### Next cycle recommendation
+[what the next browser cycle should focus on]
+""",
+
+    'bmid': """You are the Hoffman BMID Build Agent.
+
+Read the supervisor document above carefully.
+It contains your mission, current state, build queue, and build log.
+
+Your task for this cycle:
+1. Identify the top item in the BUILD QUEUE
+2. Build it -- write complete, working code
+3. Use the write_file tool to create EVERY file you build or modify.
+   For database records, use the append_seed_records tool.
+4. Verify your code (trace through the logic, check for errors)
+5. Record what you built and what you tested
+
+Evidence standard: every database record must have primary source documentation.
+Do not add records without citations. Unknown is a valid answer.
+
+CRITICAL: You must call write_file for every file you create or modify.
+IMPORTANT: Do NOT include file contents or code blocks in your text response.
+
+Return your response in this format AFTER calling all write_file tools:
+
+## CYCLE RESULT -- BMID -- {date}
+
+### What I built
+[describe what was created or changed, no code]
+
+### Files written
+[list every file written via write_file]
+
+### Test results
+[what was tested, what passed, what failed]
+
+### Build queue update
+[which items are done, which are next]
+
+### Next cycle recommendation
+[what the next BMID cycle should focus on]
+""",
+
+    'website': """You are the Hoffman Website Build Agent.
+
+Read the supervisor document above carefully.
+It contains your mission, current state, and build queue.
+
+Your task for this cycle:
+1. Identify the top item in the BUILD QUEUE
+2. Build it -- write the page content
+3. Use the write_file tool to create every file
+4. Match the style and structure of existing pages
+5. Record what you built
+
+IMPORTANT: /remembrance entries require director approval before going live.
+Do not add contact functionality until email infrastructure is confirmed.
+
+CRITICAL: Use write_file for every file.
+IMPORTANT: Do NOT include file contents or code blocks in your text response.
+
+Return your response in this format AFTER calling all write_file tools:
+
+## CYCLE RESULT -- WEBSITE -- {date}
+
+### What I built
+[describe what was created or changed]
+
+### Files written
+[list every file written via write_file]
+
+### Requires director review
+[anything that needs approval before publishing]
+
+### Next cycle recommendation
+[what the next website cycle should focus on]
+""",
+
     'build': """You are the Hoffman Lenses Build Agent.
 
 Read the supervisor document above carefully.

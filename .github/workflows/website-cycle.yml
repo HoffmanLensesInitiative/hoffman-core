@@ -1,16 +1,16 @@
-# RETIRED -- replaced by browser-cycle.yml, bmid-cycle.yml, website-cycle.yml
-# Kept for historical reference only. Do not re-enable.
-name: Build Agent Cycle (RETIRED)
+name: Website Build Agent
 
 on:
-  workflow_dispatch:          # Manual only -- scheduled trigger removed
+  schedule:
+    - cron: '0 12 * * *'    # 12pm UTC daily (5am Pacific)
+  workflow_dispatch:
     inputs:
       reason:
         description: 'Why are you running this manually?'
         required: false
 
 jobs:
-  build-cycle:
+  website-cycle:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -29,15 +29,15 @@ jobs:
       - name: Install dependencies
         run: pip install anthropic
 
-      - name: Run build cycle
+      - name: Run website build cycle
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python scripts/run_cycle.py build
+        run: python scripts/run_cycle.py website
 
       - name: Commit results
         run: |
-          git config user.name "Hoffman Build Agent"
+          git config user.name "Hoffman Website Agent"
           git config user.email "build-agent@hoffmanlenses.org"
-          git add HOFFMAN_BUILD.md reports/
-          git diff --staged --quiet || git commit -m "build: auto cycle $(date -u +%Y-%m-%d)"
+          git add HOFFMAN_BUILD_WEBSITE.md reports/
+          git diff --staged --quiet || git commit -m "website: auto cycle $(date -u +%Y-%m-%d)"
           git push
