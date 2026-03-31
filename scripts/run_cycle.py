@@ -17,6 +17,7 @@ import os
 import re
 import sys
 import json
+import time
 import subprocess
 import anthropic
 from datetime import datetime, timezone
@@ -450,16 +451,25 @@ def run_cycle(team):
     turn = 0
     while turn < max_turns:
         turn += 1
-        try:
-            response = client.messages.create(
-                model='claude-sonnet-4-6',
-                max_tokens=8000,
-                tools=tools,
-                messages=messages
-            )
-        except Exception as e:
-            print(f'[{team.upper()}] Claude API error: {e}')
-            return False
+        response = None
+        for attempt in range(1, 4):  # up to 3 attempts per turn
+            try:
+                response = client.messages.create(
+                    model='claude-sonnet-4-6',
+                    max_tokens=8000,
+                    tools=tools,
+                    messages=messages
+                )
+                break
+            except Exception as e:
+                print(f'[{team.upper()}] Claude API error (attempt {attempt}/3): {e}')
+                if attempt < 3:
+                    wait = 15 * attempt
+                    print(f'[{team.upper()}] Retrying in {wait}s...')
+                    time.sleep(wait)
+                else:
+                    print(f'[{team.upper()}] All retries exhausted.')
+                    return False
 
         # Collect text and tool calls from this response
         tool_calls = []
