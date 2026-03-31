@@ -115,7 +115,7 @@ def strip_code_blocks(text):
     return cleaned.strip()
 
 
-def rotate_supervisor_doc(doc_path, keep_cycles=3):
+def rotate_supervisor_doc(doc_path, keep_cycles=1):
     """Keep only the N most recent auto-cycle entries in the supervisor doc.
     Older cycles are pruned to prevent context bloat."""
     with open(doc_path, encoding='utf-8') as f:
@@ -451,7 +451,7 @@ def run_cycle(team):
     result_text = ''
 
     def call_api(msgs):
-        """Call Claude with exponential backoff on rate limit errors."""
+        """Call Claude with exponential backoff on rate limit and connection errors."""
         for attempt in range(5):
             try:
                 return client.messages.create(
@@ -460,17 +460,19 @@ def run_cycle(team):
                     tools=tools,
                     messages=msgs
                 )
-            except anthropic.RateLimitError as e:
-                wait = 60 * (2 ** attempt)  # 60s, 120s, 240s, 480s, 960s
-                print(f'[{team.upper()}] Rate limited (attempt {attempt+1}/5). Waiting {wait}s...')
-                time.sleep(wait)
-            except anthropic.APIConnectionError as e:
-                wait = 30 * (attempt + 1)  # 30s, 60s, 90s, 120s, 150s
-                print(f'[{team.upper()}] Connection error (attempt {attempt+1}/5). Waiting {wait}s...')
-                time.sleep(wait)
             except Exception as e:
-                print(f'[{team.upper()}] Claude API error: {e}')
-                raise
+                err = str(e).lower()
+                if '429' in err or 'rate_limit' in err:
+                    wait = 60 * (2 ** attempt)  # 60s, 120s, 240s, 480s, 960s
+                    print(f'[{team.upper()}] Rate limited (attempt {attempt+1}/5). Waiting {wait}s...')
+                    time.sleep(wait)
+                elif 'connection' in err or 'timeout' in err:
+                    wait = 30 * (attempt + 1)  # 30s, 60s, 90s, 120s, 150s
+                    print(f'[{team.upper()}] Connection error (attempt {attempt+1}/5). Waiting {wait}s...')
+                    time.sleep(wait)
+                else:
+                    print(f'[{team.upper()}] Unrecoverable API error: {e}')
+                    return None
         print(f'[{team.upper()}] All retry attempts exhausted.')
         return None
 
