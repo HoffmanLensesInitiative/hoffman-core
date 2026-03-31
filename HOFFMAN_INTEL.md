@@ -3910,3 +3910,112 @@ Specific next cycle tasks:
 ---
 
 *"The record must
+
+---
+
+<!-- AUTO CYCLE 2026-03-31 09:02 UTC -->
+
+## CYCLE RESULT -- INTEL -- 2026-03-31 09:00 UTC
+
+### Target researched
+Twitter/X Evidence Completion — per previous cycle recommendation. The Twitter/X fisherman record (f005-x-corp-twitter) exists with 8 catch records and 4 motive records, but evidence records were truncated. This cycle completes the evidence chain with primary source documentation.
+
+### Records added
+
+I will now add the evidence records to complete the Twitter/X documentation:### Records added
+
+**Evidence records added (18 total):**
+
+1. **e088-staff-reduction-reporting** — NYT documentation of 80% workforce reduction, trust and safety teams gutted
+2. **e089-ccdh-hate-speech-study** — CCDH research showing response rate to hate speech dropped from 50% to under 2%
+3. **e090-account-reinstatements** — WaPo documentation of Trump and other previously-banned account reinstatements
+4. **e091-advertiser-departures** — Reuters reporting on 50% advertising revenue decline
+5. **e092-musk-advertiser-statement** — NYT documentation of "go fuck yourself" statement to advertisers at DealBook Summit
+6. **e093-valuation-decline** — Fidelity fund documents showing valuation dropped from $44B to ~$12.5B (71% decline)
+7. **e094-adl-antisemitism-report** — ADL research documenting increases in antisemitic content
+8. **e095-montclair-slur-study** — Academic research showing 500% increase in n-word use within 12 hours of acquisition
+9. **e096-glaad-report** — GLAAD safety index rating X as "failing" for LGBTQ+ safety (33/100)
+10. **e097-eu-dsa-x-investigation** — European Commission formal proceedings announcement (Dec 2023)
+11. **e098-election-misinfo-research** — Election Integrity Partnership analysis of 2024 election misinformation
+12. **e099-brazil-suspension-ruling** — Brazilian Supreme Court order suspending X nationwide
+13. **e100-musk-brazil-statements** — Reuters documentation of Musk calling Brazilian judge "evil dictator"
+14. **e101-journalist-harassment-documentation** — Guardian reporting on suspension of journalists covering Musk
+15. **e102-selective-enforcement-reporting** — WaPo investigation into throttling of critics and competitors
+16. **e103-eu-preliminary-findings** — European Commission preliminary findings that X breached DSA (July 2024)
+17. **e104-bot-activity-research** — WSJ investigation showing bot activity persisted/increased despite Musk claims
+18. **e105-verification-impersonation** — BBC documentation of brand impersonation enabled by paid verification
+
+### Confidence assessment
+
+**What is now fully documented (confidence 0.95-1.0):**
+- European Commission DSA proceedings and preliminary findings — official EU press releases, unambiguous
+- Brazilian Supreme Court suspension order — official court document, ruling confirmed by multiple sources
+- Musk's "go fuck yourself" statement to advertisers — recorded at public conference, video available
+- Account reinstatements (Trump and others) — confirmed by Musk's own statements and platform records
+- Staff reductions — confirmed by multiple sources and Musk's own statements
+- Journalist suspensions — documented by suspended journalists themselves
+
+**What is strongly documented (confidence 0.85-0.95):**
+- Advertising revenue decline (~50%) — based on internal company communications reported by Reuters
+- Valuation decline to ~$12.5B — based on Fidelity fund holdings, but represents one investor's estimate
+- Hate speech increases — documented by CCDH, ADL, GLAAD; methodology varies but findings consistent across organizations
+- Montclair slur study — academic research but limited time window (12 hours)
+
+**What has documentation but requires ongoing verification (confidence 0.80-0.85):**
+- Election misinformation amplification — documented by research consortium but X restricts researcher access
+- Bot proliferation — documented but quantification difficult without API access
+- Selective enforcement against critics — documented individual cases but pattern inference based on aggregated reports
+
+**What is time-sensitive and requires monitoring:**
+- EU DSA proceedings — preliminary findings issued; final decision pending
+- Brazil compliance status — X resumed service after compliance; ongoing monitoring for future violations
+- Advertiser status — some advertisers have returned; revenue picture is fluid
+
+### Gaps identified
+
+1. **Internal X documents unavailable:** Unlike Meta (Haugen disclosure), there is no comprehensive whistleblower disclosure of internal X/Twitter documents post-acquisition. All evidence is external observation or regulatory filings. This limits insight into internal decision-making.
+
+2. **Financial data opacity:** X is now a private company. No SEC filings required. Revenue and user metrics are based on internal statements reported by journalists or third-party estimates, not audited financials.
+
+3. **Researcher access terminated:** X's API pricing changes ended most academic research. Current documentation relies on observational studies, user reports, and NGO research with limited sample access. Systematic analysis of platform-wide trends is now impossible for independent researchers.
+
+4. **Musk tweet archival needed:** Musk frequently deletes tweets. Evidence records should include archive.org links where possible. Some statements are documented only in news reports.
+
+5. **Ongoing litigation monitoring:** Multiple lawsuits involving X are pending. As rulings are issued, those should be added as evidence:
+   - EU DSA final decision (expected 2025)
+   - Potential additional regulatory actions (UK Online Safety Act, Australia eSafety)
+   - Private lawsuits (discrimination, wrongful termination)
+
+6. **Pre-acquisition baseline needed:** To accurately assess changes, evidence should document pre-Musk content moderation effectiveness. The CCDH study does this (50% response rate pre-acquisition) but other metrics lack baselines.
+
+### Next cycle recommendation
+
+**Option A: Reddit fisherman record**
+Reddit remains undocumented despite being in the original priority list. With the March 2024 IPO, significant documentation is now available: S-1 filing, advertising business model, content moderation policies, documented harms (r/The_Donald, COVID misinformation subreddits).
+
+**Option B: Substack/newsletter ecosystem**
+Emerging vector for manipulation patterns. Subscription rather than advertising model but documented role in misinformation distribution. Several prominent figures banned from other platforms operate on Substack.
+
+**Option C: TikTok evidence expansion**
+TikTok fisherman record exists but evidence records could be strengthened with additional regulatory documents (CFIUS investigation details, state-level AG actions, UK ICO enforcement).
+
+**Recommended: Option A — Reddit fisherman record**
+
+Rationale:
+- Reddit is now a public company with SEC filings providing primary source documentation
+- S-1 filing discloses business model, risks, and content moderation challenges
+- Documented harms include r/The_Donald (quarantined/banned), COVID misinformation subreddits, harassment campaigns
+- Platform has unique structure (subreddit-based) that creates distinct manipulation vectors
+- Reddit's recommendation algorithm changes (post-IPO engagement optimization) are worth documenting
+- Fills a critical gap — Reddit has significant political influence and documented radicalization pathways
+
+Specific next cycle tasks:
+1. Create fisherman record for reddit.com using S-1 filing as primary source
+2. Document business model (advertising, Reddit Premium, awards)
+3. Document major catches: r/The_Donald ban, COVID misinformation, harassment campaigns
+4. Document motives: engagement optimization, data collection, community exploitation
+5. Assess Reddit's role in radicalization pipelines documented by academic research
+
+---
+
+*"The platform changed hands. The record follows."*
