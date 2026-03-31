@@ -114,6 +114,23 @@ def strip_code_blocks(text):
     return cleaned.strip()
 
 
+def rotate_supervisor_doc(doc_path, keep_cycles=3):
+    """Keep only the N most recent auto-cycle entries in the supervisor doc.
+    Older cycles are pruned to prevent context bloat."""
+    with open(doc_path, encoding='utf-8') as f:
+        content = f.read()
+    markers = [m.start() for m in re.finditer(r'\n---\n\n<!-- AUTO CYCLE', content)]
+    if len(markers) <= keep_cycles:
+        return  # nothing to prune
+    static_end = markers[0]
+    keep_from = markers[-keep_cycles]
+    result = content[:static_end] + content[keep_from:]
+    with open(doc_path, 'w', encoding='utf-8') as f:
+        f.write(result)
+    pruned = len(markers) - keep_cycles
+    print(f'  [rotate] pruned {pruned} old cycle(s) from {doc_path}')
+
+
 # ── Tool execution ─────────────────────────────────────────
 
 def tool_write_file(path, content, files_written):
@@ -391,6 +408,7 @@ def run_cycle(team):
         print('Make sure you are running from the hoffman-core directory')
         return False
 
+    rotate_supervisor_doc(doc_path)
     print(f'[{team.upper()}] Reading supervisor document: {doc_path}')
     supervisor_doc = open(doc_path, encoding='utf-8').read()
 
@@ -434,7 +452,7 @@ def run_cycle(team):
         turn += 1
         try:
             response = client.messages.create(
-                model='claude-opus-4-5',
+                model='claude-sonnet-4-6',
                 max_tokens=8000,
                 tools=tools,
                 messages=messages
@@ -548,7 +566,7 @@ def generate_daily_summary():
     client = anthropic.Anthropic(api_key=api_key)
 
     response = client.messages.create(
-        model='claude-opus-4-5',
+        model='claude-sonnet-4-6',
         max_tokens=2000,
         messages=[{
             'role': 'user',
