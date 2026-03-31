@@ -14,6 +14,7 @@ Usage:
 """
 
 import os
+import re
 import sys
 import json
 import subprocess
@@ -102,6 +103,16 @@ TOOLS_BY_TEAM = {
     'investigate': [TOOL_WRITE_FILE],
     'advocate':    [TOOL_WRITE_FILE],
 }
+
+# ── Helpers ───────────────────────────────────────────────
+
+def strip_code_blocks(text):
+    """Remove fenced code blocks from agent response before appending to supervisor doc.
+    Files are written to disk via write_file tool -- no need to also embed them in the doc."""
+    cleaned = re.sub(r'```[^\n]*\n.*?```', '', text, flags=re.DOTALL)
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    return cleaned.strip()
+
 
 # ── Tool execution ─────────────────────────────────────────
 
@@ -231,6 +242,10 @@ Your task for this cycle:
 CRITICAL: You must call write_file for every file you create or modify.
 Writing code in your text response without calling write_file accomplishes nothing.
 The file does not exist until write_file is called.
+
+IMPORTANT: Do NOT include file contents or code blocks in your text response.
+Your response text is appended to the supervisor document -- it must stay concise.
+Describe what you built and tested in prose. All code goes through write_file only.
 
 Return your response in this format AFTER calling all write_file tools:
 
@@ -456,13 +471,14 @@ def run_cycle(team):
 
     print(f'[{team.upper()}] Got response ({len(result_text)} chars), files written: {len(files_written)}')
 
-    # Append result to supervisor document
+    # Append result to supervisor document -- strip code blocks to prevent bloat.
+    # Files are written to disk via write_file; no need to embed them here too.
     timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
     separator = f'\n\n---\n\n<!-- AUTO CYCLE {timestamp} -->\n\n'
     with open(doc_path, 'a', encoding='utf-8') as f:
-        f.write(separator + result_text)
+        f.write(separator + strip_code_blocks(result_text))
 
-    # Save report
+    # Save report (full response, including code, preserved here for reference)
     report_dir = 'reports'
     os.makedirs(report_dir, exist_ok=True)
     date_slug = datetime.now(timezone.utc).strftime('%Y-%m-%d')
