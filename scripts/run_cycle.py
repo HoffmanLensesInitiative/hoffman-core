@@ -442,34 +442,46 @@ def run_cycle(team):
 
     client = anthropic.Anthropic(api_key=api_key)
     tools = TOOLS_BY_TEAM.get(team, [])
-    messages = [{'role': 'user', 'content': message_content}]
+    # Keep only the initial context message + the most recent exchange to limit
+    # conversation growth. Tool results are appended per turn but older turns
+    # are dropped -- the agent only needs the original brief and the latest state.
+    initial_message = {'role': 'user', 'content': message_content}
+    messages = [initial_message]
     files_written = []
     result_text = ''
+
+    def call_api(msgs):
+        """Call Claude with exponential backoff on rate limit errors."""
+        for attempt in range(5):
+            try:
+                return client.messages.create(
+                    model='claude-sonnet-4-6',
+                    max_tokens=8000,
+                    tools=tools,
+                    messages=msgs
+                )
+            except anthropic.RateLimitError as e:
+                wait = 60 * (2 ** attempt)  # 60s, 120s, 240s, 480s, 960s
+                print(f'[{team.upper()}] Rate limited (attempt {attempt+1}/5). Waiting {wait}s...')
+                time.sleep(wait)
+            except anthropic.APIConnectionError as e:
+                wait = 30 * (attempt + 1)  # 30s, 60s, 90s, 120s, 150s
+                print(f'[{team.upper()}] Connection error (attempt {attempt+1}/5). Waiting {wait}s...')
+                time.sleep(wait)
+            except Exception as e:
+                print(f'[{team.upper()}] Claude API error: {e}')
+                raise
+        print(f'[{team.upper()}] All retry attempts exhausted.')
+        return None
 
     # Agentic loop -- keep going until no more tool calls
     max_turns = 20
     turn = 0
     while turn < max_turns:
         turn += 1
-        response = None
-        for attempt in range(1, 4):  # up to 3 attempts per turn
-            try:
-                response = client.messages.create(
-                    model='claude-sonnet-4-6',
-                    max_tokens=8000,
-                    tools=tools,
-                    messages=messages
-                )
-                break
-            except Exception as e:
-                print(f'[{team.upper()}] Claude API error (attempt {attempt}/3): {e}')
-                if attempt < 3:
-                    wait = 15 * attempt
-                    print(f'[{team.upper()}] Retrying in {wait}s...')
-                    time.sleep(wait)
-                else:
-                    print(f'[{team.upper()}] All retries exhausted.')
-                    return False
+        response = call_api(messages)
+        if response is None:
+            return False
 
         # Collect text and tool calls from this response
         tool_calls = []
@@ -484,8 +496,8 @@ def run_cycle(team):
         if response.stop_reason == 'end_turn' or not tool_calls:
             break
 
-        # Execute tool calls and feed results back
-        messages.append({'role': 'assistant', 'content': response.content})
+        # Execute tool calls, then reset messages to initial context + this exchange only.
+        # This prevents the conversation from growing unboundedly across turns.
         tool_results = []
         for tc in tool_calls:
             print(f'  [tool] calling {tc.name}')
@@ -495,7 +507,11 @@ def run_cycle(team):
                 'tool_use_id': tc.id,
                 'content': result
             })
-        messages.append({'role': 'user', 'content': tool_results})
+        messages = [
+            initial_message,
+            {'role': 'assistant', 'content': response.content},
+            {'role': 'user', 'content': tool_results},
+        ]
 
     print(f'[{team.upper()}] Got response ({len(result_text)} chars), files written: {len(files_written)}')
 
