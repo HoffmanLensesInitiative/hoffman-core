@@ -40,4 +40,5 @@ jobs:
           git config user.email "build-agent@hoffmanlenses.org"
           git add HOFFMAN_BUILD_WEBSITE.md reports/
           git diff --staged --quiet || git commit -m "website: auto cycle $(date -u +%Y-%m-%d)"
+          git pull --rebase origin main
           git push

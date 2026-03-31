@@ -40,4 +40,5 @@ jobs:
           git config user.email "investigate-agent@hoffmanlenses.org"
           git add HOFFMAN_INVESTIGATE.md reports/
           git diff --staged --quiet || git commit -m "investigate: auto cycle $(date -u +%Y-%m-%d)"
+          git pull --rebase origin main
           git push

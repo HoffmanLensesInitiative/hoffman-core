@@ -40,4 +40,5 @@ jobs:
           git config user.email "build-agent@hoffmanlenses.org"
           git add HOFFMAN_BUILD_BROWSER.md reports/ hoffman-browser/
           git diff --staged --quiet || git commit -m "browser: auto cycle $(date -u +%Y-%m-%d)"
+          git pull --rebase origin main
           git push
