@@ -1,0 +1,260 @@
+/* ================================================================
+   remembrance.css — /remembrance page styles
+   Hoffman Lenses Initiative
+   ================================================================ */
+
+/* ----------------------------------------------------------------
+   Page-level background / body tone
+   ---------------------------------------------------------------- */
+.page-remembrance {
+  background-color: var(--color-bg-alt, #0f0f0f);
+}
+
+
+/* ================================================================
+   PAGE HEADER
+   ================================================================ */
+.remembrance-header {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: var(--space-xl, 4rem) var(--space-md, 1.5rem) var(--space-lg, 3rem);
+  text-align: center;
+}
+
+.remembrance-header h1 {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary, #f0ebe2);
+  margin: 0 0 var(--space-md, 1.5rem);
+}
+
+.remembrance-lede {
+  font-size: clamp(1rem, 2vw, 1.125rem);
+  line-height: 1.75;
+  color: var(--color-text-secondary, #a89f94);
+  margin: 0 0 1.25rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.remembrance-lede:last-child {
+  margin-bottom: 0;
+}
+
+
+/* ================================================================
+   REMEMBRANCE LIST
+   ================================================================ */
+.remembrance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 var(--space-md, 1.5rem);
+}
+
+
+/* ================================================================
+   INDIVIDUAL ENTRY CARD
+   ================================================================ */
+.remembrance-entry {
+  position: relative;
+  border-top: 1px solid var(--color-border, #2e2a26);
+  padding: var(--space-lg, 3rem) 0;
+}
+
+.remembrance-entry:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Left accent bar */
+.remembrance-entry::before {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: var(--space-lg, 3rem);
+  width: 3px;
+  height: calc(100% - var(--space-lg, 3rem) * 2);
+  background: var(--color-accent, #c47c2b);
+  border-radius: 2px;
+  opacity: 0.6;
+}
+
+.remembrance-entry:first-child::before {
+  top: 0;
+  height: calc(100% - var(--space-lg, 3rem));
+}
+
+
+/* Name */
+.entry-name {
+  font-size: clamp(1.5rem, 3.5vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--color-text-primary, #f0ebe2);
+  margin: 0 0 0.75rem;
+}
+
+/* Meta line */
+.entry-meta {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent, #c47c2b);
+  margin: 0 0 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  align-items: center;
+}
+
+.entry-separator {
+  color: var(--color-border, #2e2a26);
+}
+
+.entry-pending {
+  font-style: italic;
+  color: var(--color-text-tertiary, #665e57);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+/* Biography */
+.entry-bio {
+  font-size: clamp(0.975rem, 2vw, 1.0625rem);
+  line-height: 1.8;
+  color: var(--color-text-secondary, #a89f94);
+  margin: 0;
+  max-width: 62ch;
+}
+
+/* Empty bio — hide silently */
+.entry-bio:empty {
+  display: none;
+}
+
+
+/* ================================================================
+   CONTEXT SECTIONS
+   ================================================================ */
+.remembrance-context {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: var(--space-xl, 4rem) var(--space-md, 1.5rem);
+  border-top: 1px solid var(--color-border, #2e2a26);
+}
+
+.remembrance-context h2 {
+  font-size: clamp(1.125rem, 2.5vw, 1.375rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary, #f0ebe2);
+  margin: 0 0 1.25rem;
+}
+
+.remembrance-context p {
+  font-size: clamp(0.975rem, 2vw, 1.0625rem);
+  line-height: 1.8;
+  color: var(--color-text-secondary, #a89f94);
+  margin: 0 0 1.25rem;
+  max-width: 62ch;
+}
+
+.remembrance-context p:last-child {
+  margin-bottom: 0;
+}
+
+.inline-link {
+  color: var(--color-accent, #c47c2b);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: color 0.15s ease;
+}
+
+.inline-link:hover,
+.inline-link:focus {
+  color: var(--color-accent-light, #e0953a);
+  text-decoration: none;
+  outline: none;
+}
+
+.inline-link:focus-visible {
+  outline: 2px solid var(--color-accent, #c47c2b);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+
+/* ================================================================
+   CLOSING FOOTER NOTE
+   ================================================================ */
+.remembrance-footer-note {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: var(--space-xl, 4rem) var(--space-md, 1.5rem) var(--space-xl, 4rem);
+  border-top: 1px solid var(--color-border, #2e2a26);
+}
+
+.remembrance-footer-note p {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--color-text-tertiary, #665e57);
+  margin: 0 0 1rem;
+  font-style: italic;
+}
+
+.remembrance-footer-note p:first-child {
+  font-size: 1.125rem;
+  color: var(--color-text-secondary, #a89f94);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.remembrance-footer-note p:last-child {
+  margin-bottom: 0;
+}
+
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (max-width: 600px) {
+
+  .remembrance-header {
+    padding-top: var(--space-lg, 3rem);
+  }
+
+  .remembrance-list {
+    padding-left: var(--space-sm, 1rem);
+    padding-right: var(--space-sm, 1rem);
+  }
+
+  .remembrance-entry::before {
+    left: -1rem;
+    width: 2px;
+  }
+
+  .remembrance-context,
+  .remembrance-footer-note {
+    padding-left: var(--space-sm, 1rem);
+    padding-right: var(--space-sm, 1rem);
+  }
+}
+
+
+/* ================================================================
+   REDUCED MOTION
+   ================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .inline-link {
+    transition: none;
+  }
+}
