@@ -1,171 +1,162 @@
 /**
- * hoffman-browser/src/bmid-client.js
- * Hoffman Browser -- BMID API client
+ * bmid-client.js
+ * Hoffman Browser -- HTTP client for the BMID API
  *
- * Queries the BMID API for domain intelligence before page analysis runs.
- * All queries are non-blocking with a hard timeout so BMID unavailability
- * never delays or breaks the analysis pipeline.
+ * All requests are fire-and-forget from the browser's perspective:
+ * if BMID is not running, or times out, or returns an error, the caller
+ * receives null and continues without BMID context.
  *
- * ASCII-clean: no unicode above codepoint 127.
+ * Base URL defaults to http://localhost:5000 but can be overridden via
+ * the BMID_BASE_URL environment variable for testing.
+ *
+ * Timeout: 2 seconds for context queries (used in the analysis path).
+ * Longer timeout (10s) is available for non-blocking UI queries.
+ *
+ * ASCII-only source -- no unicode above codepoint 127.
  */
 
 'use strict';
 
 var http = require('http');
+var https = require('https');
 var url  = require('url');
 
-var DEFAULT_BASE_URL = 'http://localhost:5000';
-var DEFAULT_TIMEOUT_MS = 2000;
-
-// ---------------------------------------------------------------------------
-// Internal HTTP GET helper
-// ---------------------------------------------------------------------------
+var DEFAULT_BASE_URL    = 'http://localhost:5000';
+var CONTEXT_TIMEOUT_MS  = 2000;  // must not slow down analysis
+var UI_TIMEOUT_MS       = 10000; // for panel "why is this here?" calls
 
 /**
- * Perform a GET request and resolve with parsed JSON.
- * Rejects on timeout, network error, non-200 status, or parse failure.
- *
- * @param {string} requestUrl
- * @param {number} timeoutMs
- * @returns {Promise<object>}
+ * Return the configured base URL.
+ * @returns {string}
  */
-function getJson(requestUrl, timeoutMs) {
-  return new Promise(function(resolve, reject) {
-    var parsed = url.parse(requestUrl);
+function baseUrl() {
+  return (process.env.BMID_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, '');
+}
+
+/**
+ * Generic HTTP GET with timeout.
+ * Resolves with parsed JSON body, or null on any error/timeout.
+ *
+ * @param {string} path        - URL path including query string
+ * @param {number} timeoutMs
+ * @returns {Promise<object|null>}
+ */
+function get(path, timeoutMs) {
+  return new Promise(function(resolve) {
+    var fullUrl = baseUrl() + path;
+    var parsed;
+
+    try {
+      parsed = url.parse(fullUrl);
+    } catch (e) {
+      console.error('[Hoffman] bmid-client: bad URL', fullUrl, e.message);
+      return resolve(null);
+    }
+
+    var lib = (parsed.protocol === 'https:') ? https : http;
+
     var options = {
-      hostname: parsed.hostname,
-      port:     parsed.port ? parseInt(parsed.port, 10) : 80,
-      path:     parsed.path || '/',
-      method:   'GET',
-      headers:  { 'Accept': 'application/json' }
+      hostname:  parsed.hostname,
+      port:      parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+      path:      parsed.path,
+      method:    'GET',
+      headers:   { 'Accept': 'application/json' }
     };
 
-    var timedOut = false;
+    var finished = false;
 
-    var req = http.request(options, function(res) {
-      var body = '';
-      res.setEncoding('utf8');
-      res.on('data', function(chunk) { body += chunk; });
+    function done(val) {
+      if (finished) return;
+      finished = true;
+      resolve(val);
+    }
+
+    var req = lib.request(options, function(res) {
+      var chunks = [];
+      res.on('data', function(chunk) { chunks.push(chunk); });
       res.on('end', function() {
-        if (timedOut) return;
-        if (res.statusCode !== 200) {
-          reject(new Error('BMID HTTP ' + res.statusCode));
-          return;
-        }
         try {
-          resolve(JSON.parse(body));
+          var body = Buffer.concat(chunks).toString('utf8');
+          var parsed = JSON.parse(body);
+          done(parsed);
         } catch (e) {
-          reject(new Error('BMID JSON parse error: ' + e.message));
+          console.error('[Hoffman] bmid-client: JSON parse error', e.message);
+          done(null);
         }
+      });
+      res.on('error', function(e) {
+        console.error('[Hoffman] bmid-client: response error', e.message);
+        done(null);
       });
     });
 
-    var timer = setTimeout(function() {
-      timedOut = true;
-      req.abort();
-      reject(new Error('BMID timeout after ' + timeoutMs + 'ms'));
-    }, timeoutMs);
-
-    req.on('error', function(err) {
-      if (timedOut) return;
-      clearTimeout(timer);
-      reject(err);
+    req.on('error', function(e) {
+      // ECONNREFUSED is normal when BMID is not running -- do not log as error
+      if (e.code !== 'ECONNREFUSED') {
+        console.error('[Hoffman] bmid-client: request error', e.message);
+      }
+      done(null);
     });
 
-    req.on('response', function() {
-      clearTimeout(timer);
+    req.setTimeout(timeoutMs, function() {
+      console.warn('[Hoffman] bmid-client: timeout after', timeoutMs, 'ms for', path);
+      req.destroy();
+      done(null);
     });
 
     req.end();
   });
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 /**
- * Query BMID for domain intelligence.
- * Returns a structured result object in all cases -- never throws.
+ * Query /api/v1/explain for a domain.
+ * Used in the analysis path -- 2-second timeout.
  *
- * Result shape on success:
- * {
- *   available: true,
- *   intelligence_level: 'full'|'partial'|'minimal'|'none',
- *   fisherman: { name, owner, business_model, ... } | null,
- *   motives: [...],
- *   catch_summary: { total_documented, ... },
- *   top_patterns: [...]
- * }
+ * Returns the parsed response object, or null.
+ * When domain has no record, the API returns { intelligence_level: 'none' }.
+ * buildBmidContextString() handles that gracefully.
  *
- * Result shape when BMID is unavailable or domain unknown:
- * { available: false, reason: string }
- *
- * @param {string} domain      Hostname, e.g. 'foxnews.com'
- * @param {string} [baseUrl]   Override API base URL (default localhost:5000)
- * @param {number} [timeoutMs] Override timeout (default 2000ms)
- * @returns {Promise<object>}  Always resolves, never rejects
+ * @param {string} domain  - hostname, e.g. 'foxnews.com'
+ * @returns {Promise<object|null>}
  */
-function queryDomain(domain, baseUrl, timeoutMs) {
-  baseUrl    = baseUrl    || DEFAULT_BASE_URL;
-  timeoutMs  = timeoutMs  || DEFAULT_TIMEOUT_MS;
-
-  if (!domain) {
-    return Promise.resolve({ available: false, reason: 'no domain provided' });
-  }
-
-  // Normalise: strip www. prefix for lookup, lowercase
-  var lookupDomain = domain.toLowerCase().replace(/^www\./, '');
-  var endpoint = baseUrl + '/api/v1/explain?domain=' + encodeURIComponent(lookupDomain);
-
-  return getJson(endpoint, timeoutMs).then(function(data) {
-    // Attach flag indicating BMID responded
-    data.available = true;
-    return data;
-  }).catch(function(err) {
-    console.log('[Hoffman] BMID query failed for ' + domain + ': ' + err.message);
-    return { available: false, reason: err.message };
-  });
+function queryExplain(domain) {
+  if (!domain) return Promise.resolve(null);
+  // Sanitise domain -- strip protocol and paths, keep hostname only
+  var clean = domain.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase().trim();
+  if (!clean) return Promise.resolve(null);
+  var path = '/api/v1/explain?domain=' + encodeURIComponent(clean);
+  return get(path, CONTEXT_TIMEOUT_MS);
 }
 
 /**
- * Query the BMID /explain endpoint and return top_patterns list.
- * Returns empty array if BMID unavailable or domain unknown.
+ * Query /api/v1/explain for the panel "Why is this here?" display.
+ * Uses the longer UI timeout so a slower BMID response is acceptable.
  *
  * @param {string} domain
- * @param {string} [baseUrl]
- * @param {number} [timeoutMs]
- * @returns {Promise<string[]>}
+ * @returns {Promise<object|null>}
  */
-function getTopPatterns(domain, baseUrl, timeoutMs) {
-  return queryDomain(domain, baseUrl, timeoutMs).then(function(data) {
-    if (!data.available) return [];
-    return (data.top_patterns && Array.isArray(data.top_patterns))
-      ? data.top_patterns
-      : [];
-  });
+function queryExplainForPanel(domain) {
+  if (!domain) return Promise.resolve(null);
+  var clean = domain.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase().trim();
+  if (!clean) return Promise.resolve(null);
+  var path = '/api/v1/explain?domain=' + encodeURIComponent(clean);
+  return get(path, UI_TIMEOUT_MS);
 }
 
 /**
- * Check whether BMID is running and healthy.
- * Resolves true if healthy, false otherwise.
+ * Health check -- resolves true if BMID is reachable, false otherwise.
+ * Used at startup to log BMID status without blocking.
  *
- * @param {string} [baseUrl]
- * @param {number} [timeoutMs]
  * @returns {Promise<boolean>}
  */
-function healthCheck(baseUrl, timeoutMs) {
-  baseUrl   = baseUrl   || DEFAULT_BASE_URL;
-  timeoutMs = timeoutMs || DEFAULT_TIMEOUT_MS;
-  return getJson(baseUrl + '/api/v1/health', timeoutMs)
-    .then(function(data) { return data.status === 'ok'; })
-    .catch(function()    { return false; });
+function healthCheck() {
+  return get('/api/v1/health', CONTEXT_TIMEOUT_MS).then(function(res) {
+    return !!(res && res.status === 'ok');
+  });
 }
 
-// ---------------------------------------------------------------------------
-
 module.exports = {
-  queryDomain:    queryDomain,
-  getTopPatterns: getTopPatterns,
-  healthCheck:    healthCheck
+  queryExplain:        queryExplain,
+  queryExplainForPanel: queryExplainForPanel,
+  healthCheck:         healthCheck
 };

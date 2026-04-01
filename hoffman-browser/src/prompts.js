@@ -1,182 +1,141 @@
 /**
- * hoffman-browser/src/prompts.js
- * System prompt builder for the Hoffman Browser analysis pipeline.
+ * prompts.js
+ * Hoffman Browser -- LLM system prompt construction
  *
- * The model is the sole detector. No pre-screening. No hl-detect.
- * BMID context enriches the prompt but does not direct findings.
- * The model reads independently and reports what it finds.
+ * Builds the system prompt for each analysis call.
+ * Optional BMID context is injected when available, prepended before
+ * the core detection instructions.
  *
- * ASCII-clean: no unicode above codepoint 127.
+ * The BMID intelligence informs context -- it does NOT instruct the model
+ * to find manipulation. The model must find it independently.
  */
 
 'use strict';
 
-// ---------------------------------------------------------------------------
-// Core system prompt (no BMID context)
-// ---------------------------------------------------------------------------
-
-var BASE_SYSTEM_PROMPT = [
-  'You are a behavioral manipulation analyst embedded in the Hoffman Browser.',
-  'Your role is to read web page text and identify language patterns designed to',
-  'manipulate reader psychology rather than inform.',
+/**
+ * Core detection instruction.
+ * This is always present, with or without BMID context.
+ */
+var CORE_INSTRUCTION = [
+  'You are a behavioral manipulation analyst. Your task is to read the following',
+  'web page text and identify any language techniques designed to manipulate the',
+  'reader\'s emotions, beliefs, or behavior rather than inform them.',
   '',
-  'Manipulation techniques you should recognize:',
-  '  outrage_engineering    -- language calibrated to provoke rage or moral disgust',
-  '  false_urgency          -- artificial time pressure to bypass rational deliberation',
-  '  fear_amplification     -- exaggerated or decontextualized threat framing',
-  '  tribal_activation      -- us-vs-them framing to activate group loyalty over reason',
-  '  suppression_framing    -- framing that delegitimizes questions or counter-evidence',
-  '  false_authority        -- credibility claims that cannot be verified or are fabricated',
-  '  incomplete_hook        -- information withheld to compel continued engagement',
-  '  engagement_directive   -- explicit calls to react, share, or amplify emotionally',
-  '  war_framing            -- conflict metaphors applied to domestic policy or discourse',
-  '  scarcity_exploitation  -- manufactured scarcity to force immediate action',
-  '  identity_threat        -- content framed as threatening who the reader IS',
-  '  radicalization_pathway -- incremental escalation toward extreme positions',
+  'Known manipulation techniques include but are not limited to:',
+  '  suppression_framing   -- framing that hides key context to control the conclusion',
+  '  false_urgency         -- artificial time pressure or manufactured urgency',
+  '  incomplete_hook       -- withheld information to compel engagement or clicks',
+  '  outrage_engineering   -- language calibrated to provoke anger or moral outrage',
+  '  war_framing           -- conflict framing applied to non-conflict topics',
+  '  fear_amplification    -- exaggerating threat to produce anxiety or compliance',
+  '  tribal_activation     -- us-vs-them framing to activate group identity',
+  '  false_authority       -- unverified or misleading authority claims',
+  '  engagement_directive  -- explicit commands to share, react, or comment',
+  '  manufactured_consensus -- false claims about what "everyone" thinks or does',
+  '  identity_threat       -- framing that positions the reader\'s identity as under attack',
+  '  moral_licensing       -- framing that makes harmful actions seem virtuous',
   '',
-  'IMPORTANT CALIBRATION RULES:',
-  '  - Factual news reporting with named sources is NOT manipulation',
-  '  - Personal posts about daily life are NOT manipulation',
-  '  - Academic or scientific writing is NOT manipulation',
-  '  - Emotional language in genuinely emotional contexts (grief, celebration) is NOT manipulation',
-  '  - Urgent language when urgency is genuine (emergency alerts, breaking news with facts) is NOT manipulation',
-  '  - Political positions you disagree with are NOT automatically manipulation',
-  '  - Authority claims with proper citations are NOT false authority',
+  'Be precise. Quote the specific text that demonstrates the technique.',
+  'Do not flag straightforward factual reporting, academic writing, or',
+  'personal posts about daily life.',
+  'Do not flag emotional language in appropriate contexts (grief, celebration).',
+  'Do not flag urgent language when urgency is genuine (emergency alerts).',
+  'Do not flag political positions solely because of their political content.',
+  'Do not flag authority claims when authority is properly cited.',
   '',
-  'Your response must be valid JSON matching this exact schema:',
-  '{',
-  '  "manipulation_found": boolean,',
-  '  "summary": "one sentence describing overall finding",',
-  '  "flags": [',
-  '    {',
-  '      "quote": "exact phrase from the text",',
-  '      "technique": "technique_name",',
-  '      "explanation": "why this phrase uses this technique",',
-  '      "severity": "LOW|MEDIUM|HIGH"',
-  '    }',
-  '  ]',
-  '}',
-  '',
-  'If no manipulation is found, return manipulation_found:false, empty flags array.',
-  'If manipulation is found, list each instance with an exact quote.'
+  'If you find manipulation, set manipulation_found to true and list each finding.',
+  'If the text is clean, set manipulation_found to false and leave flags empty.',
+  'Always write a brief summary of your overall finding in the summary field.'
 ].join('\n');
 
-// ---------------------------------------------------------------------------
-// BMID context block builder
-// ---------------------------------------------------------------------------
-
 /**
- * Build a context string from a BMID /explain response.
- * Appended to BASE_SYSTEM_PROMPT when BMID has a record for the domain.
+ * Build the BMID intelligence context block.
+ * Returns an empty string if the explainResponse is null or intelligence_level is none.
  *
- * @param {object} bmidData   Parsed response from GET /api/v1/explain
- * @returns {string}          Formatted context block, or empty string
- */
-function buildBmidContextBlock(bmidData) {
-  if (!bmidData) return '';
-
-  var level = bmidData.intelligence_level || 'none';
-  if (level === 'none') return '';
-
-  var lines = [
-    '',
-    '--- KNOWN INTELLIGENCE ON THIS DOMAIN ---',
-    'The following is documented intelligence from the Hoffman BMID database.',
-    'Use this as context. Do not let it substitute for reading the actual page.',
-    'Your findings must be grounded in the text you are given, not in this briefing.'
-  ];
-
-  var fisherman = bmidData.fisherman;
-  if (fisherman) {
-    if (fisherman.name) {
-      lines.push('Operator: ' + fisherman.name);
-    }
-    if (fisherman.owner) {
-      lines.push('Owner: ' + fisherman.owner);
-    }
-    if (fisherman.business_model) {
-      lines.push('Business model: ' + fisherman.business_model);
-    }
-  }
-
-  var motives = bmidData.motives;
-  if (motives && motives.length > 0) {
-    var primaryMotive = motives[0];
-    if (primaryMotive.description) {
-      lines.push('Primary documented motive: ' + primaryMotive.description);
-    }
-  }
-
-  var catchSummary = bmidData.catch_summary;
-  if (catchSummary && typeof catchSummary.total_documented === 'number') {
-    var n = catchSummary.total_documented;
-    if (n > 0) {
-      lines.push('Documented harm cases on record: ' + n);
-    }
-  }
-
-  var topPatterns = bmidData.top_patterns;
-  if (topPatterns && topPatterns.length > 0) {
-    lines.push('Techniques previously documented for this operator: ' + topPatterns.join(', '));
-  }
-
-  lines.push('--- END INTELLIGENCE BRIEFING ---');
-  lines.push('');
-
-  return lines.join('\n');
-}
-
-// ---------------------------------------------------------------------------
-// Top-level prompt builder
-// ---------------------------------------------------------------------------
-
-/**
- * Build the full system prompt for a page analysis call.
- *
- * @param {object|null} bmidData  BMID /explain response, or null if unavailable
- * @returns {string}              Complete system prompt string
- */
-function buildSystemPrompt(bmidData) {
-  var contextBlock = buildBmidContextBlock(bmidData);
-  if (!contextBlock) {
-    return BASE_SYSTEM_PROMPT;
-  }
-  // Inject context after the technique list and before the calibration rules.
-  // We find the first calibration rule line and insert before it.
-  var splitPoint = BASE_SYSTEM_PROMPT.indexOf('IMPORTANT CALIBRATION RULES:');
-  if (splitPoint === -1) {
-    // Fallback: append at end
-    return BASE_SYSTEM_PROMPT + contextBlock;
-  }
-  var before = BASE_SYSTEM_PROMPT.slice(0, splitPoint);
-  var after  = BASE_SYSTEM_PROMPT.slice(splitPoint);
-  return before + contextBlock + after;
-}
-
-/**
- * Build the user-turn content for a page analysis call.
- *
- * @param {string} pageText     Extracted page text (DOM + OCR merged)
- * @param {string} [pageTitle]  Optional page title for context
+ * @param {object|null} explainResponse  - from bmid-client.explain()
  * @returns {string}
  */
-function buildUserPrompt(pageText, pageTitle) {
-  var lines = [];
-  if (pageTitle) {
-    lines.push('Page title: ' + pageTitle);
-    lines.push('');
+function buildBmidContext(explainResponse) {
+  if (!explainResponse) return '';
+
+  var level = explainResponse.intelligence_level;
+  if (!level || level === 'none') return '';
+
+  var fisherman = explainResponse.fisherman || {};
+  var motives = explainResponse.motives || [];
+  var catchSummary = explainResponse.catch_summary || {};
+  var topPatterns = explainResponse.top_patterns || [];
+
+  var lines = [
+    'KNOWN INTELLIGENCE ON THIS DOMAIN:',
+    'Owner: ' + (fisherman.owner || 'Unknown'),
+    'Business model: ' + (fisherman.business_model || 'Unknown')
+  ];
+
+  if (motives.length > 0) {
+    var primaryMotive = motives[0];
+    lines.push('Primary documented motive: ' + (primaryMotive.description || primaryMotive.motive_type || 'Unknown'));
   }
-  lines.push('Analyze the following page text for behavioral manipulation:');
-  lines.push('');
-  lines.push(pageText);
+
+  var harmCount = catchSummary.total_documented;
+  if (typeof harmCount === 'number' && harmCount > 0) {
+    lines.push('Documented harm cases on record: ' + harmCount);
+  } else if (typeof harmCount === 'string') {
+    lines.push('Documented harm cases on record: ' + harmCount);
+  }
+
+  if (Array.isArray(topPatterns) && topPatterns.length > 0) {
+    lines.push('Documented techniques for this domain: ' + topPatterns.join(', '));
+  } else if (motives.length > 1) {
+    // Fall back: list motive types as documented techniques
+    var techniqueList = motives.slice(0, 4).map(function(m) {
+      return m.motive_type || '';
+    }).filter(function(t) { return t.length > 0; });
+    if (techniqueList.length > 0) {
+      lines.push('Documented motive types for this domain: ' + techniqueList.join(', '));
+    }
+  }
+
+  lines.push(
+    '',
+    'Use this intelligence as background context only. Analyze the page text',
+    'independently. The intelligence does not determine your findings --',
+    'the text does.'
+  );
+
   return lines.join('\n');
 }
 
-// ---------------------------------------------------------------------------
+/**
+ * Build the complete system prompt for an analysis call.
+ *
+ * @param {object|null} explainResponse  - BMID context, or null if unavailable
+ * @returns {string}
+ */
+function buildSystemPrompt(explainResponse) {
+  var bmidBlock = buildBmidContext(explainResponse);
+
+  if (bmidBlock.length > 0) {
+    return bmidBlock + '\n\n' + CORE_INSTRUCTION;
+  }
+
+  return CORE_INSTRUCTION;
+}
+
+/**
+ * Build the user message content for an analysis call.
+ * Wraps the page text with a clear instruction.
+ *
+ * @param {string} pageText
+ * @returns {string}
+ */
+function buildUserMessage(pageText) {
+  return 'Analyze the following web page text for behavioral manipulation:\n\n' + pageText;
+}
 
 module.exports = {
-  BASE_SYSTEM_PROMPT:    BASE_SYSTEM_PROMPT,
-  buildBmidContextBlock: buildBmidContextBlock,
-  buildSystemPrompt:     buildSystemPrompt,
-  buildUserPrompt:       buildUserPrompt
+  buildSystemPrompt: buildSystemPrompt,
+  buildUserMessage: buildUserMessage,
+  buildBmidContext: buildBmidContext,
+  CORE_INSTRUCTION: CORE_INSTRUCTION
 };
