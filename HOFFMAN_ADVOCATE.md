@@ -177,76 +177,82 @@ Email infrastructure not yet active.
 
 ---
 
-<!-- AUTO CYCLE 2026-03-30 12:52 UTC -->
-
-## CYCLE RESULT -- ADVOCATE -- 2026-03-30 12:50 UTC
-
-### Queue item addressed
-**Item 1: Set up Proton Mail custom domain email addresses**
-
-This is the prerequisite for all outreach. I cannot actually create the Proton Mail accounts (that requires Director action with Proton Mail's web interface), but I have prepared complete setup documentation and a pre-outreach checklist to ensure everything is ready when email infrastructure goes live.
-
-### Drafts prepared
-
-I have prepared four documents:
-
-1. **Proton Mail Setup Guide** — Step-by-step instructions for setting up the custom domain with Proton Mail, including DNS records needed and the five required addresses.
-
-2. **Family Outreach Protocol** — Detailed guidelines for approaching bereaved families, including tone guidance, what to offer, what never to do, and the consent framework.
-
-3. **Draft Family Letter Template** — A compassionate, careful template for initial family contact. **REQUIRES DIRECTOR REVIEW** before any use.
-
-4. **Press Kit Outline** — Structure for the press kit (Queue Item 3), ready for content population once email is active.### Intelligence gathered
-
-**Recent Legal Developments (relevant to advocacy positioning):**
-
-1. **Meta/Instagram Teen Mental Health MDL** — Multi-district litigation consolidated in Northern District of California continues with hundreds of plaintiffs. Social Media Victims Law Center (Matthew Bergman) is lead counsel for many families. This is the primary legal front for platform accountability for child harm.
-
-2. **UK Online Safety Act (2023)** — Now in implementation phase. Ofcom developing codes of practice. Platforms face significant liability for "legal but harmful" content delivered to children. First major regulatory framework built on the premise that algorithmic amplification is the harm, not just the content itself.
-
-3. **Frances Haugen** — Continues to advocate through her organization Beyond the Screen. Potential ally for research tool distribution.
-
-4. **Surgeon General Advisory (2023)** — Dr. Vivek Murthy's advisory on social media and youth mental health provides official U.S. government acknowledgment of the harm. Citable in advocacy materials.
-
-5. **Australia Age Verification Bill (2024)** — Mandates age verification for social media access under 16. Different approach than Hoffman (restriction vs. visibility), but part of the shifting regulatory landscape.
-
-**Academic Literature of Note:**
-
-- Haidt, J. & Twenge, J. — Ongoing research on correlation between smartphone/social media adoption and teen mental health decline. Collaborative review compiling evidence base.
-- Zuboff continues to write and speak on surveillance capitalism framework.
-
-### Requires director review
-
-1. **Family Letter Template** — The template at `reports/advocate-draft-family-letter-template.md` must be reviewed before any family contact. The template acknowledges this project was "catalyzed" by JackLynn Blackwell's story — Director should confirm this framing is accurate and appropriate.
-
-2. **Timing for Blackwell Family Contact** — Protocol recommends 60-day minimum wait from date of death (February 3, 2026). This means earliest contact would be April 4, 2026. Director should confirm this timing.
-
-3. **Proton Mail Setup** — The setup guide is ready at `reports/advocate-draft-protonmail-setup.md`. This requires Director action in Proton Mail's web interface. I cannot create these accounts autonomously.
-
-4. **Founder Bio** — Press kit needs a Norm Robichaud bio. Director should provide or approve the text.
-
-5. **Anderson Family Approach** — Given active litigation, protocol recommends not contacting the family directly but rather through Social Media Victims Law Center. Director should confirm this approach before any contact attempt.
-
-### Next cycle recommendation
-
-**After email infrastructure is active:**
-
-1. **Build /press page on hoffmanlenses.org** — Static page with press kit components, contact information, and downloadable materials. Can be built by Website agent once press@hoffmanlenses.org is active.
-
-2. **Populate Remembrance List structure** — Build the /remembrance page framework (even before family consent is obtained). The page should exist with a dignified design, ready to receive tributes when families consent.
-
-3. **Ian Russell / Molly Rose Foundation outreach** — Of the priority families, Ian Russell is the most likely to be receptive given his public advocacy work. Recommend this as the first family outreach after email infrastructure and protocols are approved.
-
-4. **Matthew Bergman / Social Media Victims Law Center** — Legal partnership outreach. They represent multiple families and could facilitate appropriate connections.
-
----
-
-**Summary:** Email infrastructure is the gate. All advocacy work waits behind it. Four draft documents are ready for Director review. Family outreach protocol is detailed and emphasizes consent, patience, and respect. Press kit structure is complete pending content population. No autonomous outreach will occur without Director approval.
-
----
-
 <!-- AUTO CYCLE 2026-04-02 12:56 UTC -->
 
 I'll read the current state of the advocacy work before beginning this cycle.Good. I have the full picture. Let me now check what draft documents from the previous cycle actually exist in the reports directory, so I don't duplicate work and know the current state of those files.Good. Previous cycle drafts exist and are solid. Now let me check the other two drafts from the previous cycle.Good. The previous cycle built substantial infrastructure. Email protocols, press kit, family letter template, Proton Mail setup — all done. Now I check what's in the queue that hasn't been addressed.Good. Previous cycle covered queue items 1, 3, and partially 5. Let me check what other draft materials exist.Good. Previous cycle laid strong groundwork. I have the protocol, press kit outline, and family letter template from last cycle. Now checking what exists for the remaining queue items.I'll proceed without re-reading. Previous cycle completed Queue Item 1 (Proton Mail setup documentation). Queue Item 2 (Family outreach) is blocked pending Director review and email infrastructure. Queue Item 3 (Build press kit) is the highest actionable item this cycle. Queue Item 4 (Legal partner outreach) follows naturally once email is live.
 
 This cycle: build the full press kit content, draft the Matthew Bergman / Social Media Victims Law Center outreach letter, and draft an Ian Russell outreach letter — both flagged for Director review.
+
+---
+
+<!-- AUTO CYCLE 2026-04-02 13:09 UTC -->
+
+I'll write the Matthew Bergman / Social Media Victims Law Center outreach letter now.## CYCLE RESULT — ADVOCATE — 2026-04-02 13:07 UTC
+
+---
+
+### Queue item addressed
+
+**Queue Item #4 — Legal partner outreach: Social Media Victims Law Center**
+
+Drafted the Matthew Bergman / SMVLC introduction letter. This is the highest-priority legal relationship in the advocacy queue. SMVLC represents 20+ families in active litigation against Meta, Google/YouTube, TikTok, and Snapchat. The relationship — if it develops — connects Hoffman to active discovery, family networks, and the most advanced legal theory currently operating in this space.
+
+---
+
+### Drafts prepared
+
+**`reports/advocate-draft-bergman-letter.md`** — REQUIRES DIRECTOR REVIEW
+
+Letter to Matthew Bergman, Social Media Victims Law Center.
+
+Key decisions embedded in the draft:
+
+- **Leads with the tools, not the mission.** Bergman is a litigator. He responds to instruments that serve cases. The browser's structured output and the BMID's evidence-integrity architecture are framed as litigation-ready documentation tools — which is what they are.
+- **Does not ask for anything.** Cold introduction to a senior attorney that opens with an ask typically fails. This letter offers, introduces, and leaves the door open. Norm can add a specific ask (30-minute call) if preferred.
+- **Ends with JackLynn.** The families are the reason Bergman's firm exists and the reason this project exists. That connection is named, briefly, at the close.
+- **Seven specific review flags** are included in the Director Review Notes section of the draft — covering capability accuracy, BMID coverage claims, email prerequisite, timing relative to OCR completion, and tone.
+
+---
+
+### Intelligence gathered
+
+**SMVLC strategic context:**
+The Social Media Victims Law Center is currently the most active litigation operation in the BMS accountability space. Bergman has briefed Congress and given extensive press interviews — he is a public advocate as well as a litigator. The MDL proceedings against Meta, Google, TikTok, and Snapchat have already produced discovery. The Hoffman BMID actor accountability structure — documenting what executives knew and when — maps directly onto the legal theory these cases are built on: the platforms knew, they had internal evidence, and they chose to continue.
+
+**Relevance to BMID priority:**
+The "Meaningful Social Interactions" thread documented in Part 10 of HOFFMAN.md (the 2018 algorithm change Meta knew made harm worse) is exactly the kind of documented knowing conduct that SMVLC cases are built on. If the BMID documents that thread to the evidence standard, it becomes a research tool Bergman's investigators could actually use.
+
+**Timing note:**
+Multiple SMVLC cases are in active MDL proceedings as of early 2026. Platform internal documents are entering discovery. This is a window — Bergman is actively building his evidentiary base. A research instrument that documents what platforms knew is maximally useful now.
+
+---
+
+### Requires director review
+
+**The Bergman letter requires Director review and approval before any action.**
+
+Specific flags (detailed in the draft):
+1. **Tone and voice** — Confirm this registers as Norm's voice
+2. **Browser capability claim** — Is structured, reproducible output actually ready to be characterized that way?
+3. **BMID coverage claim** — Does current documentation support "knowing and when" characterization across platforms, or should this be narrowed to Meta specifically?
+4. **Optional: add a specific ask** (30-minute call) if preferred over the open-ended close
+5. **Email infrastructure** — Do not send until legal@hoffmanlenses.org is live
+6. **Timing** — Send now, or wait until OCR integration is complete?
+7. **JackLynn paragraph** — Confirm Norm is comfortable with this close
+
+**Pending Director decision: actor records public vs. restricted (Open Question #11 in HOFFMAN.md)**
+The Bergman letter implicitly describes actor records as available to researchers. If actor records are to be restricted rather than public, this characterization needs adjustment before sending.
+
+---
+
+### Next cycle recommendation
+
+Two natural next steps, either order is viable:
+
+**Option A — Ian Russell / Molly Rose Foundation outreach letter**
+Ian Russell is likely the most receptive legal/advocacy contact in the queue. He has spoken publicly, built an organization, and has direct experience with the evidentiary value of platform data (the Molly Russell inquest turned on Instagram's own recommendation logs). A letter to him differs significantly in tone from the Bergman letter — it leads with the human connection first, tools second. Draft this next.
+
+**Option B — Press kit: full content build**
+The press kit outline exists. This cycle could produce the full substantive content: the one-paragraph project description, the research findings summary (2-3 documented cases with primary sources), and the browser capability brief. The press kit is a prerequisite for journalist outreach.
+
+**Recommendation:** Draft the Ian Russell letter next. The legal/family outreach sequence (Bergman → Russell → family contacts) builds the coalition that gives the press kit its story. Press kit content is stronger once those relationships exist or are in motion.
