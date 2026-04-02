@@ -39,6 +39,28 @@ SUPERVISOR_DOCS = {
 # ── Tools ─────────────────────────────────────────────────
 
 # Available to all agents
+TOOL_READ_FILE = {
+    'name': 'read_file',
+    'description': (
+        'Read the current content of a file in the repository. '
+        'Use this when you need to understand an existing file\'s structure before modifying it. '
+        'Returns the file content (up to 8000 characters). '
+        'If the file does not exist, returns an error. '
+        'Read a file at most once per cycle -- do not re-read files you have already seen.'
+    ),
+    'input_schema': {
+        'type': 'object',
+        'properties': {
+            'path': {
+                'type': 'string',
+                'description': 'File path relative to the repo root (e.g. bmid-api/seed.py)'
+            }
+        },
+        'required': ['path']
+    }
+}
+
+# Available to all agents
 TOOL_WRITE_FILE = {
     'name': 'write_file',
     'description': (
@@ -46,7 +68,8 @@ TOOL_WRITE_FILE = {
         'Creates parent directories as needed. '
         'Overwrites the file if it already exists. '
         'Use this to create every new file or update every existing file you build. '
-        'Do NOT just describe files in text -- call this tool to actually create them.'
+        'Do NOT just describe files in text -- call this tool to actually create them. '
+        'WARNING: content must be complete and non-empty. Empty or near-empty writes are rejected.'
     ),
     'input_schema': {
         'type': 'object',
@@ -57,7 +80,7 @@ TOOL_WRITE_FILE = {
             },
             'content': {
                 'type': 'string',
-                'description': 'Complete file content to write'
+                'description': 'Complete file content to write. Must not be empty.'
             }
         },
         'required': ['path', 'content']
@@ -103,13 +126,13 @@ TOOL_APPEND_SEED = {
 }
 
 TOOLS_BY_TEAM = {
-    'browser':     [TOOL_WRITE_FILE],
-    'bmid':        [TOOL_WRITE_FILE, TOOL_APPEND_SEED],
-    'website':     [TOOL_WRITE_FILE],
-    'intel':       [TOOL_WRITE_FILE, TOOL_APPEND_SEED],
-    'investigate': [TOOL_WRITE_FILE],
-    'advocate':    [TOOL_WRITE_FILE],
-    'build':       [TOOL_WRITE_FILE],
+    'browser':     [TOOL_READ_FILE, TOOL_WRITE_FILE],
+    'bmid':        [TOOL_READ_FILE, TOOL_WRITE_FILE, TOOL_APPEND_SEED],
+    'website':     [TOOL_READ_FILE, TOOL_WRITE_FILE],
+    'intel':       [TOOL_READ_FILE, TOOL_WRITE_FILE, TOOL_APPEND_SEED],
+    'investigate': [TOOL_READ_FILE, TOOL_WRITE_FILE],
+    'advocate':    [TOOL_READ_FILE, TOOL_WRITE_FILE],
+    'build':       [TOOL_READ_FILE, TOOL_WRITE_FILE],
 }
 
 # ── Helpers ───────────────────────────────────────────────
@@ -141,10 +164,42 @@ def rotate_supervisor_doc(doc_path, keep_cycles=1):
 
 # ── Tool execution ─────────────────────────────────────────
 
-def tool_write_file(path, content, files_written):
-    """Write a file to disk. Returns status string."""
+READ_FILE_LIMIT = 8000  # chars returned to the agent per read_file call
+
+def tool_read_file(path):
+    """Read a file from disk. Returns content string or error."""
     try:
         full_path = Path(path)
+        if not full_path.exists():
+            return f'ERROR: file not found: {path}'
+        content = full_path.read_text(encoding='utf-8', errors='replace')
+        if len(content) > READ_FILE_LIMIT:
+            return content[:READ_FILE_LIMIT] + f'\n\n[TRUNCATED: file is {len(content)} chars; only first {READ_FILE_LIMIT} shown]'
+        return content if content else f'(file exists but is empty: {path})'
+    except Exception as e:
+        return f'ERROR reading {path}: {e}'
+
+
+def tool_write_file(path, content, files_written):
+    """Write a file to disk. Returns status string. Rejects empty writes."""
+    if not content or not content.strip():
+        msg = f'REJECTED: content is empty. write_file requires non-empty content. File {path} was NOT written.'
+        print(f'  [tool] {msg}')
+        return msg
+
+    # Guard against accidentally wiping a large existing file with trivially small content.
+    full_path = Path(path)
+    if full_path.exists():
+        existing_size = full_path.stat().st_size
+        if existing_size > 500 and len(content) < 50:
+            msg = (
+                f'REJECTED: refusing to overwrite {path} ({existing_size} bytes) '
+                f'with only {len(content)} chars. Read the file first, then write the complete updated version.'
+            )
+            print(f'  [tool] {msg}')
+            return msg
+
+    try:
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(content, encoding='utf-8')
         files_written.append(str(full_path))
@@ -230,7 +285,9 @@ def tool_append_seed(fishermen, motives, catches, evidence, files_written):
 
 
 def execute_tool(tool_name, tool_input, files_written):
-    if tool_name == 'write_file':
+    if tool_name == 'read_file':
+        return tool_read_file(tool_input.get('path', ''))
+    elif tool_name == 'write_file':
         return tool_write_file(
             tool_input.get('path', ''),
             tool_input.get('content', ''),
@@ -256,19 +313,26 @@ AGENT_PROMPTS = {
 Read the supervisor document above carefully.
 It contains your mission, current state, build queue, and build log.
 
-Your task for this cycle:
+## RULES FOR THIS CYCLE
+
+**Stop immediately and report if blocked.** If a tool returns ERROR, write your cycle
+result reporting the error. Do not retry the same operation. Do not loop.
+
+**Read before you modify.** If you need to update an existing file, call read_file
+once to see its current content, then write the complete updated version with write_file.
+Read each file at most once. Do not re-read files you have already seen.
+
+**Write files, not descriptions.** Call write_file for every file you create or change.
+Text descriptions of code accomplish nothing. Do NOT include code blocks in your response.
+
+## YOUR TASK
+
 1. Identify the top item in the BUILD QUEUE
-2. Build it -- write complete, working code
-3. Use the write_file tool to create EVERY file you build or modify.
-   Do not describe files in text -- call write_file for each one.
-4. Verify your code (trace through the logic, check for errors)
-5. Record what you built and what you tested
+2. If you need to see an existing file first, call read_file ONCE for that file
+3. Build it -- write complete, working code via write_file
+4. Write your cycle result
 
-CRITICAL: You must call write_file for every file you create or modify.
-IMPORTANT: Do NOT include file contents or code blocks in your text response.
-Your response text is appended to the supervisor document -- keep it concise prose only.
-
-Return your response in this format AFTER calling all write_file tools:
+## CYCLE RESULT FORMAT (fill this in after writing files)
 
 ## CYCLE RESULT -- BROWSER -- {date}
 
@@ -276,7 +340,7 @@ Return your response in this format AFTER calling all write_file tools:
 [describe what was created or changed, no code]
 
 ### Files written
-[list every file written via write_file]
+[list every file written via write_file -- if none, write NONE and explain why]
 
 ### Test results
 [what was tested, what passed, what failed]
@@ -293,21 +357,29 @@ Return your response in this format AFTER calling all write_file tools:
 Read the supervisor document above carefully.
 It contains your mission, current state, build queue, and build log.
 
-Your task for this cycle:
-1. Identify the top item in the BUILD QUEUE
-2. Build it -- write complete, working code
-3. Use the write_file tool to create EVERY file you build or modify.
-   For database records, use the append_seed_records tool.
-4. Verify your code (trace through the logic, check for errors)
-5. Record what you built and what you tested
+## RULES FOR THIS CYCLE
+
+**Stop immediately and report if blocked.** If a tool returns ERROR, write your cycle
+result reporting the error. Do not retry the same operation. Do not loop.
+
+**Read before you modify.** If you need to update an existing file, call read_file
+once to see its current content, then write the complete updated version with write_file.
+Read each file at most once. Do not re-read files you have already seen.
+
+**Write files, not descriptions.** Call write_file for every file you create or change.
+For database records, use append_seed_records. Do NOT include code blocks in your response.
 
 Evidence standard: every database record must have primary source documentation.
 Do not add records without citations. Unknown is a valid answer.
 
-CRITICAL: You must call write_file for every file you create or modify.
-IMPORTANT: Do NOT include file contents or code blocks in your text response.
+## YOUR TASK
 
-Return your response in this format AFTER calling all write_file tools:
+1. Identify the top item in the BUILD QUEUE
+2. If you need to see an existing file first, call read_file ONCE for that file
+3. Build it -- write complete, working code via write_file
+4. Write your cycle result
+
+## CYCLE RESULT FORMAT (fill this in after writing files)
 
 ## CYCLE RESULT -- BMID -- {date}
 
@@ -315,7 +387,7 @@ Return your response in this format AFTER calling all write_file tools:
 [describe what was created or changed, no code]
 
 ### Files written
-[list every file written via write_file]
+[list every file written via write_file -- if none, write NONE and explain why]
 
 ### Test results
 [what was tested, what passed, what failed]
@@ -332,20 +404,28 @@ Return your response in this format AFTER calling all write_file tools:
 Read the supervisor document above carefully.
 It contains your mission, current state, and build queue.
 
-Your task for this cycle:
-1. Identify the top item in the BUILD QUEUE
-2. Build it -- write the page content
-3. Use the write_file tool to create every file
-4. Match the style and structure of existing pages
-5. Record what you built
+## RULES FOR THIS CYCLE
+
+**Stop immediately and report if blocked.** If a tool returns ERROR, write your cycle
+result reporting the error. Do not retry the same operation. Do not loop.
+
+**Read before you modify.** If you need to see an existing file, call read_file ONCE.
+Read each file at most once. Do not re-read files you have already seen.
+
+**Write files, not descriptions.** Call write_file for every file you create or change.
+Do NOT include code blocks or file contents in your text response.
 
 IMPORTANT: /remembrance entries require director approval before going live.
 Do not add contact functionality until email infrastructure is confirmed.
 
-CRITICAL: Use write_file for every file.
-IMPORTANT: Do NOT include file contents or code blocks in your text response.
+## YOUR TASK
 
-Return your response in this format AFTER calling all write_file tools:
+1. Identify the top item in the BUILD QUEUE
+2. If you need to see an existing file, call read_file ONCE for that file
+3. Build it -- write complete files via write_file
+4. Write your cycle result
+
+## CYCLE RESULT FORMAT
 
 ## CYCLE RESULT -- WEBSITE -- {date}
 
@@ -353,7 +433,7 @@ Return your response in this format AFTER calling all write_file tools:
 [describe what was created or changed]
 
 ### Files written
-[list every file written via write_file]
+[list every file written via write_file -- if none, write NONE and explain why]
 
 ### Requires director review
 [anything that needs approval before publishing]
@@ -367,23 +447,26 @@ Return your response in this format AFTER calling all write_file tools:
 Read the supervisor document above carefully.
 It contains your mission, current state, build queue, and build log.
 
-Your task for this cycle:
+## RULES FOR THIS CYCLE
+
+**Stop immediately and report if blocked.** If a tool returns ERROR, write your cycle
+result reporting the error. Do not retry the same operation. Do not loop.
+
+**Read before you modify.** If you need to update an existing file, call read_file
+once to see its current content, then write the complete updated version with write_file.
+Read each file at most once. Do not re-read files you have already seen.
+
+**Write files, not descriptions.** Call write_file for every file you create or change.
+Text descriptions of code accomplish nothing. Do NOT include code blocks in your response.
+
+## YOUR TASK
+
 1. Identify the top item in the BUILD QUEUE
-2. Build it -- write complete, working, tested code
-3. Use the write_file tool to create EVERY file you build.
-   Do not describe files in text -- call write_file for each one.
-4. Verify your code (trace through the logic, check for errors)
-5. Record what you built, what you tested, and what you found
+2. If you need to see an existing file first, call read_file ONCE for that file
+3. Build it -- write complete, working code via write_file
+4. Write your cycle result
 
-CRITICAL: You must call write_file for every file you create or modify.
-Writing code in your text response without calling write_file accomplishes nothing.
-The file does not exist until write_file is called.
-
-IMPORTANT: Do NOT include file contents or code blocks in your text response.
-Your response text is appended to the supervisor document -- it must stay concise.
-Describe what you built and tested in prose. All code goes through write_file only.
-
-Return your response in this format AFTER calling all write_file tools:
+## CYCLE RESULT FORMAT
 
 ## CYCLE RESULT -- BUILD -- {date}
 
@@ -391,7 +474,7 @@ Return your response in this format AFTER calling all write_file tools:
 [describe what was created or changed]
 
 ### Files written
-[list every file written via the write_file tool]
+[list every file written via the write_file tool -- if none, write NONE and explain why]
 
 ### Test results
 [what was tested, what passed, what failed]
@@ -411,20 +494,27 @@ Return your response in this format AFTER calling all write_file tools:
 Read the supervisor document above carefully.
 It contains your mission, intelligence queue, and what is known so far.
 
-Your task for this cycle:
-1. Identify the top research target from the INTELLIGENCE QUEUE
-2. Research it -- document what is known about this publisher,
-   their business model, documented harms, ownership structure
-3. Use the append_seed_records tool to add records to the database.
-   Do not just write records in your text response -- call append_seed_records.
-   The records will not exist in the database until you call that tool.
-4. Assign honest confidence scores -- never inflate
+## RULES FOR THIS CYCLE
 
-CRITICAL: You must call append_seed_records with the actual records.
-Every fisherman, motive, catch, and evidence record must be passed
-to append_seed_records as a Python dict. Text descriptions accomplish nothing.
+**Stop immediately and report if blocked.** If append_seed_records returns ERROR,
+write your cycle result reporting the exact error message. Do not retry. Do not loop.
+If you need to check the seed file structure first, call read_file('bmid-api/seed.py')
+ONCE before calling append_seed_records.
 
-After calling append_seed_records, return your response in this format:
+**Call the tool once with complete data.** Build all your records in one call to
+append_seed_records. Do not make multiple partial calls.
+
+## YOUR TASK
+
+1. Identify the top target from the INTELLIGENCE QUEUE
+2. If you are unsure of the seed file structure, call read_file('bmid-api/seed.py') once
+3. Call append_seed_records ONCE with the fisherman, motives, catches, and evidence records
+4. Write your cycle result
+
+Every fisherman, motive, catch, and evidence record must be a Python dict passed to
+append_seed_records. Assign honest confidence scores -- never inflate.
+
+## CYCLE RESULT FORMAT (fill this in after calling append_seed_records)
 
 ## CYCLE RESULT -- INTEL -- {date}
 
@@ -432,7 +522,7 @@ After calling append_seed_records, return your response in this format:
 [which fisherman or pattern was researched]
 
 ### Records added
-[list every record added via append_seed_records]
+[list every record added via append_seed_records -- if none, write NONE and state the error]
 
 ### Confidence assessment
 [honest assessment of what is well-documented vs uncertain]
@@ -449,17 +539,25 @@ After calling append_seed_records, return your response in this format:
 Read the supervisor document above carefully.
 It contains your mission, investigation queue, and rabbit hole findings.
 
-Your task for this cycle:
+## RULES FOR THIS CYCLE
+
+**Stop immediately and report if blocked.** If write_file returns ERROR, write your
+cycle result reporting the exact error. Do not retry the same operation. Do not loop.
+
+**Write the file first, report second.** Call write_file to save your findings as
+reports/investigate-{slug}.md. Then write your cycle result.
+
+## YOUR TASK
+
 1. Pick the top investigation from the INVESTIGATION QUEUE
-2. Go deep -- follow threads, find primary sources, map connections
-3. Use write_file to save your findings as a structured intelligence
-   file at reports/investigate-{slug}.md
-4. Document unexpected findings as RABBIT HOLE FINDINGS
+2. Compile your findings -- primary sources, connections, key facts
+3. Call write_file ONCE to save the intelligence file at reports/investigate-{slug}.md
+4. Write your cycle result
 
-CRITICAL: Use write_file to save your intelligence file.
-Do not just write findings in your response -- call write_file.
+Do not re-read existing files unless the investigation explicitly requires it.
+Do not loop on planning. Write first, refine later.
 
-Return your response in this format after calling write_file:
+## CYCLE RESULT FORMAT
 
 ## CYCLE RESULT -- INVESTIGATE -- {date}
 
@@ -473,7 +571,7 @@ Return your response in this format after calling write_file:
 [unexpected connections discovered]
 
 ### Files written
-[intelligence file saved via write_file]
+[intelligence file saved via write_file -- if none, write NONE and explain why]
 
 ### Next cycle recommendation
 [which thread to follow next]
@@ -484,16 +582,25 @@ Return your response in this format after calling write_file:
 Read the supervisor document above carefully.
 It contains your mission, outreach queue, and contact information.
 
-Your task for this cycle:
-1. Review the ADVOCACY QUEUE for the highest priority item
-2. Prepare communications, drafts, or research as needed
-3. Use write_file to save any drafts at reports/advocate-draft-{slug}.md
-4. Monitor for new legal developments, academic papers, or news
+## RULES FOR THIS CYCLE
+
+**Stop immediately and report if blocked.** If write_file returns ERROR, write your
+cycle result reporting the exact error. Do not retry the same operation. Do not loop.
+
+**Write drafts directly.** Call write_file to save any drafts at
+reports/advocate-draft-{slug}.md. Do NOT include file contents in your response.
 
 IMPORTANT: All family and legal communications must be flagged
 as REQUIRES DIRECTOR REVIEW. Never send these autonomously.
 
-Return your response in this format:
+## YOUR TASK
+
+1. Review the ADVOCACY QUEUE for the highest priority item
+2. Prepare the communication or research
+3. Call write_file to save the draft
+4. Write your cycle result
+
+## CYCLE RESULT FORMAT
 
 ## CYCLE RESULT -- ADVOCATE -- {date}
 
@@ -595,8 +702,13 @@ def run_cycle(team):
         return None
 
     # Agentic loop -- keep going until no more tool calls
-    max_turns = 20
+    # max_turns is intentionally low: legitimate multi-file work needs ~5 turns;
+    # anything beyond 8 is almost certainly a planning/reading loop.
+    max_turns = 8
     turn = 0
+    tool_call_history = []  # list of (tool_name, key) for loop detection
+    total_tool_calls = 0
+
     while turn < max_turns:
         turn += 1
         response = call_api(messages)
@@ -620,8 +732,24 @@ def run_cycle(team):
         # This prevents the conversation from growing unboundedly across turns.
         tool_results = []
         for tc in tool_calls:
+            total_tool_calls += 1
             print(f'  [tool] calling {tc.name}')
-            result = execute_tool(tc.name, tc.input, files_written)
+
+            # Loop detection: same tool + same primary argument more than twice = loop
+            loop_key = (tc.name, str(tc.input.get('path', tc.input.get('fishermen', '')[:80] if isinstance(tc.input.get('fishermen', ''), str) else '')))
+            repeat_count = tool_call_history.count(loop_key)
+            tool_call_history.append(loop_key)
+
+            if repeat_count >= 2:
+                result = (
+                    f'LOOP DETECTED: you have called {tc.name} with these arguments {repeat_count + 1} times. '
+                    'Stop retrying. Write your cycle result now and report what blocked you. '
+                    'Do not call any more tools.'
+                )
+                print(f'  [tool] LOOP DETECTED for {tc.name}')
+            else:
+                result = execute_tool(tc.name, tc.input, files_written)
+
             tool_results.append({
                 'type': 'tool_result',
                 'tool_use_id': tc.id,
@@ -633,14 +761,26 @@ def run_cycle(team):
             {'role': 'user', 'content': tool_results},
         ]
 
-    print(f'[{team.upper()}] Got response ({len(result_text)} chars), files written: {len(files_written)}')
+    cycle_status = 'OK' if files_written else ('NO_OUTPUT' if total_tool_calls == 0 else 'FAILED_NO_FILES_WRITTEN')
+    print(f'[{team.upper()}] Cycle complete: status={cycle_status}, files_written={len(files_written)}, tool_calls={total_tool_calls}')
 
     # Append result to supervisor document -- strip code blocks to prevent bloat.
     # Files are written to disk via write_file; no need to embed them here too.
     timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
     separator = f'\n\n---\n\n<!-- AUTO CYCLE {timestamp} -->\n\n'
+
+    # If the cycle produced no file output despite calling tools, add a failure notice
+    # so the director briefing picks it up. This makes failures visible immediately.
+    failure_notice = ''
+    if cycle_status == 'FAILED_NO_FILES_WRITTEN':
+        failure_notice = (
+            f'\n\n> **CYCLE FAILED [{timestamp}]**: Agent called {total_tool_calls} tool(s) '
+            f'but wrote 0 files. The cycle produced no usable output. '
+            f'See the report file for details.\n'
+        )
+
     with open(doc_path, 'a', encoding='utf-8') as f:
-        f.write(separator + strip_code_blocks(result_text))
+        f.write(separator + strip_code_blocks(result_text) + failure_notice)
 
     # Save report (full response, including code, preserved here for reference)
     report_dir = 'reports'
@@ -650,7 +790,8 @@ def run_cycle(team):
     report_path = f'{report_dir}/{date_slug}-{team}-{time_slug}.md'
     with open(report_path, 'w', encoding='utf-8') as f:
         f.write(f'# Hoffman Lenses -- {team.upper()} Cycle Report\n')
-        f.write(f'**Date:** {timestamp}\n\n')
+        f.write(f'**Date:** {timestamp}\n')
+        f.write(f'**Status:** {cycle_status}\n\n')
         f.write(result_text)
 
     print(f'[{team.upper()}] Report saved to {report_path}')
@@ -729,16 +870,17 @@ Write a concise director's briefing. Format:
 ## {date_slug}
 
 ### What got done today
-[2-3 sentences per team, only what actually happened]
+[2-3 sentences per team, only what actually happened -- distinguish clearly between
+planning/intent (agent wrote about work) vs actual output (agent wrote files)]
 
 ### Files created or modified
-[list any actual files the agents wrote]
+[list any actual files the agents wrote; if a report says "NONE" or "FAILED", say so explicitly]
 
 ### Decisions needed from you
 [anything flagged REQUIRES DIRECTOR REVIEW]
 
 ### Things to know
-[anything unexpected, concerning, or worth noting]
+[any cycle marked FAILED or with status FAILED_NO_FILES_WRITTEN should be called out here]
 
 ### What happens tomorrow
 [what the agents will work on next]
