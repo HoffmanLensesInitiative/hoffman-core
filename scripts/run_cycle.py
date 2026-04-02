@@ -175,7 +175,7 @@ def rotate_supervisor_doc(doc_path, keep_cycles=1):
 
 # ── Tool execution ─────────────────────────────────────────
 
-READ_FILE_LIMIT = 8000  # chars returned to the agent per read_file call
+READ_FILE_LIMIT = 30000  # chars returned to the agent per read_file call
 
 def tool_read_file(path):
     """Read a file from disk. Returns content string or error."""
@@ -370,22 +370,27 @@ It contains your mission, current state, build queue, and build log.
 **Stop immediately and report if blocked.** If a tool returns ERROR, write your cycle
 result reporting the error. Do not retry the same operation. Do not loop.
 
-**Read before you modify.** If you need to update an existing file, call read_file
-once to see its current content, then write the complete updated version with write_file.
-Read each file at most once. Do not re-read files you have already seen.
+**Read each file at most once.** Do not re-read a file you have already seen this cycle.
+Do not read seed.py -- that is the intel agent's file, not yours.
 
 **Write files, not descriptions.** Call write_file for every file you create or change.
-For database records, use append_seed_records. Do NOT include code blocks in your response.
+Do NOT include code blocks in your response.
 
-Evidence standard: every database record must have primary source documentation.
-Do not add records without citations. Unknown is a valid answer.
+## YOUR TASK FOR THIS CYCLE: Network and actor schema
 
-## YOUR TASK
+The top BUILD QUEUE item is the network and actor schema extension. Do this in two steps:
 
-1. Identify the top item in the BUILD QUEUE
-2. If you need to see an existing file first, call read_file ONCE for that file
-3. Build it -- write complete, working code via write_file
-4. Write your cycle result
+**Step 1 -- schema.sql:** Call read_file('bmid-api/schema.sql') ONCE to see the current
+schema. Then call write_file to write the updated schema.sql with the 6 new tables appended
+(network, actor, actor_role, actor_investment, actor_political, actor_knowledge).
+Write only the complete updated schema.sql -- do not rewrite app.py yet.
+
+**Step 2 -- app.py:** Call read_file('bmid-api/app.py') ONCE to see the existing routes.
+Then call write_file to write the updated app.py with the 5 new endpoints added at the end
+of the existing route definitions. Preserve every existing route exactly as-is.
+
+The schema for all 6 tables and all 5 endpoints is fully specified in HOFFMAN.md Part 13
+which is included above in your context. Use that specification exactly.
 
 ## CYCLE RESULT FORMAT (fill this in after writing files)
 
