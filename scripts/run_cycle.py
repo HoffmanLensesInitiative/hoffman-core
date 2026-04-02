@@ -762,7 +762,10 @@ def run_cycle(team):
             total_tool_calls += 1
             print(f'  [tool] calling {tc.name}')
 
-            # Loop detection: same tool + same primary argument more than twice = loop
+            # Loop detection: same tool + same primary argument more than twice = loop.
+            # Exception: reading a file after successfully writing it is legitimate (verify step)
+            # so we remove that file's read history entry when a write succeeds.
+            path_arg = tc.input.get('path', '')
             loop_key = (tc.name, str(tc.input.get('path', tc.input.get('fishermen', '')[:80] if isinstance(tc.input.get('fishermen', ''), str) else '')))
             repeat_count = tool_call_history.count(loop_key)
             tool_call_history.append(loop_key)
@@ -776,6 +779,12 @@ def run_cycle(team):
                 print(f'  [tool] LOOP DETECTED for {tc.name}')
             else:
                 result = execute_tool(tc.name, tc.input, files_written)
+                # If a write succeeded, reset read history for that path so the agent
+                # can read it back once to verify without triggering loop detection.
+                if tc.name == 'write_file' and path_arg and result.startswith('OK:'):
+                    read_key = ('read_file', path_arg)
+                    while read_key in tool_call_history:
+                        tool_call_history.remove(read_key)
 
             tool_results.append({
                 'type': 'tool_result',
