@@ -211,24 +211,27 @@ def tool_write_file(path, content, files_written):
 
 
 def tool_append_seed(fishermen, motives, catches, evidence, files_written):
-    """Append records to seed.py lists and run the seed."""
+    """Append records to seed.py lists and run the seed.
+
+    Uses += extension lines appended to the end of the file rather than
+    bracket-finding insertion, which was unreliable when string values
+    contained ] characters (e.g. URLs).
+    """
     seed_path = Path('bmid-api/seed.py')
     if not seed_path.exists():
         return 'ERROR: bmid-api/seed.py not found'
 
     content = seed_path.read_text(encoding='utf-8')
 
+    # Verify each list name exists in the file before appending extensions
+    for list_name in ['FISHERMEN', 'MOTIVES', 'CATCHES', 'EVIDENCE']:
+        if f'{list_name} = [' not in content:
+            return f'ERROR: could not find {list_name} list in seed.py -- read the file first to check its structure'
+
     additions = []
+    date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    extension_lines = [f'\n# -- appended by intel agent {date_str} --']
 
-    def make_block(label, records):
-        if not records:
-            return ''
-        lines = [f'\n    # -- appended by intel agent {datetime.now(timezone.utc).strftime("%Y-%m-%d")} --']
-        for rec in records:
-            lines.append('    ' + repr(rec) + ',')
-        return '\n'.join(lines)
-
-    # Insert before closing ] of each list
     for list_name, records in [
         ('FISHERMEN', fishermen or []),
         ('MOTIVES',   motives   or []),
@@ -237,31 +240,25 @@ def tool_append_seed(fishermen, motives, catches, evidence, files_written):
     ]:
         if not records:
             continue
-        block = make_block(list_name, records)
-        # Find last ] that closes the list definition
-        marker = f'{list_name} = ['
-        start = content.find(marker)
-        if start == -1:
-            return f'ERROR: could not find {list_name} list in seed.py'
-        # Find the matching closing bracket
-        depth = 0
-        i = start + len(marker)
-        close_pos = -1
-        while i < len(content):
-            if content[i] == '[':
-                depth += 1
-            elif content[i] == ']':
-                if depth == 0:
-                    close_pos = i
-                    break
-                depth -= 1
-            i += 1
-        if close_pos == -1:
-            return f'ERROR: could not find closing ] for {list_name}'
-        content = content[:close_pos] + block + '\n' + content[close_pos:]
+        extension_lines.append(f'{list_name} += [')
+        for rec in records:
+            extension_lines.append('    ' + repr(rec) + ',')
+        extension_lines.append(']')
         additions.append(f'{len(records)} {list_name.lower()}')
 
-    seed_path.write_text(content, encoding='utf-8')
+    if not additions:
+        return 'OK: no records provided, nothing appended'
+
+    new_content = content.rstrip() + '\n' + '\n'.join(extension_lines) + '\n'
+
+    # Validate syntax before writing
+    try:
+        import ast as _ast
+        _ast.parse(new_content)
+    except SyntaxError as e:
+        return f'ERROR: generated records have a Python syntax error and were NOT written: {e}'
+
+    seed_path.write_text(new_content, encoding='utf-8')
     files_written.append(str(seed_path))
     print(f'  [tool] appended to seed.py: {", ".join(additions)}')
 
@@ -669,7 +666,8 @@ def run_cycle(team):
         print('ERROR: ANTHROPIC_API_KEY not set')
         return False
 
-    client = anthropic.Anthropic(api_key=api_key)
+    # 90-second timeout per request -- prevents indefinite hangs on slow API responses.
+    client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
     tools = TOOLS_BY_TEAM.get(team, [])
     # Keep only the initial context message + the most recent exchange to limit
     # conversation growth. Tool results are appended per turn but older turns
