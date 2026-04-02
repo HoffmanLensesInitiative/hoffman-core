@@ -376,21 +376,27 @@ Do not read seed.py -- that is the intel agent's file, not yours.
 **Write files, not descriptions.** Call write_file for every file you create or change.
 Do NOT include code blocks in your response.
 
-## YOUR TASK FOR THIS CYCLE: Network and actor schema
+## YOUR TASK FOR THIS CYCLE: Add network/actor API endpoints to app.py
 
-The top BUILD QUEUE item is the network and actor schema extension. Do this in two steps:
+schema.sql was already updated last cycle with the 6 new tables. Your job this cycle
+is to add the 5 new endpoints to app.py.
 
-**Step 1 -- schema.sql:** Call read_file('bmid-api/schema.sql') ONCE to see the current
-schema. Then call write_file to write the updated schema.sql with the 6 new tables appended
-(network, actor, actor_role, actor_investment, actor_political, actor_knowledge).
-Write only the complete updated schema.sql -- do not rewrite app.py yet.
+**Exact sequence -- follow this precisely:**
+1. Call read_file('bmid-api/schema.sql') and read_file('bmid-api/app.py') in the SAME turn
+2. Immediately call write_file('bmid-api/app.py') with the complete updated file
+   (all existing routes preserved + 5 new endpoints appended at the end)
+3. Do NOT call read_file again after step 1. You have everything you need.
 
-**Step 2 -- app.py:** Call read_file('bmid-api/app.py') ONCE to see the existing routes.
-Then call write_file to write the updated app.py with the 5 new endpoints added at the end
-of the existing route definitions. Preserve every existing route exactly as-is.
+**The 5 new endpoints to add:**
+- GET /api/v1/network/<domain> -- all relationships for a fisherman
+- GET /api/v1/actor/<actor_id> -- full actor profile
+- GET /api/v1/actor/search?name=<name> -- search actors by name
+- GET /api/v1/network/map -- full network graph as JSON
+- GET /api/v1/accountability/<domain> -- full accountability chain for a domain
 
-The schema for all 6 tables and all 5 endpoints is fully specified in HOFFMAN.md Part 13
-which is included above in your context. Use that specification exactly.
+The schema for these tables (network, actor, actor_role, actor_investment,
+actor_political, actor_knowledge) is in HOFFMAN.md Part 13 and in schema.sql.
+Use the same Flask/SQLite patterns already in app.py.
 
 ## CYCLE RESULT FORMAT (fill this in after writing files)
 
