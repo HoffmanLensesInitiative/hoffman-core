@@ -437,8 +437,9 @@ It contains your mission, current state, and build queue.
 **Stop immediately and report if blocked.** If a tool returns ERROR, write your cycle
 result reporting the error. Do not retry the same operation. Do not loop.
 
-**Read before you modify.** If you need to see an existing file, call read_file ONCE.
-Read each file at most once. Do not re-read files you have already seen.
+**Read ALL files in Turn 1, write in Turn 2.** The conversation only keeps the most
+recent exchange. Read every file you need in a single batch on your first turn, then
+write all output files on your next turn. Do not read any file after Turn 1.
 
 **Write files, not descriptions.** Call write_file for every file you create or change.
 Do NOT include code blocks or file contents in your text response.
@@ -446,12 +447,17 @@ Do NOT include code blocks or file contents in your text response.
 IMPORTANT: /remembrance entries require director approval before going live.
 Do not add contact functionality until email infrastructure is confirmed.
 
-## YOUR TASK
+## YOUR TASK FOR THIS CYCLE: /remembrance page
 
-1. Identify the top item in the BUILD QUEUE
-2. If you need to see an existing file, call read_file ONCE for that file
-3. Build it -- write complete files via write_file
-4. Write your cycle result
+**Turn 1 -- read these two files simultaneously (both in one turn):**
+- read_file('hoffman-lenses-website/remembrance/index.html')
+- read_file('hoffman-lenses-website/remembrance/remembrance.css')
+
+**Turn 2 -- write the finished page.** Using the style and structure you see in those
+files, write the complete updated index.html with the remembrance entries added.
+Flag all individual entries as REQUIRES DIRECTOR REVIEW.
+
+Do not read any other files. Do not read the same file twice.
 
 ## CYCLE RESULT FORMAT
 
@@ -619,18 +625,24 @@ It contains your mission, outreach queue, and contact information.
 **Stop immediately and report if blocked.** If write_file returns ERROR, write your
 cycle result reporting the exact error. Do not retry the same operation. Do not loop.
 
-**Write drafts directly.** Call write_file to save any drafts at
+**Do not read existing drafts.** Previous drafts are summarized in the supervisor
+document. Reading them file-by-file wastes your turns. Write new output directly.
+
+**Write drafts directly.** Call write_file to save drafts at
 reports/advocate-draft-{slug}.md. Do NOT include file contents in your response.
 
 IMPORTANT: All family and legal communications must be flagged
 as REQUIRES DIRECTOR REVIEW. Never send these autonomously.
 
-## YOUR TASK
+## YOUR TASK FOR THIS CYCLE
 
-1. Review the ADVOCACY QUEUE for the highest priority item
-2. Prepare the communication or research
-3. Call write_file to save the draft
-4. Write your cycle result
+The press kit outline and family letter template from prior cycles are done.
+This cycle: write the Matthew Bergman / Social Media Victims Law Center outreach
+letter and save it as reports/advocate-draft-bergman-letter.md.
+Flag it REQUIRES DIRECTOR REVIEW.
+
+Do not read any files. You have everything you need in the supervisor document.
+Write the letter, call write_file once, then write your cycle result.
 
 ## CYCLE RESULT FORMAT
 
