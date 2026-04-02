@@ -92,10 +92,21 @@ TOOL_APPEND_SEED = {
     'name': 'append_seed_records',
     'description': (
         'Append new BMID records to bmid-api/seed.py. '
-        'Provide a Python dict or list of dicts for each record type. '
-        'These will be inserted into the correct list (FISHERMEN, MOTIVES, CATCHES, or EVIDENCE) '
-        'and the seed will be run automatically. '
-        'Use this instead of write_file for BMID database records.'
+        'Records are appended to the correct list and the seed script is run automatically. '
+        'Use this instead of write_file for BMID database records.\n\n'
+        'REQUIRED FIELDS PER RECORD TYPE -- use these exact field names:\n\n'
+        'fishermen: fisherman_id (TEXT, e.g. "fisherman-reddit"), domain, display_name, '
+        'owner, parent_company, country, founded, business_model, '
+        'revenue_sources (list), confidence_score (0.0-1.0), contributed_by\n\n'
+        'motives: motive_id (TEXT, e.g. "motive-reddit-ad-revenue"), fisherman_id, '
+        'motive_type, description, revenue_model, beneficiary, '
+        'documented_evidence, confidence_score, contributed_by\n\n'
+        'catches: catch_id (TEXT, e.g. "catch-reddit-001"), fisherman_id, '
+        'harm_type, victim_demographic, documented_outcome, scale, '
+        'academic_citation, date_documented, severity_score (1-10)\n\n'
+        'evidence: evidence_id (TEXT, e.g. "ev-reddit-001"), entity_id (the fisherman_id), '
+        'entity_type ("fisherman"), source_type ("primary"|"secondary"|"academic"), '
+        'url, title, author, publication, published_date, summary, confidence (0.0-1.0)'
     ),
     'input_schema': {
         'type': 'object',
@@ -812,6 +823,7 @@ def run_cycle(team):
                 + ('\n'.join(f'  {f}' for f in files_written) if files_written else '  (none)')
             )
             subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
+            subprocess.run(['git', 'pull', '--rebase'], check=True)
             subprocess.run(['git', 'push'], check=True)
             print(f'[{team.upper()}] Committed and pushed ({len(files_written)} files written)')
         except subprocess.CalledProcessError as e:
