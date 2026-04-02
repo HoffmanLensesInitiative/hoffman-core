@@ -326,19 +326,28 @@ It contains your mission, current state, build queue, and build log.
 **Stop immediately and report if blocked.** If a tool returns ERROR, write your cycle
 result reporting the error. Do not retry the same operation. Do not loop.
 
-**Read before you modify.** If you need to update an existing file, call read_file
-once to see its current content, then write the complete updated version with write_file.
-Read each file at most once. Do not re-read files you have already seen.
+**Read ALL files in Turn 1, write in Turn 2.** The conversation only keeps the most
+recent exchange. If you read files across multiple turns you will lose earlier content.
+Read every file you need in a single batch of parallel read_file calls on your first
+turn, then write all modified files on your next turn. Do not read any file after Turn 1.
 
 **Write files, not descriptions.** Call write_file for every file you create or change.
 Text descriptions of code accomplish nothing. Do NOT include code blocks in your response.
 
-## YOUR TASK
+## YOUR TASK FOR THIS CYCLE: BMID context injection
 
-1. Identify the top item in the BUILD QUEUE
-2. If you need to see an existing file first, call read_file ONCE for that file
-3. Build it -- write complete, working code via write_file
-4. Write your cycle result
+The top BUILD QUEUE item is BMID context injection in the analysis pipeline.
+
+**Turn 1 -- read these three files simultaneously (all in one turn):**
+- read_file('hoffman-browser/src/main.js')
+- read_file('hoffman-browser/src/analyzer.js')
+- read_file('hoffman-browser/panel/panel.html')
+
+**Turn 2 -- write the modified files.** Based on what you read, modify the files needed
+to inject BMID context before analysis. The BUILD BRIEF in the supervisor document
+describes exactly what to do. Write every modified file via write_file.
+
+Do not read any additional files. Do not read files you did not read in Turn 1.
 
 ## CYCLE RESULT FORMAT (fill this in after writing files)
 
