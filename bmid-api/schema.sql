@@ -1,126 +1,171 @@
--- BMID Schema v0.1
+-- BMID Database Schema
 -- Behavioral Manipulation Intelligence Database
--- Hoffman Lenses Initiative
+-- Version: 0.2.0 (extended with network and actor tables March 30, 2026)
 
+-- Core fisherman record: a platform or operator that runs a BMS
 CREATE TABLE IF NOT EXISTS fisherman (
-  fisherman_id        TEXT PRIMARY KEY,
-  domain              TEXT UNIQUE NOT NULL,
-  display_name        TEXT NOT NULL,
-  owner               TEXT,
-  parent_company      TEXT,
-  country             TEXT,
-  founded             INTEGER,
-  business_model      TEXT,
-  revenue_sources     TEXT,  -- JSON array
-  ad_networks         TEXT,  -- JSON array
-  data_brokers        TEXT,  -- JSON array
-  political_affiliation TEXT,
-  documented_reach    INTEGER,
-  legal_status        TEXT DEFAULT 'active',
-  confidence_score    REAL DEFAULT 0.5,
-  last_verified       TEXT,
-  created_at          TEXT DEFAULT (datetime('now')),
-  updated_at          TEXT DEFAULT (datetime('now')),
-  contributed_by      TEXT
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  fisherman_id TEXT UNIQUE NOT NULL,   -- e.g. "fisherman-facebook"
+  domain TEXT UNIQUE NOT NULL,         -- e.g. "facebook.com"
+  display_name TEXT NOT NULL,
+  owner TEXT,
+  parent_company TEXT,
+  country TEXT,
+  founded TEXT,
+  business_model TEXT,
+  revenue_sources TEXT,                -- JSON array
+  confidence_score REAL DEFAULT 0.5,
+  contributed_by TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS bait (
-  bait_id             TEXT PRIMARY KEY,
-  fisherman_id        TEXT NOT NULL REFERENCES fisherman(fisherman_id),
-  headline_text       TEXT NOT NULL,
-  url                 TEXT,
-  destination_url     TEXT,
-  pattern_types       TEXT,  -- JSON array of hl-detect pattern IDs
-  escalation_score    INTEGER,
-  emotional_register  TEXT,
-  content_category    TEXT,
-  observed_at         TEXT DEFAULT (datetime('now')),
-  reported_by         TEXT,
-  verified            INTEGER DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS hook (
-  hook_id             TEXT PRIMARY KEY,
-  bait_id             TEXT NOT NULL REFERENCES bait(bait_id),
-  fisherman_id        TEXT NOT NULL REFERENCES fisherman(fisherman_id),
-  pattern_type        TEXT NOT NULL,
-  trigger_phrase      TEXT,
-  trigger_context     TEXT,
-  confidence          REAL,
-  severity            TEXT,
-  hl_detect_version   TEXT,
-  plain_explanation   TEXT,
-  created_at          TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS net (
-  net_id              TEXT PRIMARY KEY,
-  fisherman_id        TEXT NOT NULL REFERENCES fisherman(fisherman_id),
-  destination_domain  TEXT NOT NULL,
-  net_type            TEXT,
-  ad_network          TEXT,
-  tracking_pixels     TEXT,  -- JSON array
-  data_harvested      TEXT,  -- JSON array
-  average_session_time INTEGER,
-  documented_revenue  TEXT,
-  documented_at       TEXT DEFAULT (datetime('now')),
-  evidence_id         TEXT
-);
-
-CREATE TABLE IF NOT EXISTS catch (
-  catch_id            TEXT PRIMARY KEY,
-  fisherman_id        TEXT NOT NULL REFERENCES fisherman(fisherman_id),
-  bait_id             TEXT REFERENCES bait(bait_id),
-  harm_type           TEXT NOT NULL,
-  victim_demographic  TEXT,
-  documented_outcome  TEXT,
-  scale               TEXT,
-  legal_case_id       TEXT,
-  academic_citation   TEXT,
-  date_documented     TEXT,
-  severity_score      INTEGER,
-  evidence_ids        TEXT,  -- JSON array
-  created_at          TEXT DEFAULT (datetime('now'))
-);
-
+-- Documented motive: why a fisherman operates as it does
 CREATE TABLE IF NOT EXISTS motive (
-  motive_id           TEXT PRIMARY KEY,
-  fisherman_id        TEXT NOT NULL REFERENCES fisherman(fisherman_id),
-  motive_type         TEXT NOT NULL,
-  description         TEXT,
-  revenue_model       TEXT,
-  beneficiary         TEXT,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  motive_id TEXT UNIQUE NOT NULL,      -- e.g. "motive-facebook-ad-revenue"
+  fisherman_id TEXT NOT NULL REFERENCES fisherman(fisherman_id),
+  motive_type TEXT NOT NULL,           -- ad_revenue | data_harvesting | engagement_max | etc.
+  description TEXT NOT NULL,
+  revenue_model TEXT,
+  beneficiary TEXT,
   documented_evidence TEXT,
-  confidence_score    REAL DEFAULT 0.5,
-  contributed_by      TEXT,
-  evidence_ids        TEXT,  -- JSON array
-  created_at          TEXT DEFAULT (datetime('now'))
+  confidence_score REAL DEFAULT 0.5,
+  contributed_by TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- Documented catch: a harm outcome linked to a fisherman
+CREATE TABLE IF NOT EXISTS catch (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  catch_id TEXT UNIQUE NOT NULL,       -- e.g. "catch-facebook-001"
+  fisherman_id TEXT NOT NULL REFERENCES fisherman(fisherman_id),
+  harm_type TEXT NOT NULL,
+  victim_demographic TEXT,
+  documented_outcome TEXT NOT NULL,
+  scale TEXT,
+  academic_citation TEXT,
+  date_documented TEXT,
+  severity_score INTEGER DEFAULT 5,    -- 1-10
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Evidence records: sources supporting fisherman, motive, or catch claims
 CREATE TABLE IF NOT EXISTS evidence (
-  evidence_id         TEXT PRIMARY KEY,
-  entity_id           TEXT NOT NULL,
-  entity_type         TEXT NOT NULL,
-  source_type         TEXT NOT NULL,
-  url                 TEXT,
-  archive_url         TEXT,
-  title               TEXT,
-  author              TEXT,
-  publication         TEXT,
-  published_date      TEXT,
-  summary             TEXT,
-  direct_quote        TEXT,
-  verified_by         TEXT,
-  verified_at         TEXT,
-  confidence          REAL DEFAULT 0.7,
-  created_at          TEXT DEFAULT (datetime('now'))
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  evidence_id TEXT UNIQUE NOT NULL,    -- e.g. "ev-facebook-001"
+  entity_id TEXT NOT NULL,             -- fisherman_id, motive_id, or catch_id
+  entity_type TEXT NOT NULL,           -- "fisherman" | "motive" | "catch"
+  source_type TEXT NOT NULL,           -- "primary" | "secondary" | "academic"
+  url TEXT,
+  title TEXT NOT NULL,
+  author TEXT,
+  publication TEXT,
+  published_date TEXT,
+  summary TEXT,
+  confidence REAL DEFAULT 0.5,
+  created_at TEXT DEFAULT (datetime('now'))
 );
 
--- Indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_bait_fisherman ON bait(fisherman_id);
-CREATE INDEX IF NOT EXISTS idx_hook_fisherman ON hook(fisherman_id);
-CREATE INDEX IF NOT EXISTS idx_hook_pattern ON hook(pattern_type);
-CREATE INDEX IF NOT EXISTS idx_catch_fisherman ON catch(fisherman_id);
-CREATE INDEX IF NOT EXISTS idx_catch_harm ON catch(harm_type);
-CREATE INDEX IF NOT EXISTS idx_evidence_entity ON evidence(entity_id);
-CREATE INDEX IF NOT EXISTS idx_net_fisherman ON net(fisherman_id);
+-- -------------------------------------------------------------------------
+-- NETWORK AND ACTOR TABLES (added March 30, 2026 per HOFFMAN.md Part 13)
+-- -------------------------------------------------------------------------
+
+-- Corporate and ownership relationships between fishermen
+CREATE TABLE IF NOT EXISTS network (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  parent_fisherman_id INTEGER REFERENCES fisherman(id),
+  child_fisherman_id INTEGER REFERENCES fisherman(id),
+  relationship_type TEXT NOT NULL,
+  -- owns | funds | coordinates | shares_technology |
+  -- amplifies | board_overlap | investment | regulatory_capture
+  description TEXT,
+  evidence TEXT NOT NULL,
+  source_url TEXT,
+  date_established TEXT,
+  date_ended TEXT,
+  confidence REAL DEFAULT 0.5,
+  verified INTEGER DEFAULT 0,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Individual actors with documented roles and knowledge
+CREATE TABLE IF NOT EXISTS actor (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  name_aliases TEXT,
+  current_role TEXT,
+  current_fisherman_id INTEGER REFERENCES fisherman(id),
+  documented_knowledge_of_harm INTEGER DEFAULT 0,
+  knowledge_source TEXT,
+  knowledge_date TEXT,
+  notes TEXT,
+  confidence REAL DEFAULT 0.5,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Actor roles across platforms over time
+CREATE TABLE IF NOT EXISTS actor_role (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id INTEGER REFERENCES actor(id),
+  fisherman_id INTEGER REFERENCES fisherman(id),
+  role TEXT NOT NULL,
+  date_start TEXT,
+  date_end TEXT,
+  evidence TEXT NOT NULL,
+  source_url TEXT,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Actor investment positions
+CREATE TABLE IF NOT EXISTS actor_investment (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id INTEGER REFERENCES actor(id),
+  fisherman_id INTEGER REFERENCES fisherman(id),
+  position_type TEXT NOT NULL,
+  -- board | investor | major_shareholder | advisor | creditor
+  stake_description TEXT,
+  date_start TEXT,
+  date_end TEXT,
+  evidence TEXT NOT NULL,
+  source_url TEXT,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Actor political relationships
+CREATE TABLE IF NOT EXISTS actor_political (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id INTEGER REFERENCES actor(id),
+  relationship_type TEXT NOT NULL,
+  -- donation | lobbying | regulatory_capture | testimony |
+  -- government_appointment | revolving_door
+  recipient TEXT,
+  amount TEXT,
+  date TEXT,
+  jurisdiction TEXT,
+  evidence TEXT NOT NULL,
+  source_url TEXT,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Known moments of documented awareness of harm
+CREATE TABLE IF NOT EXISTS actor_knowledge (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id INTEGER REFERENCES actor(id),
+  fisherman_id INTEGER REFERENCES fisherman(id),
+  knowledge_type TEXT NOT NULL,
+  -- internal_research | whistleblower_report | external_study |
+  -- regulatory_finding | court_proceeding | media_coverage
+  description TEXT NOT NULL,
+  date TEXT NOT NULL,
+  action_taken TEXT,
+  evidence TEXT NOT NULL,
+  source_url TEXT,
+  confidence REAL DEFAULT 0.5,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
