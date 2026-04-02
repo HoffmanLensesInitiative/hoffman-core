@@ -514,6 +514,10 @@ append_seed_records. Do not make multiple partial calls.
 Every fisherman, motive, catch, and evidence record must be a Python dict passed to
 append_seed_records. Assign honest confidence scores -- never inflate.
 
+Keep record field values concise (one or two sentences max per field). You can always
+add more detail in a future cycle. A complete but brief record is better than a
+detailed but truncated one.
+
 ## CYCLE RESULT FORMAT (fill this in after calling append_seed_records)
 
 ## CYCLE RESULT -- INTEL -- {date}
@@ -681,7 +685,7 @@ def run_cycle(team):
             try:
                 return client.messages.create(
                     model='claude-sonnet-4-6',
-                    max_tokens=8000,
+                    max_tokens=16000,
                     tools=tools,
                     messages=msgs
                 )
