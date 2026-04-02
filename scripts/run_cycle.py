@@ -666,8 +666,11 @@ def run_cycle(team):
         print('ERROR: ANTHROPIC_API_KEY not set')
         return False
 
-    # 90-second timeout per request -- prevents indefinite hangs on slow API responses.
-    client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
+    # timeout: 10s connect, 300s read (16K token responses can take 3-5 minutes to stream).
+    client = anthropic.Anthropic(
+        api_key=api_key,
+        timeout=anthropic.Timeout(connect=10.0, read=300.0, write=10.0, pool=10.0)
+    )
     tools = TOOLS_BY_TEAM.get(team, [])
     # Keep only the initial context message + the most recent exchange to limit
     # conversation growth. Tool results are appended per turn but older turns
