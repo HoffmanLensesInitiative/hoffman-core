@@ -203,48 +203,110 @@ def post_session():
 @app.route('/admin')
 def admin_dashboard():
     db = get_db()
-    fisherman_count = db.execute("SELECT COUNT(*) AS n FROM fisherman").fetchone()['n']
-    motive_count    = db.execute("SELECT COUNT(*) AS n FROM motive").fetchone()['n']
-    catch_count     = db.execute("SELECT COUNT(*) AS n FROM catch").fetchone()['n']
-    evidence_count  = db.execute("SELECT COUNT(*) AS n FROM evidence").fetchone()['n']
-    return render_template('admin/dashboard.html',
-                           fisherman_count=fisherman_count,
-                           motive_count=motive_count,
-                           catch_count=catch_count,
-                           evidence_count=evidence_count)
+    counts = {
+        'fishermen': db.execute("SELECT COUNT(*) AS n FROM fisherman").fetchone()['n'],
+        'motives':   db.execute("SELECT COUNT(*) AS n FROM motive").fetchone()['n'],
+        'catches':   db.execute("SELECT COUNT(*) AS n FROM catch").fetchone()['n'],
+        'evidence':  db.execute("SELECT COUNT(*) AS n FROM evidence").fetchone()['n'],
+    }
+    recent_catches = rows_to_list(db.execute(
+        "SELECT c.*, f.domain FROM catch c JOIN fisherman f ON c.fisherman_id = f.fisherman_id "
+        "ORDER BY c.created_at DESC LIMIT 5").fetchall())
+    return render_template('admin/index.html',
+                           counts=counts,
+                           recent_catches=recent_catches,
+                           active_page='dashboard')
 
 
 @app.route('/admin/fishermen')
 def admin_fishermen():
-    db        = get_db()
-    fishermen = rows_to_list(db.execute("SELECT * FROM fisherman ORDER BY domain").fetchall())
-    return render_template('admin/fishermen.html', fishermen=fishermen)
+    db = get_db()
+    fishermen = rows_to_list(db.execute("""
+        SELECT f.*,
+               COUNT(DISTINCT c.catch_id) AS catch_count,
+               COUNT(DISTINCT m.motive_id) AS motive_count
+        FROM fisherman f
+        LEFT JOIN catch c ON c.fisherman_id = f.fisherman_id
+        LEFT JOIN motive m ON m.fisherman_id = f.fisherman_id
+        GROUP BY f.fisherman_id
+        ORDER BY f.domain
+    """).fetchall())
+    return render_template('admin/fishermen.html', fishermen=fishermen, active_page='fishermen')
 
 
-@app.route('/admin/fishermen/<int:fid>')
+@app.route('/admin/fishermen/<fid>')
 def admin_fisherman_detail(fid):
-    db        = get_db()
-    fisherman = row_to_dict(db.execute("SELECT * FROM fisherman WHERE id = ?", (fid,)).fetchone())
-    if not fisherman:
+    db = get_db()
+    row = db.execute("SELECT * FROM fisherman WHERE fisherman_id = ?", (fid,)).fetchone()
+    if not row:
         return "Not found", 404
-    fisherman['motives']  = rows_to_list(db.execute(
+    fisherman = row_to_dict(row)
+
+    motives = rows_to_list(db.execute(
         "SELECT * FROM motive WHERE fisherman_id = ?", (fid,)).fetchall())
-    fisherman['catches']  = rows_to_list(db.execute(
-        "SELECT * FROM catch WHERE fisherman_id = ?", (fid,)).fetchall())
-    fisherman['evidence'] = rows_to_list(db.execute(
-        "SELECT * FROM evidence WHERE entity_id = ? AND entity_type = 'fisherman'",
-        (fid,)).fetchall())
-    return render_template('admin/fisherman_detail.html', fisherman=fisherman)
+    catches = rows_to_list(db.execute(
+        "SELECT c.*, "
+        "(SELECT COUNT(*) FROM evidence e WHERE e.entity_id = c.catch_id AND e.entity_type = 'catch') AS evidence_count "
+        "FROM catch c WHERE c.fisherman_id = ?", (fid,)).fetchall())
+
+    catch_count  = len(catches)
+    motive_count = len(motives)
+    top_patterns = list(set(c['harm_type'] for c in catches)) if catches else []
+
+    api_response = {
+        'known':          True,
+        'domain':         fisherman['domain'],
+        'display_name':   fisherman.get('display_name'),
+        'owner':          fisherman.get('owner'),
+        'business_model': fisherman.get('business_model'),
+        'confidence':     fisherman.get('confidence_score'),
+        'first_motive':   motives[0] if motives else None,
+        'catch_count':    catch_count,
+    }
+
+    return render_template('admin/fisherman_detail.html',
+                           fisherman=fisherman,
+                           motives=motives,
+                           catches=catches,
+                           catch_count=catch_count,
+                           motive_count=motive_count,
+                           top_patterns=top_patterns,
+                           api_response=api_response,
+                           active_page='fishermen')
 
 
 @app.route('/admin/catches')
 def admin_catches():
-    db      = get_db()
-    catches = rows_to_list(db.execute(
-        "SELECT c.*, f.display_name AS fisherman_name, f.domain "
-        "FROM catch c JOIN fisherman f ON c.fisherman_id = f.id "
-        "ORDER BY c.severity_score DESC").fetchall())
-    return render_template('admin/catches.html', catches=catches)
+    db = get_db()
+    filter_fisherman = request.args.get('fisherman', '').strip()
+    filter_harm      = request.args.get('harm', '').strip()
+
+    query = (
+        "SELECT c.*, f.display_name AS fisherman_name, f.domain, "
+        "(SELECT COUNT(*) FROM evidence e WHERE e.entity_id = c.catch_id AND e.entity_type = 'catch') AS evidence_count "
+        "FROM catch c JOIN fisherman f ON c.fisherman_id = f.fisherman_id WHERE 1=1"
+    )
+    params = []
+    if filter_fisherman:
+        query += " AND f.domain = ?"
+        params.append(filter_fisherman)
+    if filter_harm:
+        query += " AND c.harm_type = ?"
+        params.append(filter_harm)
+    query += " ORDER BY c.severity_score DESC"
+
+    catches   = rows_to_list(db.execute(query, params).fetchall())
+    fishermen = rows_to_list(db.execute("SELECT domain FROM fisherman ORDER BY domain").fetchall())
+    harm_types = [r['harm_type'] for r in rows_to_list(
+        db.execute("SELECT DISTINCT harm_type FROM catch ORDER BY harm_type").fetchall())]
+
+    return render_template('admin/catches.html',
+                           catches=catches,
+                           fishermen=fishermen,
+                           harm_types=harm_types,
+                           filter_fisherman=filter_fisherman,
+                           filter_harm=filter_harm,
+                           active_page='catches')
 
 
 # ===========================================================================
