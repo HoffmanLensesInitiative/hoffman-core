@@ -51,7 +51,7 @@ var BASE_SYSTEM_PROMPT = [
   '  suppression_framing   - framing that delegitimizes or suppresses opposing views',
   '  false_authority       - unverified or inflated authority claims',
   '  tribal_activation     - in-group/out-group identity pressure',
-  '  engagement_directive  - explicit instructions to share, like, comment, or react',
+  '  engagement_directive  - instructions to sign, donate, share, call, or take action',
   '  war_framing           - conflict and battle framing applied to non-military topics',
   '  fear_amplification    - systematic inflation of threat magnitude',
   '  identity_threat       - framing that positions the reader\'s identity as under attack',
@@ -65,10 +65,9 @@ var BASE_SYSTEM_PROMPT = [
   'If no manipulation is found, return manipulation_found: false, empty flags array,',
   'and a brief summary explaining what the text does.',
   '',
-  'Do not flag factual news reporting or academic writing.',
-  'engagement_directive, false_urgency, and tribal_activation are manipulation',
-  'techniques regardless of whether the cause is considered legitimate.',
-  'Advocacy and activism sites use these techniques as much as partisan media.'
+  'Flag a technique whenever it is present. The legitimacy of the cause does not',
+  'matter -- engagement_directive on an anti-war site is still engagement_directive.',
+  'Only skip flagging if the text is purely factual with no persuasion tactics.'
 ].join('\n');
 
 /**
