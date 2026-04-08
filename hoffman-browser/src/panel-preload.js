@@ -10,6 +10,11 @@ contextBridge.exposeInMainWorld('hoffman', {
   loadModel:      ()  => ipcRenderer.send('load-model'),
   queryBmid: (domain, pattern) => ipcRenderer.invoke('query-bmid', domain, pattern),
 
+  // Settings (cloud API key)
+  getSettings:  ()               => ipcRenderer.invoke('get-settings'),
+  saveSettings: (provider, key)  => ipcRenderer.invoke('save-settings', { provider, apiKey: key }),
+  clearApiKey:  ()               => ipcRenderer.invoke('clear-api-key'),
+
   onPageChanged:      (cb) => ipcRenderer.on('page-changed',      (e, d) => cb(d)),
   onAnalysisStarted:  (cb) => ipcRenderer.on('analysis-started',  ()     => cb()),
   onAnalysisComplete: (cb) => ipcRenderer.on('analysis-complete', (e, d) => cb(d)),

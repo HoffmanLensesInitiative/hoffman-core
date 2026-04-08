@@ -4,10 +4,12 @@
 
 'use strict';
 
-const { app, BrowserWindow, BrowserView, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, BrowserView, ipcMain, shell, safeStorage } = require('electron');
 const path = require('path');
 
-const ModelManager = require('./model-manager');
+const ModelManager    = require('./model-manager');
+const SettingsManager = require('./settings-manager');
+const { analyzeWithCloud } = require('./cloud-analyzer');
 const { buildSystemPrompt, truncateText, synthesizeFlagsFromSummary } = require('./analyzer');
 const { getBmidEnrichment } = require('./bmid-context');
 const { isTechniqueNovel } = require('./bmid-context-builder');
@@ -24,10 +26,11 @@ const TOOLBAR_HEIGHT = 72;
 // State
 // ---------------------------------------------------------------------------
 
-let mainWindow   = null;
-let browserView  = null;
-let panelWindow  = null;
-let modelManager = null;
+let mainWindow    = null;
+let browserView   = null;
+let panelWindow   = null;
+let modelManager  = null;
+let settingsManager = null;
 
 // ---------------------------------------------------------------------------
 // Window bounds helpers
@@ -93,8 +96,11 @@ async function loadModel() {
 app.whenReady().then(async () => {
   console.log('[Hoffman] Starting up...');
 
-  const modelsDir = path.join(app.getPath('userData'), 'models');
-  modelManager = new ModelManager(modelsDir);
+  const userData = app.getPath('userData');
+
+  modelManager    = new ModelManager(path.join(userData, 'models'));
+  settingsManager = new SettingsManager(userData);
+  settingsManager.init(safeStorage);
 
   // Main window (toolbar)
   mainWindow = new BrowserWindow({
@@ -142,12 +148,13 @@ app.whenReady().then(async () => {
   panelWindow.webContents.once('did-finish-load', () => {
     updatePanelBounds();
 
-    // Send initial model status so panel shows correct state immediately
+    // Send initial model + settings status
     const status = modelManager.getStatus();
     sendToPanel('model-status', status);
+    sendToPanel('settings-status', settingsManager.getPublic());
 
-    // If model file already exists, auto-load it without user needing to click
-    if (status.downloaded && !status.ready) {
+    // If no cloud key and model already downloaded, auto-load it
+    if (!settingsManager.hasApiKey() && status.downloaded && !status.ready) {
       loadModel();
     }
   });
@@ -222,25 +229,48 @@ ipcMain.on('load-model', () => {
 });
 
 // ---------------------------------------------------------------------------
+// IPC: Settings
+// ---------------------------------------------------------------------------
+
+ipcMain.handle('get-settings', () => {
+  return settingsManager.getPublic();
+});
+
+ipcMain.handle('save-settings', (event, { provider, apiKey }) => {
+  settingsManager.saveApiSettings(provider, apiKey);
+  console.log('[Hoffman] Settings saved: provider=' + provider +
+    ', hasKey=' + settingsManager.hasApiKey());
+  return settingsManager.getPublic();
+});
+
+ipcMain.handle('clear-api-key', () => {
+  settingsManager.clearApiKey();
+  console.log('[Hoffman] API key cleared');
+  return settingsManager.getPublic();
+});
+
+// ---------------------------------------------------------------------------
 // IPC: Analysis pipeline
 // ---------------------------------------------------------------------------
 
 ipcMain.on('analyze-page', async () => {
-  if (!modelManager.isReady()) {
-    sendToPanel('analysis-error', 'Model not loaded. Click "Download Hoffman model" first.');
+  const useCloud = settingsManager.hasApiKey();
+
+  if (!useCloud && !modelManager.isReady()) {
+    sendToPanel('analysis-error', 'No API key configured and local model not loaded. ' +
+      'Add an API key in Settings (⚙) or load the local model.');
     return;
   }
 
   const currentUrl = browserView.webContents.getURL();
   const domain     = hostnameFromUrl(currentUrl);
 
-  console.log('[Hoffman] Analysis requested for:', currentUrl);
+  console.log('[Hoffman] Analysis requested for:', currentUrl,
+    '| mode:', useCloud ? settingsManager.getProvider() : 'local');
   sendToPanel('analysis-started');
 
   try {
     // Extract page text and query BMID in parallel.
-    // getBmidEnrichment makes one HTTP call and returns both the context string
-    // and the known techniques list -- no second BMID request needed.
     const [pageText, enrichment] = await Promise.all([
       browserView.webContents.executeJavaScript(`
         (function() {
@@ -261,8 +291,6 @@ ipcMain.on('analyze-page', async () => {
       console.log('[Hoffman] BMID context injected for:', domain);
     }
 
-    // Build prompt and run model.
-    // 2400 chars fits the 4096-token context window alongside the system prompt.
     const truncated    = truncateText(pageText, 2400);
     const systemPrompt = buildSystemPrompt(enrichment.context);
     const userMessage  = 'Analyze this web page text for manipulation:\n\n' + truncated;
@@ -273,21 +301,34 @@ ipcMain.on('analyze-page', async () => {
 
     const startTime = Date.now();
 
-    // completeJson returns a grammar-constrained parsed object -- never raw text.
-    const parsed = await modelManager.completeJson(systemPrompt, userMessage);
+    let parsed;
+    if (useCloud) {
+      // Cloud path: fast, no local CPU usage
+      parsed = await analyzeWithCloud(
+        settingsManager.getProvider(),
+        settingsManager.getApiKey(),
+        systemPrompt,
+        userMessage
+      );
+    } else {
+      // Local path: grammar-constrained JSON, runs on device
+      parsed = await modelManager.completeJson(systemPrompt, userMessage);
+    }
 
     const elapsed = Date.now() - startTime;
-    console.log('[Hoffman] Model returned in ' + elapsed + 'ms');
+    console.log('[Hoffman] Analysis returned in ' + elapsed + 'ms via ' +
+      (useCloud ? settingsManager.getProvider() : 'local model'));
 
-    // Normalize result.
+    // Normalize result
     const result = {
       manipulation_found: !!parsed.manipulation_found,
       summary:            parsed.summary || '',
       flags:              Array.isArray(parsed.flags) ? parsed.flags : [],
-      processingTimeMs:   elapsed
+      processingTimeMs:   elapsed,
+      via:                useCloud ? settingsManager.getProvider() : 'local'
     };
 
-    // Workaround: 3B model sometimes sets manipulation_found:false but writes
+    // Workaround: small models sometimes set manipulation_found:false but write
     // a contradictory summary. Synthesize a flag from the summary signal.
     if (!result.manipulation_found && result.flags.length === 0) {
       const synthesized = synthesizeFlagsFromSummary(result.summary);
