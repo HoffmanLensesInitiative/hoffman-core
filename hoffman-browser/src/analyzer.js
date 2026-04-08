@@ -67,7 +67,15 @@ var BASE_SYSTEM_PROMPT = [
   '',
   'Flag a technique whenever it is present. The legitimacy of the cause does not',
   'matter -- engagement_directive on an anti-war site is still engagement_directive.',
-  'Only skip flagging if the text is purely factual with no persuasion tactics.'
+  'Only skip flagging if the text is purely factual with no persuasion tactics.',
+  '',
+  'IMPORTANT: Bias and one-sided framing ARE manipulation, not neutral opinion.',
+  'If a text presents one perspective while portraying the opposing view as corrupt,',
+  'evil, or illegitimate -- that is suppression_framing. Flag it.',
+  'If a text uses words like "mafia", "barbarity", "dominat*", or enemy imagery',
+  'for political/economic topics -- that is war_framing or outrage_engineering. Flag it.',
+  'Do NOT return manipulation_found: false if your summary describes the text as',
+  'biased, one-sided, or portraying any group negatively.'
 ].join('\n');
 
 /**
@@ -125,7 +133,9 @@ function synthesizeFlagsFromSummary(summary) {
     'outrage',   'manipul',  'mislead',  'inflam',
     'fear',      'tribal',   'urgency',  'hook',
     'framing',   'authority','partisan', 'identity threat',
-    'clickbait', 'war framing'
+    'clickbait', 'war framing',
+    'bias',      'biased',   'one-sided','portray',
+    'war',       'conflict', 'dominat',  'propaganda'
   ];
 
   var found = signals.filter(function(sig) {
@@ -148,7 +158,15 @@ function synthesizeFlagsFromSummary(summary) {
     'inflam':          'outrage_engineering',
     'mislead':         'suppression_framing',
     'clickbait':       'incomplete_hook',
-    'manipul':         'outrage_engineering'
+    'manipul':         'outrage_engineering',
+    'bias':            'suppression_framing',
+    'biased':          'suppression_framing',
+    'one-sided':       'suppression_framing',
+    'portray':         'suppression_framing',
+    'war':             'war_framing',
+    'conflict':        'war_framing',
+    'dominat':         'outrage_engineering',
+    'propaganda':      'suppression_framing'
   };
 
   var technique = 'manipulation_detected';
