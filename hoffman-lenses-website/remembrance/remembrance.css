@@ -140,6 +140,12 @@
   display: none;
 }
 
+/* Pending bio — muted treatment, inherits entry-bio base styles */
+.entry-bio--pending {
+  color: var(--color-text-tertiary, #665e57);
+  font-style: italic;
+}
+
 
 /* ================================================================
    CONTEXT SECTIONS
@@ -194,7 +200,7 @@
 
 
 /* ================================================================
-   CLOSING FOOTER NOTE
+   CLOSING NOTE
    ================================================================ */
 .remembrance-footer-note {
   max-width: 700px;
