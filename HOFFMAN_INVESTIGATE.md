@@ -137,91 +137,6 @@ unexpected connections.
 
 ---
 
-<!-- AUTO CYCLE 2026-04-02 05:15 UTC -->
-
-I'll conduct the Priority 1 investigation: **Meta Platforms deep file** — building the complete evidence package from primary sources.## CYCLE RESULT — INVESTIGATE — 2026-04-02 05:10 UTC
-
----
-
-### Investigation target
-
-**Meta Platforms — Priority 1 Deep File**
-Complete evidence package for BMID Fisherman record: Facebook, Instagram, and the documented harm record from primary sources.
-
----
-
-### Key findings
-
-**1. The evidence base is exceptional by BMID standards.**
-Meta has court findings, sworn congressional testimony, SEC whistleblower filings, peer-reviewed causal academic research, and a UN official report — all converging on the same conclusions. This is rare. Most BMID candidates will have one or two primary source classes. Meta has all of them.
-
-**2. The Molly Russell inquest is the highest-weight catch record in the BMID.**
-Coroner Andrew Walker ruled on September 30, 2022 that Instagram content "contributed to her death in a more than minimal way" — a direct judicial finding, not an allegation. The algorithm served her content that "romanticized, normalized, or presented self-harm and suicide in a positive way." Confidence: 1.0. This is a legal ruling.
-
-**3. Meta's own internal research documented harm before public disclosure — by years.**
-The WSJ Facebook Files (September 2021) published Meta's own slide: *"We make body image issues worse for one in three teen girls."* Haugen testified under oath this research reached leadership. The Facebook Papers (ICIJ consortium, October 2021) contained internal memos from 2019 onward. The internal knowledge date precedes the public disclosure by at least two years.
-
-**4. The MSI algorithm change is the core of the knowing conduct case.**
-In January 2018, Zuckerberg publicly announced the "Meaningful Social Interactions" change as a wellbeing initiative. Internal research subsequently showed it amplified outrage and divisive content. Meta researchers proposed a mitigation effort. It was deprioritized. This is the documented gap between public framing and internal reality — and the academic literature (Braghieri, Levy, Makarin, 2022, *American Economic Review*) provides causal evidence, not just correlation.
-
-**5. Zuckerberg's documented knowledge timeline spans 2018 through 2024.**
-April 2018: sworn Senate testimony on data misuse. October 2021: Haugen's sworn testimony that his teams received internal harm research. September 2024: second Senate appearance — he said "I'm sorry" directly to families of harmed children under oath. The apology does not constitute legal admission but it is on-the-record acknowledgment of harm at congressional scale.
-
-**6. The UN Human Rights Council formally documented Facebook's role in Myanmar.**
-UN Doc A/HRC/39/64 (September 12, 2018) stated Facebook "was a useful instrument for those seeking to spread hate" in Myanmar and that "the extent to which Facebook content has contributed to violence and discriminatory policies must be investigated further." Confidence: 1.0 — UN official body, primary source.
-
-**7. Meta's advertising revenue dependence is 97.8% of $134.9 billion (2023).**
-Documented in SEC 10-K filing. The structural incentive — maximize engagement to maximize advertising inventory — is not inference. It is the company's own disclosed business model.
-
----
-
-### Rabbit hole findings
-
-**Rabbit Hole 21 — The MSI Mitigation Decision Chain** *(CRITICAL)*
-The most important undocumented gap in the entire Meta record: *who specifically* made the call to deprioritize the mitigation of the MSI algorithm harm? The WSJ attributed it to "top executives" without naming individuals. Haugen testified the research reached Zuckerberg's team. The gap between "reached the team" and "Zuckerberg made the decision" is the accountability gap that legal proceedings will resolve — but BMID should pursue it first with the Facebook Papers as primary source material.
-
-**Rabbit Hole 22 — The Haugen SEC Filing vs. Testimony Comparison**
-Haugen filed eight SEC complaints on September 13, 2021 — three weeks before public testimony. The SEC filings are the highest-weight legal documents in the entire Haugen disclosure. A systematic comparison of SEC filing content against Senate testimony content against Facebook Papers journalism would identify claims documented under oath that have not yet made it into the public record analysis. Any such claims go directly into BMID evidence records.
-
-**Rabbit Hole 23 — The Internal Knowledge Timeline**
-Facebook Papers contain internal memos from 2019 showing researcher awareness of harm. If the documented knowledge date is 2019, not 2021, the accountability chronology shifts significantly. The actor_knowledge table entries for Zuckerberg and other named executives depend on establishing this date precisely.
-
----
-
-### Files written
-
-`reports/investigate-meta-platforms-deep-file.md` — 43,649 characters
-
-**Contents:**
-- Part 1: Fisherman record (identity, reach, revenue model — all primary sourced)
-- Part 2–3: Motive records including extended MSI algorithm change documentation
-- Part 4: Five catch records (Molly Russell, adolescent girls population, Myanmar, January 6, JackLynn Blackwell candidate)
-- Part 5: Ten evidence records meeting BMID Part 12 standard
-- Part 6: Zuckerberg actor record with documented knowledge timeline
-- Part 7: Network record (acquisition history, board composition)
-- Part 8: Seven open threads for next cycle
-- Part 9: Three rabbit hole findings
-- Part 10: BMID entry summary — records ready for Intel team
-- Part 11: Investigator notes on the accountability gap
-
----
-
-### Next cycle recommendation
-
-**Rabbit Hole 21 — The MSI Mitigation Decision Chain**
-
-This is the critical path. Everything else in the Meta file is documented. This is the one gap that, if closed with primary sources, would complete the knowing conduct case: who received the mitigation proposals, who made the call to deprioritize them, and whether that decision is documented in writing anywhere in the Facebook Papers or litigation record.
-
-The Facebook Papers were published by 17 news organizations in October 2021. The ICIJ consortium page (icij.org/investigations/facebook-papers) is the primary index. A dedicated cycle reading those documents against the Haugen testimony and the FTC complaint would likely locate the decision chain or definitively document its absence.
-
-**After Rabbit Hole 21:** Rabbit Hole 22 (Haugen SEC filing deep read) to close any evidentiary gaps in the written legal record.
-
----
-
-*Evidence integrity check: Every material claim in the intelligence file traces to a named primary source. No anonymous sources. No speculation. No inference without documentation. JackLynn Blackwell's record is opened as a 0.30 candidate explicitly because primary source documentation has not yet been located — unknown is recorded as unknown.*
-
----
-
 <!-- AUTO CYCLE 2026-04-08 05:35 UTC -->
 
 I'll investigate Rabbit Hole 21 — The MSI Mitigation Decision Chain — the critical gap in the Meta accountability record: who specifically made the decision to deprioritize the mitigation of the Meaningful Social Interactions algorithm harm.## CYCLE RESULT — INVESTIGATE — 2026-04-08 05:30 UTC
@@ -313,3 +228,13 @@ This is faster than waiting for litigation discovery and requires only reading p
 ---
 
 *Evidence integrity: Every material claim traces to a named primary source. The accountability gap is documented precisely — not papered over. Unknown is recorded as unknown. Three investigation paths are identified and prioritized. The JackLynn Blackwell record remains at 0.30. Build accordingly.*
+
+---
+
+<!-- AUTO CYCLE 2026-04-08 15:18 UTC -->
+
+I'll start by fetching pending submissions and then proceed to the investigation queue.Submissions queue unavailable (API key not set in this environment). Proceeding to the investigation queue.
+
+The priority investigation from the last cycle was **Evidence Target 1 — SEC EDGAR 8-K earnings call review** (Path B): systematically reading Meta's public quarterly earnings call transcripts (Q1 2020 – Q4 2021) to determine whether any named executive made positive public characterizations of the Meaningful Social Interactions algorithm *after* the 2019 internal harm findings — closing the deception claim from the outside without requiring litigation discovery.
+
+Let me compile the full intelligence file now.Now let me fetch the submissions queue before finalizing the cycle result.No API key configured — proceeding to the investigation queue. The investigation target for this cycle is **Evidence Target 1 / Path B: Meta SEC EDGAR 8-K earnings call review** — the fastest documented path to closing the MSI accountability gap identified in the previous cycle.Now seed the new actor records and evidence into the BMID:
