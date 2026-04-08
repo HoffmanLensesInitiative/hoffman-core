@@ -44,7 +44,7 @@ var PROVIDERS = {
     parseResponse: function(data) {
       // { content: [{ type: 'text', text: '{"manipulation_found":...}' }] }
       if (data.content && data.content[0] && data.content[0].text) {
-        return JSON.parse(data.content[0].text);
+        return parseJson(data.content[0].text);
       }
       throw new Error('Unexpected Anthropic response shape');
     }
@@ -76,7 +76,7 @@ var PROVIDERS = {
     parseResponse: function(data) {
       // { choices: [{ message: { content: '{"manipulation_found":...}' } }] }
       if (data.choices && data.choices[0] && data.choices[0].message) {
-        return JSON.parse(data.choices[0].message.content);
+        return parseJson(data.choices[0].message.content);
       }
       throw new Error('Unexpected OpenAI response shape');
     }
@@ -107,13 +107,26 @@ var PROVIDERS = {
       // { candidates: [{ content: { parts: [{ text: '...' }] } }] }
       if (data.candidates && data.candidates[0] &&
           data.candidates[0].content && data.candidates[0].content.parts) {
-        return JSON.parse(data.candidates[0].content.parts[0].text);
+        return parseJson(data.candidates[0].content.parts[0].text);
       }
       throw new Error('Unexpected Google response shape');
     }
   }
 
 };
+
+// ---------------------------------------------------------------------------
+// JSON parser -- strips markdown code fences before parsing.
+// Some models wrap their JSON response in ```json ... ``` even when
+// instructed not to. This handles that gracefully.
+// ---------------------------------------------------------------------------
+
+function parseJson(text) {
+  var s = text.trim();
+  // Strip ```json ... ``` or ``` ... ```
+  s = s.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+  return JSON.parse(s);
+}
 
 // ---------------------------------------------------------------------------
 // HTTP helper
