@@ -165,9 +165,9 @@ class ModelManager {
     });
 
     const raw = await session.prompt(userMessage, {
-      // A full analysis (summary + 3-4 flags) is ~150-300 tokens.
-      // 400 caps runaway generation without cutting off real output.
-      maxTokens:   400,
+      // A full analysis (summary + 3-4 flags) is ~200-400 tokens.
+      // 600 gives headroom for verbose explanations without the old 1024 waste.
+      maxTokens:   600,
       temperature: 0.1,
       grammar
     });

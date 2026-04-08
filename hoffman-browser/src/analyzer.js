@@ -65,8 +65,10 @@ var BASE_SYSTEM_PROMPT = [
   'If no manipulation is found, return manipulation_found: false, empty flags array,',
   'and a brief summary explaining what the text does.',
   '',
-  'Do not flag factual news reporting, academic writing, or personal posts',
-  'that use emotional language in appropriate context.'
+  'Do not flag factual news reporting or academic writing.',
+  'engagement_directive, false_urgency, and tribal_activation are manipulation',
+  'techniques regardless of whether the cause is considered legitimate.',
+  'Advocacy and activism sites use these techniques as much as partisan media.'
 ].join('\n');
 
 /**
