@@ -79,24 +79,28 @@ class ModelManager {
       const { getLlama, LlamaChatSession } = llama;
       this._Session = LlamaChatSession;
 
-      // Auto-detect GPU (Metal/CUDA/Vulkan); falls back to CPU if none available.
-      // On machines with a GPU this is 10-20x faster than CPU-only.
-      this._llama = await getLlama();
-
-      this._model = await this._llama.loadModel({
-        modelPath: this.modelPath
-      });
-
-      // Context created once and kept alive. completeJson() reuses it by
-      // disposing only the sequence after each call -- avoids the cost of
-      // reallocating the KV cache on every analysis.
-      this._context = await this._model.createContext({
-        contextSize: 2048
-      });
+      // Try GPU first (Metal/CUDA/Vulkan). If the GPU lacks VRAM for a 2048-token
+      // context, fall back to CPU automatically -- same behavior, just slower.
+      let loadedOnGpu = false;
+      try {
+        this._llama = await getLlama();
+        this._model = await this._llama.loadModel({ modelPath: this.modelPath });
+        this._context = await this._model.createContext({ contextSize: 2048 });
+        loadedOnGpu = !!this._llama.gpu;
+      } catch (gpuErr) {
+        console.log('[Hoffman] GPU load failed (' + gpuErr.message + ') -- falling back to CPU');
+        // Clean up any partial GPU state before retrying on CPU
+        if (this._context)  { try { await this._context.dispose();  } catch(e) {} this._context  = null; }
+        if (this._model)    { try { await this._model.dispose();    } catch(e) {} this._model    = null; }
+        if (this._llama)    { try { await this._llama.dispose();    } catch(e) {} this._llama    = null; }
+        this._llama   = await getLlama({ gpu: false });
+        this._model   = await this._llama.loadModel({ modelPath: this.modelPath });
+        this._context = await this._model.createContext({ contextSize: 2048 });
+      }
 
       this._status = 'ready';
-      const gpuInfo = this._llama.gpu ? ('GPU (' + this._llama.gpu + ')') : 'CPU';
-      console.log('[Hoffman] Model loaded on ' + gpuInfo + ', context 2048');
+      const backend = loadedOnGpu ? ('GPU (' + this._llama.gpu + ')') : 'CPU';
+      console.log('[Hoffman] Model loaded on ' + backend + ', context 2048');
 
       if (progressCallback) {
         progressCallback({ stage: 'ready', message: 'Model ready' });
