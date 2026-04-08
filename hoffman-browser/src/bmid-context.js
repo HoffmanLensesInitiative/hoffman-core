@@ -43,7 +43,7 @@ async function getBmidContext(domain) {
           const data = JSON.parse(raw);
 
           // If BMID has no record for this domain, skip context
-          if (!data || data.intelligence_level === 'none' || !data.fisherman) {
+          if (!data || !data.known) {
             resolve(null);
             return;
           }
@@ -76,37 +76,26 @@ async function getBmidContext(domain) {
  * @returns {string}
  */
 function buildContextString(data) {
-  const f = data.fisherman || {};
-  const motives = Array.isArray(data.motives) ? data.motives : [];
-  const catchSummary = data.catch_summary || {};
-  const topPatterns = Array.isArray(data.top_patterns) ? data.top_patterns : [];
+  // API returns flat fields: known, domain, display_name, owner, business_model,
+  // confidence, first_motive, catch_count
+  const lines = ['KNOWN INTELLIGENCE ON THIS DOMAIN:'];
 
-  const lines = [
-    'KNOWN INTELLIGENCE ON THIS DOMAIN:',
-    `Owner: ${f.owner || 'unknown'}`,
-    `Business model: ${f.business_model || 'unknown'}`,
-  ];
-
-  if (motives.length > 0) {
-    lines.push(`Documented primary motive: ${motives[0].description || motives[0].motive_type || 'unknown'}`);
+  if (data.owner) {
+    lines.push('Owner: ' + data.owner);
   }
 
-  const harmCount = catchSummary.total_documented;
-  if (harmCount !== undefined && harmCount !== null) {
-    lines.push(`Documented harms on record: ${harmCount}`);
+  if (data.business_model) {
+    lines.push('Business model: ' + data.business_model);
   }
 
-  if (topPatterns.length > 0) {
-    lines.push(`Known manipulation techniques: ${topPatterns.join(', ')}`);
-  } else if (motives.length > 0) {
-    // Fall back to motive types if top_patterns not available
-    const motiveTypes = motives
-      .map((m) => m.motive_type)
-      .filter(Boolean)
-      .slice(0, 3);
-    if (motiveTypes.length > 0) {
-      lines.push(`Known motive types: ${motiveTypes.join(', ')}`);
-    }
+  if (data.first_motive && data.first_motive.description) {
+    lines.push('Primary documented motive: ' + data.first_motive.description);
+  } else if (data.first_motive && data.first_motive.motive_type) {
+    lines.push('Primary motive type: ' + data.first_motive.motive_type);
+  }
+
+  if (typeof data.catch_count === 'number') {
+    lines.push('Documented harms on record: ' + data.catch_count);
   }
 
   return lines.join('\n');
@@ -123,18 +112,9 @@ function getKnownTechniques(data) {
 
   const techniques = [];
 
-  if (Array.isArray(data.top_patterns)) {
-    data.top_patterns.forEach((p) => {
-      if (typeof p === 'string') techniques.push(p.toLowerCase());
-    });
-  }
-
-  if (Array.isArray(data.motives)) {
-    data.motives.forEach((m) => {
-      if (m && typeof m.motive_type === 'string') {
-        techniques.push(m.motive_type.toLowerCase());
-      }
-    });
+  // API returns first_motive with motive_type -- use as a known technique hint
+  if (data.first_motive && typeof data.first_motive.motive_type === 'string') {
+    techniques.push(data.first_motive.motive_type.toLowerCase());
   }
 
   return [...new Set(techniques)];
@@ -168,7 +148,7 @@ async function getBmidEnrichment(domain) {
         try {
           const data = JSON.parse(raw);
 
-          if (!data || data.intelligence_level === 'none' || !data.fisherman) {
+          if (!data || !data.known) {
             resolve({ context: null, knownTechniques: [] });
             return;
           }

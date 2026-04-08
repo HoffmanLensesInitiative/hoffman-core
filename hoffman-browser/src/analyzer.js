@@ -1,13 +1,10 @@
 /**
  * analyzer.js
- * Hoffman Browser -- LLM analysis pipeline
+ * Hoffman Browser -- LLM analysis utilities
  *
- * Sends page text to the local Llama model and returns structured flags.
- * One model call. Full page text in. Grammar-constrained JSON out.
- *
- * Updated: BMID context injection support.
- * analyzeWithModel() now accepts an optional bmidContext string.
- * If present, it is prepended to the system prompt before the model runs.
+ * Exports pure utility functions used by main.js in the analysis pipeline.
+ * The model call itself (completeJson) lives in model-manager.js.
+ * The BMID query lives in bmid-context.js.
  *
  * Architecture note -- DO NOT CHANGE:
  * There is no pre-screening layer. hl-detect has no role here.
@@ -17,10 +14,8 @@
 
 'use strict';
 
-var modelManager = require('./model-manager');
-
-// JSON schema for grammar-constrained output
-// The model cannot output non-JSON when this grammar is active
+// JSON schema for grammar-constrained output.
+// Passed to ModelManager.completeJson() -- model cannot output non-JSON tokens.
 var ANALYSIS_SCHEMA = {
   type: 'object',
   properties: {
@@ -31,10 +26,10 @@ var ANALYSIS_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          quote:        { type: 'string' },
-          technique:    { type: 'string' },
-          explanation:  { type: 'string' },
-          severity:     { type: 'string' }
+          quote:       { type: 'string' },
+          technique:   { type: 'string' },
+          explanation: { type: 'string' },
+          severity:    { type: 'string' }
         },
         required: ['quote', 'technique', 'explanation', 'severity']
       }
@@ -43,8 +38,8 @@ var ANALYSIS_SCHEMA = {
   required: ['manipulation_found', 'summary', 'flags']
 };
 
-// Base system prompt -- no BMID context
-// When bmidContext is provided it is prepended to this string
+// Base system prompt -- no BMID context.
+// When bmidContext is provided it is prepended by buildSystemPrompt().
 var BASE_SYSTEM_PROMPT = [
   'You are a manipulation detection expert. Your task is to read web page text',
   'and identify behavioral manipulation techniques.',
@@ -76,8 +71,7 @@ var BASE_SYSTEM_PROMPT = [
 
 /**
  * Truncate text to fit within a safe token budget.
- * Llama 3.2 3B has a 2048-token context; with prompt overhead ~1200 chars is safe.
- * Larger models can handle more -- this is conservative.
+ * 2400 chars fits the 4096-token context alongside the system prompt.
  *
  * @param {string} text
  * @param {number} maxChars
@@ -93,8 +87,9 @@ function truncateText(text, maxChars) {
 /**
  * Build the full system prompt for a model call.
  * If bmidContext is provided, it is prepended as a clearly labelled section.
+ * The model is instructed to use it as background, not as a directive.
  *
- * @param {string} [bmidContext]  - optional context string from BMID
+ * @param {string|null} bmidContext  - optional BMID context string
  * @returns {string}
  */
 function buildSystemPrompt(bmidContext) {
@@ -105,9 +100,8 @@ function buildSystemPrompt(bmidContext) {
   return [
     bmidContext,
     '',
-    'Use this intelligence as background context. The techniques above are documented',
-    'for this domain -- but identify any manipulation present in the text independently.',
-    'If you find techniques not listed above, flag them.',
+    'Use this intelligence as background context. Identify any manipulation present',
+    'in the text independently. If you find techniques not listed above, flag them.',
     '',
     BASE_SYSTEM_PROMPT
   ].join('\n');
@@ -126,7 +120,6 @@ function synthesizeFlagsFromSummary(summary) {
 
   var lower = summary.toLowerCase();
 
-  // Signal words that indicate the model found something despite the false flag
   var signals = [
     'outrage',   'manipul',  'mislead',  'inflam',
     'fear',      'tribal',   'urgency',  'hook',
@@ -140,22 +133,21 @@ function synthesizeFlagsFromSummary(summary) {
 
   if (found.length === 0) return [];
 
-  // Attempt to extract a technique name from the summary
   var techniqueMap = {
-    'outrage':        'outrage_engineering',
-    'fear':           'fear_amplification',
-    'tribal':         'tribal_activation',
-    'urgency':        'false_urgency',
-    'hook':           'incomplete_hook',
-    'framing':        'suppression_framing',
-    'authority':      'false_authority',
-    'identity threat':'identity_threat',
-    'war framing':    'war_framing',
-    'partisan':       'outrage_engineering',
-    'inflam':         'outrage_engineering',
-    'mislead':        'suppression_framing',
-    'clickbait':      'incomplete_hook',
-    'manipul':        'outrage_engineering'
+    'outrage':         'outrage_engineering',
+    'fear':            'fear_amplification',
+    'tribal':          'tribal_activation',
+    'urgency':         'false_urgency',
+    'hook':            'incomplete_hook',
+    'framing':         'suppression_framing',
+    'authority':       'false_authority',
+    'identity threat': 'identity_threat',
+    'war framing':     'war_framing',
+    'partisan':        'outrage_engineering',
+    'inflam':          'outrage_engineering',
+    'mislead':         'suppression_framing',
+    'clickbait':       'incomplete_hook',
+    'manipul':         'outrage_engineering'
   };
 
   var technique = 'manipulation_detected';
@@ -167,141 +159,18 @@ function synthesizeFlagsFromSummary(summary) {
   }
 
   return [{
-    quote: '[extracted from model summary -- exact quote unavailable]',
-    technique: technique,
+    quote:       '[extracted from model summary -- exact quote unavailable]',
+    technique:   technique,
     explanation: summary,
-    severity: 'MEDIUM',
+    severity:    'MEDIUM',
     synthesized: true
   }];
 }
 
-/**
- * Parse the model's JSON output into a normalized result object.
- * Handles both clean JSON output and text-wrapped JSON.
- *
- * @param {string} raw   - raw model output
- * @returns {object}     - normalized analysis result
- */
-function parseModelOutput(raw) {
-  if (!raw) {
-    return { manipulation_found: false, summary: 'No output from model.', flags: [] };
-  }
-
-  var parsed;
-  try {
-    parsed = JSON.parse(raw.trim());
-  } catch (e) {
-    // Model may have wrapped JSON in prose -- try to extract
-    var match = raw.match(/\{[\s\S]*\}/);
-    if (match) {
-      try {
-        parsed = JSON.parse(match[0]);
-      } catch (e2) {
-        return {
-          manipulation_found: false,
-          summary: 'Model output could not be parsed.',
-          flags: [],
-          parseError: true
-        };
-      }
-    } else {
-      return {
-        manipulation_found: false,
-        summary: 'Model output was not valid JSON.',
-        flags: [],
-        parseError: true
-      };
-    }
-  }
-
-  // Normalize
-  var result = {
-    manipulation_found: !!parsed.manipulation_found,
-    summary: parsed.summary || '',
-    flags: Array.isArray(parsed.flags) ? parsed.flags : []
-  };
-
-  // Workaround: model says false but summary signals manipulation
-  if (!result.manipulation_found && result.flags.length === 0) {
-    var synthesized = synthesizeFlagsFromSummary(result.summary);
-    if (synthesized.length > 0) {
-      result.manipulation_found = true;
-      result.flags = synthesized;
-      result.synthesizedFromSummary = true;
-    }
-  }
-
-  return result;
-}
-
-/**
- * Run the full analysis pipeline for a page.
- *
- * @param {string} pageText     - extracted text from the page
- * @param {string} [bmidContext] - optional context string from BMID
- * @returns {Promise<object>}   - analysis result
- */
-async function analyzeWithModel(pageText, bmidContext) {
-  var model = modelManager.getModel();
-  if (!model) {
-    throw new Error('Model not loaded. Call modelManager.loadModel() first.');
-  }
-
-  var maxChars = 1200;
-  var truncated = truncateText(pageText, maxChars);
-
-  var systemPrompt = buildSystemPrompt(bmidContext || '');
-
-  var userMessage = 'Analyze this web page text for manipulation:\n\n' + truncated;
-
-  console.log('[Hoffman] Starting analysis' +
-    (bmidContext ? ' (with BMID context)' : ' (no BMID context)') +
-    ', text length: ' + truncated.length + ' chars');
-
-  var startTime = Date.now();
-
-  var raw;
-  try {
-    raw = await model.completeJson(
-      systemPrompt,
-      userMessage,
-      ANALYSIS_SCHEMA
-    );
-  } catch (e) {
-    console.error('[Hoffman] Model error:', e.message);
-    throw e;
-  }
-
-  var elapsed = Date.now() - startTime;
-  console.log('[Hoffman] Analysis complete in ' + elapsed + 'ms');
-
-  var result = parseModelOutput(raw);
-  result.processingTimeMs = elapsed;
-
-  console.log('[Hoffman] manipulation_found:', result.manipulation_found,
-    '| flags:', result.flags.length,
-    result.synthesizedFromSummary ? '| (synthesized from summary)' : '');
-
-  return result;
-}
-
-/**
- * Convenience wrapper -- analyze a page given pre-extracted text and optional BMID data.
- *
- * @param {string}      pageText
- * @param {object|null} bmidData  - full BMID /explain response (or null)
- * @returns {Promise<object>}
- */
-async function analyze(pageText, bmidData) {
-  var bmidContextModule = require('./bmid-context');
-  var contextStr = bmidData ? bmidContextModule.buildContextString(bmidData) : '';
-  return analyzeWithModel(pageText, contextStr);
-}
-
 module.exports = {
-  analyze: analyze,
-  analyzeWithModel: analyzeWithModel,
-  buildSystemPrompt: buildSystemPrompt,
-  parseModelOutput: parseModelOutput,
-  truncateText: truncateText
+  ANALYSIS_SCHEMA:            ANALYSIS_SCHEMA,
+  BASE_SYSTEM_PROMPT:         BASE_SYSTEM_PROMPT,
+  buildSystemPrompt:          buildSystemPrompt,
+  truncateText:               truncateText,
+  synthesizeFlagsFromSummary: synthesizeFlagsFromSummary
 };

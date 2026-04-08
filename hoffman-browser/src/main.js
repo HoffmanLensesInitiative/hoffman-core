@@ -6,30 +6,28 @@
 
 const { app, BrowserWindow, BrowserView, ipcMain, shell } = require('electron');
 const path = require('path');
-const http = require('http');
 
-const { ModelManager } = require('./model-manager');
-const { Analyzer } = require('./analyzer');
-const { BmidClient } = require('./bmid-client');
+const ModelManager = require('./model-manager');
+const { buildSystemPrompt, truncateText, synthesizeFlagsFromSummary } = require('./analyzer');
+const { getBmidEnrichment } = require('./bmid-context');
+const { isTechniqueNovel } = require('./bmid-context-builder');
+const bmidClient = require('./bmid-client');
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const PANEL_WIDTH = 380;
+const PANEL_WIDTH    = 380;
 const TOOLBAR_HEIGHT = 72;
-const BMID_TIMEOUT_MS = 2000;
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
-let mainWindow = null;
-let browserView = null;
-let panelWindow = null;
+let mainWindow   = null;
+let browserView  = null;
+let panelWindow  = null;
 let modelManager = null;
-let analyzer = null;
-let bmidClient = null;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,76 +53,7 @@ function getPanelBounds(win) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// BMID query helper -- non-blocking, 2-second timeout
-// Returns BMID context string or null
-// ---------------------------------------------------------------------------
-
-function queryBmidContext(domain) {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      console.log('[Hoffman] BMID timeout for domain:', domain);
-      resolve(null);
-    }, BMID_TIMEOUT_MS);
-
-    const url = 'http://localhost:5000/api/v1/explain?domain=' + encodeURIComponent(domain);
-    http.get(url, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        clearTimeout(timer);
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed && parsed.intelligence_level && parsed.intelligence_level !== 'none') {
-            const ctx = buildBmidContextString(parsed);
-            console.log('[Hoffman] BMID context loaded for:', domain);
-            resolve(ctx);
-          } else {
-            console.log('[Hoffman] BMID: no record for domain:', domain);
-            resolve(null);
-          }
-        } catch (e) {
-          console.log('[Hoffman] BMID parse error:', e.message);
-          resolve(null);
-        }
-      });
-    }).on('error', (e) => {
-      clearTimeout(timer);
-      console.log('[Hoffman] BMID unavailable:', e.message);
-      resolve(null);
-    });
-  });
-}
-
-// Build the context string injected into the system prompt
-function buildBmidContextString(bmid) {
-  const lines = ['KNOWN INTELLIGENCE ON THIS DOMAIN:'];
-
-  if (bmid.fisherman) {
-    if (bmid.fisherman.owner) {
-      lines.push('Owner: ' + bmid.fisherman.owner);
-    }
-    if (bmid.fisherman.business_model) {
-      lines.push('Business model: ' + bmid.fisherman.business_model);
-    }
-  }
-
-  if (bmid.motives && bmid.motives.length > 0) {
-    lines.push('Documented motive: ' + bmid.motives[0].description);
-  }
-
-  if (bmid.catch_summary && typeof bmid.catch_summary.total_documented === 'number') {
-    lines.push('Documented harms: ' + bmid.catch_summary.total_documented + ' cases on record');
-  }
-
-  if (bmid.top_patterns && bmid.top_patterns.length > 0) {
-    lines.push('Known techniques: ' + bmid.top_patterns.join(', '));
-  }
-
-  return lines.join('\n');
-}
-
-// Extract hostname from a URL string
+// Extract hostname from a URL string, stripping www.
 function hostnameFromUrl(urlString) {
   try {
     return new URL(urlString).hostname.replace(/^www\./, '');
@@ -140,15 +69,13 @@ function hostnameFromUrl(urlString) {
 app.whenReady().then(async () => {
   console.log('[Hoffman] Starting up...');
 
-  // Initialise model
-  modelManager = new ModelManager();
-  analyzer = new Analyzer(modelManager);
-  bmidClient = new BmidClient();
+  const modelsDir = path.join(app.getPath('userData'), 'models');
+  modelManager = new ModelManager(modelsDir);
 
   await modelManager.load();
   console.log('[Hoffman] Model loaded.');
 
-  // Main window
+  // Main window (toolbar)
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -247,16 +174,16 @@ ipcMain.handle('get-current-url', () => {
 
 ipcMain.handle('analyze-page', async () => {
   const currentUrl = browserView.webContents.getURL();
-  const domain = hostnameFromUrl(currentUrl);
+  const domain     = hostnameFromUrl(currentUrl);
 
   console.log('[Hoffman] Analysis requested for:', currentUrl);
-
-  // Signal panel: analysis starting
   panelWindow.webContents.send('analysis-started');
 
   try {
-    // Step 1: Extract page text and query BMID in parallel
-    const [pageText, bmidContext] = await Promise.all([
+    // Step 1: Extract page text and query BMID in parallel.
+    // getBmidEnrichment makes one HTTP call and returns both the context string
+    // and the list of known techniques -- no second BMID request needed.
+    const [pageText, enrichment] = await Promise.all([
       browserView.webContents.executeJavaScript(`
         (function() {
           var selectors = ['article', 'main', '[role="main"]', '.content', '#content', 'body'];
@@ -269,40 +196,67 @@ ipcMain.handle('analyze-page', async () => {
           return document.body.innerText.trim();
         })()
       `),
-      domain ? queryBmidContext(domain) : Promise.resolve(null)
+      getBmidEnrichment(domain)
     ]);
 
-    console.log('[Hoffman] Extracted', pageText.length, 'chars from page.');
-    if (bmidContext) {
-      console.log('[Hoffman] Injecting BMID context into analysis prompt.');
+    if (enrichment.context) {
+      console.log('[Hoffman] BMID context injected for:', domain);
     }
 
-    // Step 2: Run LLM analysis with optional BMID context
-    const result = await analyzer.analyze(pageText, {
-      url: currentUrl,
-      domain: domain,
-      bmidContext: bmidContext || null
-    });
+    // Step 2: Build prompt and run model.
+    // Text is truncated to 2400 chars to fit the 4096-token context window.
+    // System prompt includes BMID context if available; model still detects independently.
+    const truncated    = truncateText(pageText, 2400);
+    const systemPrompt = buildSystemPrompt(enrichment.context);
+    const userMessage  = 'Analyze this web page text for manipulation:\n\n' + truncated;
 
-    // Step 3: Annotate flags with novel indicator
-    // Compare each flag's technique against BMID's documented top_patterns
-    const bmidTopPatterns = await getBmidTopPatterns(domain);
-    if (bmidTopPatterns && result.flags) {
-      result.flags = result.flags.map((flag) => {
-        const technique = (flag.technique || '').toLowerCase().replace(/\s+/g, '_');
-        const isNovel = !bmidTopPatterns.some((p) => {
-          return p.toLowerCase().replace(/\s+/g, '_') === technique;
+    console.log('[Hoffman] Starting analysis' +
+      (enrichment.context ? ' (with BMID context)' : ' (no BMID context)') +
+      ' | text: ' + truncated.length + ' chars');
+
+    const startTime = Date.now();
+
+    // completeJson returns a grammar-constrained parsed object -- never raw text.
+    const parsed = await modelManager.completeJson(systemPrompt, userMessage);
+
+    const elapsed = Date.now() - startTime;
+    console.log('[Hoffman] Model returned in ' + elapsed + 'ms');
+
+    // Step 3: Normalize result.
+    const result = {
+      manipulation_found: !!parsed.manipulation_found,
+      summary:            parsed.summary || '',
+      flags:              Array.isArray(parsed.flags) ? parsed.flags : [],
+      processingTimeMs:   elapsed
+    };
+
+    // Workaround: 3B model sometimes sets manipulation_found:false but writes a
+    // contradictory summary. Synthesize a flag from the summary signal.
+    if (!result.manipulation_found && result.flags.length === 0) {
+      var synthesized = synthesizeFlagsFromSummary(result.summary);
+      if (synthesized.length > 0) {
+        result.manipulation_found    = true;
+        result.flags                 = synthesized;
+        result.synthesizedFromSummary = true;
+      }
+    }
+
+    // Step 4: Annotate novel techniques.
+    // A flag is "novel" if its technique is not in BMID's documented patterns for this domain.
+    if (enrichment.knownTechniques.length > 0 && result.flags.length > 0) {
+      result.flags = result.flags.map(function(flag) {
+        return Object.assign({}, flag, {
+          novel: isTechniqueNovel(flag.technique, enrichment.knownTechniques)
         });
-        return Object.assign({}, flag, { novel: isNovel });
       });
     }
 
-    console.log('[Hoffman] Analysis complete. manipulation_found:', result.manipulation_found,
-      'flags:', result.flags ? result.flags.length : 0);
+    console.log('[Hoffman] Analysis complete |',
+      'manipulation_found:', result.manipulation_found,
+      '| flags:', result.flags.length,
+      result.synthesizedFromSummary ? '| (synthesized)' : '');
 
-    // Send results to panel
     panelWindow.webContents.send('analysis-complete', result);
-
     return result;
 
   } catch (err) {
@@ -312,46 +266,13 @@ ipcMain.handle('analyze-page', async () => {
   }
 });
 
-// Fetch top_patterns for a domain from BMID (for novel technique detection)
-// Returns array of pattern strings or null
-function getBmidTopPatterns(domain) {
-  if (!domain) return Promise.resolve(null);
-
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(null), BMID_TIMEOUT_MS);
-
-    const url = 'http://localhost:5000/api/v1/explain?domain=' + encodeURIComponent(domain);
-    http.get(url, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        clearTimeout(timer);
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed && parsed.top_patterns && Array.isArray(parsed.top_patterns)) {
-            resolve(parsed.top_patterns);
-          } else {
-            resolve(null);
-          }
-        } catch (e) {
-          resolve(null);
-        }
-      });
-    }).on('error', () => {
-      clearTimeout(timer);
-      resolve(null);
-    });
-  });
-}
-
 // ---------------------------------------------------------------------------
-// IPC: BMID "Why is this here?" query
+// IPC: BMID "Why is this here?" query (panel button)
 // ---------------------------------------------------------------------------
 
 ipcMain.handle('query-bmid', async (event, domain, technique) => {
   try {
-    const result = await bmidClient.explain(domain, technique);
-    return result;
+    return await bmidClient.queryExplain(domain);
   } catch (err) {
     console.error('[Hoffman] BMID query error:', err);
     return null;
