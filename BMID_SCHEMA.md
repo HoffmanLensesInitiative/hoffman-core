@@ -10,6 +10,7 @@
 Every piece of manipulation has a supply chain.
 The database maps that supply chain completely.
 
+  AMPLIFIER  -- infrastructure that routes users to manipulative content at scale
   FISHERMAN  -- who is doing this
   BAIT       -- what they use to attract attention
   HOOK       -- the specific manipulation technique embedded in the bait
@@ -17,6 +18,50 @@ The database maps that supply chain completely.
   CATCH      -- documented harm that resulted
   MOTIVE     -- the documented intent and business model behind it
   EVIDENCE   -- primary sources proving any of the above
+
+---
+
+## AMPLIFIER
+Infrastructure platforms that systematically route users to manipulative content.
+Distinct from fishermen: **amplifiers do not create content — they distribute it.**
+
+The key distinction: a fisherman deceives. An amplifier routes.
+The amplifier's algorithm selects what content reaches users at scale,
+and that selection rewards the properties that make content manipulative.
+
+The co-evolutionary relationship: manipulative publishers learn to optimize
+for amplifier ranking signals. Amplifiers optimize for the behavior those
+publishers perfected. Neither designed the relationship — it emerged from
+each optimizing for their own metrics. The structural outcome is that
+manipulation receives preferential distribution.
+
+```
+amplifier_id             string PRIMARY KEY        -- e.g. "amplifier-google"
+name                     string                    -- e.g. "Google Search / Google News"
+parent_entity            string                    -- e.g. "Alphabet Inc."
+domains                  string[]                  -- domains operated
+optimization_target      string                    -- what the algorithm optimizes for
+                                                   -- e.g. "click-through rate (CTR)"
+amplification_mechanism  text                      -- how it amplifies manipulative content
+documented_motive        text                      -- financial/strategic motive (documented)
+knowing_element          text                      -- what they knew, when, primary sources
+knowing_date             date                      -- earliest documented knowledge
+co_evolutionary_note     text                      -- how manipulators adapted to this infra
+regulatory_status        text                      -- antitrust/regulatory findings
+default_reach            text                      -- what % of population by default
+public_alternatives      text                      -- what responsible design looks like
+alternative_feasibility  text                      -- why alternatives are/aren't viable
+confidence_score         float 0-1
+sources                  object[]                  -- primary source references
+```
+
+### Documented amplifiers
+
+| amplifier_id       | name                          | confidence |
+|--------------------|-------------------------------|------------|
+| amplifier-google   | Google Search / Google News   | 0.90       |
+
+*YouTube, Facebook News Feed, Twitter/X "For You" are priority research targets.*
 
 ---
 
@@ -345,10 +390,19 @@ If not, lower the confidence score until it can.
 
 ---
 
-## FIRST FISHERMEN (priority research targets)
+## PRIORITY RESEARCH TARGETS
 
-When the Investigation Supervisor assigns research cycles,
-these fishermen should be documented first based on documented harm:
+### Amplifiers (infrastructure enablers)
+1. **Google / Alphabet** (google.com, news.google.com) -- SEEDED
+   -- DOJ antitrust ruling, CTR optimization, ad network motive
+2. **YouTube / Alphabet** (youtube.com) -- research target
+   -- recommendation algorithm radicalization pathway (distinct from search)
+3. **Facebook News Feed / Meta** (facebook.com) -- research target
+   -- engagement optimization, filter bubble creation
+4. **Twitter/X "For You"** (twitter.com, x.com) -- research target
+   -- post-acquisition algorithm changes, documented political amplification
+
+### Fishermen (content creators)
 
 1. Meta Platforms (facebook.com, instagram.com)
    -- Molly Russell inquest, Frances Haugen testimony, internal research

@@ -95,6 +95,30 @@ def insert_catch(db, data):
     )
 
 
+def insert_amplifier(db, data):
+    if 'domains' in data and isinstance(data['domains'], list):
+        data['domains'] = json.dumps(data['domains'])
+    if 'sources' in data and isinstance(data['sources'], list):
+        data['sources'] = json.dumps(data['sources'])
+    db.execute(
+        '''INSERT OR IGNORE INTO amplifier
+           (amplifier_id, name, parent_entity, domains, optimization_target,
+            amplification_mechanism, documented_motive, knowing_element, knowing_date,
+            co_evolutionary_note, regulatory_status, default_reach,
+            public_alternatives, alternative_feasibility, confidence_score, sources,
+            contributed_by)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+        [data['amplifier_id'], data['name'], data.get('parent_entity'),
+         data.get('domains'), data['optimization_target'],
+         data['amplification_mechanism'], data['documented_motive'],
+         data.get('knowing_element'), data.get('knowing_date'),
+         data.get('co_evolutionary_note'), data.get('regulatory_status'),
+         data.get('default_reach'), data.get('public_alternatives'),
+         data.get('alternative_feasibility'), data.get('confidence_score', 0.5),
+         data.get('sources'), data.get('contributed_by')]
+    )
+
+
 def insert_evidence(db, data):
     db.execute(
         '''INSERT OR IGNORE INTO evidence
@@ -110,6 +134,121 @@ def insert_evidence(db, data):
          data.get('verified_at'), data.get('confidence', 0.7)]
     )
 
+
+# ── AMPLIFIERS ────────────────────────────────────────────
+# Infrastructure platforms that systematically amplify manipulative content.
+# Distinct from fishermen: amplifiers do not create content.
+
+AMPLIFIERS = [
+    {
+        'amplifier_id': 'amplifier-google',
+        'name': 'Google Search / Google News',
+        'parent_entity': 'Alphabet Inc.',
+        'domains': ['google.com', 'news.google.com'],
+        'optimization_target': 'click-through rate (CTR) and engagement signals',
+        'amplification_mechanism': (
+            'Google News and Search rank content primarily by engagement signals: '
+            'CTR, time-on-page, and share rate. Manipulative content is engineered '
+            'to maximize these exact signals -- outrage, fear, and tribal identity drive '
+            'clicks. The algorithm amplifies this content preferentially without evaluating '
+            'accuracy or public interest. Co-evolutionary dynamic: manipulative publishers '
+            'have learned to optimize content for Google ranking signals, and Google continues '
+            'optimizing for the behaviors those publishers perfected. The result: the more '
+            'manipulative a piece of content, the higher it tends to rank.'
+        ),
+        'documented_motive': (
+            'Primary: advertising revenue. Google serves ads on publisher pages that users '
+            'click through to via Google News (via DoubleClick/Google Ad Manager). Google '
+            'profits per click-out, not per time-on-Google-News. '
+            'Secondary: behavioral data acquisition -- each clickthrough reveals interest '
+            'and political profile data used for ad targeting across all Google properties. '
+            'Tertiary: ecosystem lock-in -- users who start at Google for news habitually '
+            'return to Google as their information gateway, reinforcing monopoly position '
+            'worth an estimated $18-20B/year in Apple default search fees alone.'
+        ),
+        'knowing_element': (
+            'Google operates E-A-T (Expertise, Authoritativeness, Trustworthiness) signals '
+            'for health content, demonstrating that accuracy-weighted ranking is technically '
+            'implementable -- but has not applied equivalent signals to news. '
+            'Academic literature documenting algorithmic amplification of misinformation '
+            'via Google has been available since 2018 (Vosoughi et al., Science; '
+            'Cinelli et al., PNAS 2020). '
+            'DOJ v. Google (2024): court found Google illegally maintained search monopoly '
+            'through exclusive default agreements, establishing the intentional maintenance '
+            'of market position as a documented corporate strategy.'
+        ),
+        'knowing_date': '2018-03-09',
+        'co_evolutionary_note': (
+            'Manipulative publishers have adapted content production to maximize Google '
+            'ranking signals: high-outrage headlines increase CTR; emotional language '
+            'increases time-on-page; tribal framing increases shares. Google\'s engagement '
+            'optimization directly rewards the manipulation techniques documented in BMID '
+            'fisherman records. Neither party designed the relationship -- it emerged from '
+            'each optimizing for their own metrics. The result is a structural amplification '
+            'of manipulation that operates without editorial intent on either side.'
+        ),
+        'regulatory_status': (
+            'DOJ v. Google LLC, No. 1:20-cv-03010 (D.D.C.). Judge Amit Mehta ruled '
+            'August 5, 2024: Google is a monopolist in general search services and general '
+            'text advertising; illegally maintained monopoly through exclusive default '
+            'agreements worth ~$18-20B/year to Apple alone. Remedy phase ongoing 2026. '
+            'EU Digital Markets Act enforcement ongoing. EU Digital Services Act requires '
+            'algorithmic transparency disclosures.'
+        ),
+        'default_reach': (
+            '~90% global search market share (StatCounter 2024). Default search engine '
+            'on Apple Safari (paid ~$18-20B/year per DOJ findings), Android (built-in), '
+            'Chrome (built-in). Most users encounter Google as first information access '
+            'point without having made an active choice -- status quo bias locks in the default.'
+        ),
+        'public_alternatives': (
+            '1. ACCURACY-WEIGHTED RANKING: Apply E-A-T signals (already used in health '
+            'content) to news. Partner with independent fact-checking organizations for '
+            'accuracy signals. Precedent exists within Google\'s own systems.\n\n'
+            '2. MANIPULATION SIGNAL DETECTION: Integrate behavioral manipulation pattern '
+            'detection to downrank content exhibiting documented manipulation techniques '
+            '(outrage_engineering, false_urgency, tribal_activation, etc.). '
+            'Technically feasible; Hoffman Lenses BMID provides an open taxonomy.\n\n'
+            '3. SOURCE DIVERSITY ENFORCEMENT: Cap single-perspective dominance in news '
+            'results for high-volume political queries. Ensure varied viewpoints surface.\n\n'
+            '4. ALGORITHMIC TRANSPARENCY: Publish ranking signals for news content. '
+            'Subject to external audit. Partially required by EU Digital Markets Act.\n\n'
+            '5. USER AGENCY: Show users why content is ranked highly. Allow users to '
+            'adjust their own ranking signals. Technically feasible.'
+        ),
+        'alternative_feasibility': (
+            'All five alternatives are technically feasible. E-A-T demonstrates Google '
+            'can implement accuracy signals. Google News is not a primary profit center '
+            '(it is a data and retention product) -- short-term revenue impact of accuracy '
+            'weighting would be modest. Long-term: positive. Reduced antitrust exposure, '
+            'brand differentiation, regulatory goodwill. Primary barrier: short-term '
+            'engagement metric decline and legal reluctance to assume editorial liability '
+            'that Section 230 currently avoids.'
+        ),
+        'confidence_score': 0.9,
+        'sources': [
+            {
+                'title': 'DOJ v. Google LLC -- Memorandum Opinion (Mehta, J., 2024)',
+                'url': 'https://storage.courtlistener.com/recap/gov.uscourts.dcd.223205/gov.uscourts.dcd.223205.1033.0.pdf',
+                'date': '2024-08-05',
+                'type': 'court_filing'
+            },
+            {
+                'title': 'The Spread of True and False News Online (Vosoughi, Roy, Aral -- Science 2018)',
+                'url': 'https://doi.org/10.1126/science.aap9559',
+                'date': '2018-03-09',
+                'type': 'academic_paper'
+            },
+            {
+                'title': 'The COVID-19 social media infodemic (Cinelli et al. -- Scientific Reports 2020)',
+                'url': 'https://doi.org/10.1038/s41598-020-73510-5',
+                'date': '2020-10-06',
+                'type': 'academic_paper'
+            }
+        ],
+        'contributed_by': 'director-session-2026-04-08'
+    }
+]
 
 # ── FISHERMEN ─────────────────────────────────────────────
 
@@ -1884,6 +2023,11 @@ EVIDENCE = [
 # ── Main ──────────────────────────────────────────────────
 
 def seed(db):
+    print('[BMID] Seeding amplifiers...')
+    for a in AMPLIFIERS:
+        insert_amplifier(db, a.copy())
+        print(f"  {a['amplifier_id']} ({a['name']})")
+
     print('[BMID] Seeding fishermen...')
     for f in FISHERMEN:
         insert_fisherman(db, f.copy())
@@ -1909,6 +2053,7 @@ def seed(db):
 
 def report(db):
     counts = {
+        'amplifiers': db.execute('SELECT COUNT(*) FROM amplifier').fetchone()[0],
         'fishermen': db.execute('SELECT COUNT(*) FROM fisherman').fetchone()[0],
         'motives':   db.execute('SELECT COUNT(*) FROM motive').fetchone()[0],
         'catches':   db.execute('SELECT COUNT(*) FROM catch').fetchone()[0],
@@ -1917,6 +2062,10 @@ def report(db):
     print('\n[BMID] Database state after seed:')
     for k, v in counts.items():
         print(f'  {k}: {v}')
+
+    print('\n[BMID] Amplifiers:')
+    for row in db.execute('SELECT amplifier_id, name, confidence_score FROM amplifier ORDER BY name'):
+        print(f'  {row[0]:35s}  {row[1]:35s}  confidence={row[2]}')
 
     print('\n[BMID] Fishermen:')
     for row in db.execute('SELECT domain, display_name, confidence_score FROM fisherman ORDER BY domain'):

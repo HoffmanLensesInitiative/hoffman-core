@@ -95,6 +95,11 @@ TOOL_APPEND_SEED = {
         'Records are appended to the correct list and the seed script is run automatically. '
         'Use this instead of write_file for BMID database records.\n\n'
         'REQUIRED FIELDS PER RECORD TYPE -- use these exact field names:\n\n'
+        'amplifiers: amplifier_id (TEXT, e.g. "amplifier-youtube"), name, parent_entity, '
+        'domains (list of strings), optimization_target, amplification_mechanism, '
+        'documented_motive, knowing_element, knowing_date, co_evolutionary_note, '
+        'regulatory_status, default_reach, public_alternatives, alternative_feasibility, '
+        'confidence_score (0.0-1.0), contributed_by\n\n'
         'fishermen: fisherman_id (TEXT, e.g. "fisherman-reddit"), domain, display_name, '
         'owner, parent_company, country, founded, business_model, '
         'revenue_sources (list), confidence_score (0.0-1.0), contributed_by\n\n'
@@ -111,6 +116,11 @@ TOOL_APPEND_SEED = {
     'input_schema': {
         'type': 'object',
         'properties': {
+            'amplifiers': {
+                'type': 'array',
+                'description': 'List of amplifier record dicts to add',
+                'items': {'type': 'object'}
+            },
             'fishermen': {
                 'type': 'array',
                 'description': 'List of fisherman record dicts to add',
@@ -199,6 +209,7 @@ TOOL_SEED_CLOUD_BMID = {
         'Accepts the same record shapes as append_seed_records. Uses INSERT OR IGNORE -- safe to call '
         'multiple times. Only call this for domains you have verified through investigation.\n\n'
         'Record shapes are identical to append_seed_records. '
+        'amplifier_id format: "amplifier-name" (e.g. "amplifier-youtube")\n'
         'fisherman_id format: "fisherman-domainname" (e.g. "fisherman-codepink-org")\n'
         'motive_id format: "motive-domainname-type" (e.g. "motive-codepink-org-advocacy")\n'
         'catch_id format: "catch-domainname-001"'
@@ -301,7 +312,7 @@ def tool_write_file(path, content, files_written):
         return f'ERROR: {e}'
 
 
-def tool_append_seed(fishermen, motives, catches, evidence, files_written):
+def tool_append_seed(amplifiers, fishermen, motives, catches, evidence, files_written):
     """Append records to seed.py lists and run the seed.
 
     Uses += extension lines appended to the end of the file rather than
@@ -315,7 +326,7 @@ def tool_append_seed(fishermen, motives, catches, evidence, files_written):
     content = seed_path.read_text(encoding='utf-8')
 
     # Verify each list name exists in the file before appending extensions
-    for list_name in ['FISHERMEN', 'MOTIVES', 'CATCHES', 'EVIDENCE']:
+    for list_name in ['AMPLIFIERS', 'FISHERMEN', 'MOTIVES', 'CATCHES', 'EVIDENCE']:
         if f'{list_name} = [' not in content:
             return f'ERROR: could not find {list_name} list in seed.py -- read the file first to check its structure'
 
@@ -324,6 +335,7 @@ def tool_append_seed(fishermen, motives, catches, evidence, files_written):
     extension_lines = [f'\n# -- appended by intel agent {date_str} --']
 
     for list_name, records in [
+        ('AMPLIFIERS', amplifiers or []),
         ('FISHERMEN', fishermen or []),
         ('MOTIVES',   motives   or []),
         ('CATCHES',   catches   or []),
@@ -417,7 +429,7 @@ def tool_update_submission(submission_id, status, agent_notes):
         return f'ERROR: {e}'
 
 
-def tool_seed_cloud_bmid(fishermen, motives, catches, evidence):
+def tool_seed_cloud_bmid(amplifiers, fishermen, motives, catches, evidence):
     """Push verified records directly to the cloud BMID database."""
     import urllib.request
     import urllib.error
@@ -426,12 +438,14 @@ def tool_seed_cloud_bmid(fishermen, motives, catches, evidence):
         return 'ERROR: BMID_AGENT_KEY not set'
     url  = 'https://bmid.hoffmanlenses.org/api/v1/admin/seed'
     body = json.dumps({
-        'fishermen': fishermen or [],
-        'motives':   motives   or [],
-        'catches':   catches   or [],
-        'evidence':  evidence  or []
+        'amplifiers': amplifiers or [],
+        'fishermen':  fishermen  or [],
+        'motives':    motives    or [],
+        'catches':    catches    or [],
+        'evidence':   evidence   or []
     }).encode()
-    total = len(fishermen or []) + len(motives or []) + len(catches or []) + len(evidence or [])
+    total = (len(amplifiers or []) + len(fishermen or []) +
+             len(motives or []) + len(catches or []) + len(evidence or []))
     try:
         req = urllib.request.Request(url, data=body, method='POST', headers={
             'Authorization': f'Bearer {agent_key}',
@@ -458,6 +472,7 @@ def execute_tool(tool_name, tool_input, files_written):
         )
     elif tool_name == 'append_seed_records':
         return tool_append_seed(
+            tool_input.get('amplifiers', []),
             tool_input.get('fishermen', []),
             tool_input.get('motives', []),
             tool_input.get('catches', []),
@@ -474,6 +489,7 @@ def execute_tool(tool_name, tool_input, files_written):
         )
     elif tool_name == 'seed_cloud_bmid':
         return tool_seed_cloud_bmid(
+            tool_input.get('amplifiers', []),
             tool_input.get('fishermen', []),
             tool_input.get('motives', []),
             tool_input.get('catches', []),

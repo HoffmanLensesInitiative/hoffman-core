@@ -177,6 +177,39 @@ CREATE INDEX IF NOT EXISTS idx_submission_status ON submission(status);
 CREATE INDEX IF NOT EXISTS idx_submission_domain  ON submission(domain);
 CREATE INDEX IF NOT EXISTS idx_submission_token   ON submission(contributor_token, submitted_at);
 
+-- ---------------------------------------------------------------------------
+-- AMPLIFIER (added 2026-04-08)
+-- Infrastructure platforms that systematically amplify manipulative content.
+-- Distinct from fishermen: amplifiers do not create content.
+-- They profit from routing users to manipulative content via algorithm design.
+-- The co-evolutionary relationship: manipulative publishers adapt to amplifier
+-- ranking signals; amplifiers optimize for the behavior those publishers perfected.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS amplifier (
+  id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+  amplifier_id             TEXT UNIQUE NOT NULL,   -- e.g. "amplifier-google"
+  name                     TEXT NOT NULL,           -- e.g. "Google Search / Google News"
+  parent_entity            TEXT,                    -- e.g. "Alphabet Inc."
+  domains                  TEXT,                    -- JSON array of domains
+  optimization_target      TEXT NOT NULL,           -- what the algorithm optimizes for
+  amplification_mechanism  TEXT NOT NULL,           -- how it amplifies manipulative content
+  documented_motive        TEXT NOT NULL,           -- financial/strategic motive (documented)
+  knowing_element          TEXT,                    -- what they knew, when, primary sources
+  knowing_date             TEXT,                    -- earliest documented knowledge date
+  co_evolutionary_note     TEXT,                    -- how manipulators adapted to this infrastructure
+  regulatory_status        TEXT,                    -- antitrust/regulatory findings
+  default_reach            TEXT,                    -- what % of population encounters this by default
+  public_alternatives      TEXT,                    -- what responsible design would look like
+  alternative_feasibility  TEXT,                    -- assessment of viability/cost
+  confidence_score         REAL DEFAULT 0.5,
+  sources                  TEXT,                    -- JSON array of source objects
+  created_at               TEXT DEFAULT (datetime('now')),
+  updated_at               TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_amplifier_id ON amplifier(amplifier_id);
+
 -- Known moments of documented awareness of harm
 CREATE TABLE IF NOT EXISTS actor_knowledge (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

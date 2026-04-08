@@ -927,7 +927,30 @@ def agent_seed_records():
 
     data = request.get_json(silent=True) or {}
     db   = get_db()
-    counts = {'fishermen': 0, 'motives': 0, 'catches': 0, 'evidence': 0}
+    counts = {'amplifiers': 0, 'fishermen': 0, 'motives': 0, 'catches': 0, 'evidence': 0}
+
+    for a in data.get('amplifiers', []):
+        try:
+            db.execute(
+                "INSERT OR IGNORE INTO amplifier "
+                "(amplifier_id, name, parent_entity, domains, optimization_target, "
+                "amplification_mechanism, documented_motive, knowing_element, knowing_date, "
+                "co_evolutionary_note, regulatory_status, default_reach, "
+                "public_alternatives, alternative_feasibility, confidence_score, sources, contributed_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (a.get('amplifier_id'), a.get('name'), a.get('parent_entity'),
+                 json.dumps(a.get('domains', [])) if isinstance(a.get('domains'), list) else a.get('domains'),
+                 a.get('optimization_target'), a.get('amplification_mechanism'),
+                 a.get('documented_motive'), a.get('knowing_element'), a.get('knowing_date'),
+                 a.get('co_evolutionary_note'), a.get('regulatory_status'), a.get('default_reach'),
+                 a.get('public_alternatives'), a.get('alternative_feasibility'),
+                 a.get('confidence_score', 0.5),
+                 json.dumps(a.get('sources', [])) if isinstance(a.get('sources'), list) else a.get('sources'),
+                 a.get('contributed_by', 'investigate-agent'))
+            )
+            counts['amplifiers'] += 1
+        except Exception:
+            pass
 
     for f in data.get('fishermen', []):
         try:
