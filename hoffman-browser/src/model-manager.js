@@ -27,11 +27,12 @@ class ModelManager {
   constructor(modelsDir) {
     this.modelsDir  = modelsDir;
     this.modelPath  = path.join(modelsDir, MODEL_CONFIG.filename);
-    this._status    = 'not-loaded';
-    this._llama     = null;
-    this._model     = null;
-    this._context   = null;
-    this._Session   = null;
+    this._status      = 'not-loaded';
+    this._llama       = null;
+    this._llamaModule = null;  // cached ESM import -- avoids re-importing on every call
+    this._model       = null;
+    this._context     = null;
+    this._Session     = null;
 
     if (!fs.existsSync(modelsDir)) {
       fs.mkdirSync(modelsDir, { recursive: true });
@@ -69,11 +70,13 @@ class ModelManager {
     }
 
     try {
-      // Use Function constructor to import ESM module from CommonJS
+      // Use Function constructor to import ESM module from CommonJS.
+      // Cache the result on this._llamaModule so completeJson doesn't re-import.
       const importFn = new Function('specifier', 'return import(specifier)');
       const llama = await importFn('node-llama-cpp');
-      const { getLlama, LlamaChatSession } = llama;
+      this._llamaModule = llama;
 
+      const { getLlama, LlamaChatSession } = llama;
       this._Session = LlamaChatSession;
 
       // CPU only -- bypasses VRAM entirely, works on any machine
@@ -125,9 +128,8 @@ class ModelManager {
   async completeJson(systemPrompt, userMessage) {
     if (!this.isReady()) throw new Error('Model not ready');
 
-    const importFn = new Function('specifier', 'return import(specifier)');
-    const llama = await importFn('node-llama-cpp');
-    const { LlamaJsonSchemaGrammar } = llama;
+    // Reuse the cached llama import -- importing on every call adds latency
+    const { LlamaJsonSchemaGrammar } = this._llamaModule;
 
     // Define the exact JSON shape we want
     const grammar = new LlamaJsonSchemaGrammar(this._llama, {
@@ -154,7 +156,8 @@ class ModelManager {
     if (this._context) {
       try { await this._context.dispose(); } catch(e) {}
     }
-    this._context = await this._model.createContext({ contextSize: 4096 });
+    // 2048 tokens is sufficient for the system prompt + 2400 chars of page text
+    this._context = await this._model.createContext({ contextSize: 2048 });
 
     const session = new this._Session({
       contextSequence: this._context.getSequence(),
@@ -162,7 +165,9 @@ class ModelManager {
     });
 
     const raw = await session.prompt(userMessage, {
-      maxTokens:   1024,
+      // A full analysis (summary + 3-4 flags) is ~150-300 tokens.
+      // 400 caps runaway generation without cutting off real output.
+      maxTokens:   400,
       temperature: 0.1,
       grammar
     });
