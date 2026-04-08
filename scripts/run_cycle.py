@@ -136,12 +136,92 @@ TOOL_APPEND_SEED = {
     }
 }
 
+# Available to investigate agent: fetch pending submissions from cloud BMID
+TOOL_FETCH_SUBMISSIONS = {
+    'name': 'fetch_submissions',
+    'description': (
+        'Fetch pending submissions from the cloud BMID at bmid.hoffmanlenses.org. '
+        'Returns up to 5 submissions that users have contributed from the Hoffman Browser. '
+        'Each submission includes: submission_id, domain, url, summary, flags_parsed '
+        '(array of {technique, severity, explanation, quote}). '
+        'Call this at the start of every investigate cycle to check the queue.'
+    ),
+    'input_schema': {
+        'type': 'object',
+        'properties': {
+            'limit': {
+                'type': 'integer',
+                'description': 'Max submissions to fetch (1-5, default 5)'
+            }
+        },
+        'required': []
+    }
+}
+
+# Available to investigate agent: update a submission status
+TOOL_UPDATE_SUBMISSION = {
+    'name': 'update_submission',
+    'description': (
+        'Update the status and add investigation notes to a submission in the cloud BMID. '
+        'Call this for each submission you process.\n\n'
+        'Status values:\n'
+        '  investigating -- you are actively researching this domain\n'
+        '  accepted      -- techniques verified, BMID records created or already exist\n'
+        '  rejected      -- techniques not verified, insufficient evidence, or false positive\n\n'
+        'Always include agent_notes explaining your decision.'
+    ),
+    'input_schema': {
+        'type': 'object',
+        'properties': {
+            'submission_id': {
+                'type': 'string',
+                'description': 'The submission_id from fetch_submissions'
+            },
+            'status': {
+                'type': 'string',
+                'description': 'New status: investigating | accepted | rejected'
+            },
+            'agent_notes': {
+                'type': 'string',
+                'description': 'Explanation of your decision and any findings'
+            }
+        },
+        'required': ['submission_id', 'status', 'agent_notes']
+    }
+}
+
+# Available to investigate agent: push verified records directly to cloud BMID database
+TOOL_SEED_CLOUD_BMID = {
+    'name': 'seed_cloud_bmid',
+    'description': (
+        'Push verified BMID records directly to the cloud database at bmid.hoffmanlenses.org. '
+        'Use this after verifying a domain from the submissions queue to add it to live intelligence. '
+        'Accepts the same record shapes as append_seed_records. Uses INSERT OR IGNORE -- safe to call '
+        'multiple times. Only call this for domains you have verified through investigation.\n\n'
+        'Record shapes are identical to append_seed_records. '
+        'fisherman_id format: "fisherman-domainname" (e.g. "fisherman-codepink-org")\n'
+        'motive_id format: "motive-domainname-type" (e.g. "motive-codepink-org-advocacy")\n'
+        'catch_id format: "catch-domainname-001"'
+    ),
+    'input_schema': {
+        'type': 'object',
+        'properties': {
+            'fishermen': {'type': 'array', 'items': {'type': 'object'}},
+            'motives':   {'type': 'array', 'items': {'type': 'object'}},
+            'catches':   {'type': 'array', 'items': {'type': 'object'}},
+            'evidence':  {'type': 'array', 'items': {'type': 'object'}}
+        },
+        'required': []
+    }
+}
+
 TOOLS_BY_TEAM = {
     'browser':     [TOOL_READ_FILE, TOOL_WRITE_FILE],
     'bmid':        [TOOL_READ_FILE, TOOL_WRITE_FILE, TOOL_APPEND_SEED],
     'website':     [TOOL_READ_FILE, TOOL_WRITE_FILE],
     'intel':       [TOOL_READ_FILE, TOOL_WRITE_FILE, TOOL_APPEND_SEED],
-    'investigate': [TOOL_READ_FILE, TOOL_WRITE_FILE],
+    'investigate': [TOOL_READ_FILE, TOOL_WRITE_FILE, TOOL_APPEND_SEED,
+                    TOOL_FETCH_SUBMISSIONS, TOOL_UPDATE_SUBMISSION, TOOL_SEED_CLOUD_BMID],
     'advocate':    [TOOL_READ_FILE, TOOL_WRITE_FILE],
     'build':       [TOOL_READ_FILE, TOOL_WRITE_FILE],
 }
@@ -292,6 +372,81 @@ def tool_append_seed(fishermen, motives, catches, evidence, files_written):
         return f'OK: appended records, but could not run seed.py: {e}'
 
 
+def tool_fetch_submissions(limit):
+    """Fetch pending submissions from cloud BMID."""
+    import urllib.request
+    import urllib.error
+    agent_key = os.environ.get('BMID_AGENT_KEY', '')
+    if not agent_key:
+        return 'ERROR: BMID_AGENT_KEY not set -- cannot fetch submissions'
+    url = f'https://bmid.hoffmanlenses.org/api/v1/submissions/pending?limit={min(limit, 5)}'
+    try:
+        req = urllib.request.Request(url, headers={'Authorization': f'Bearer {agent_key}'})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+        count = data.get('count', 0)
+        print(f'  [tool] fetched {count} pending submissions')
+        return json.dumps(data, indent=2)
+    except urllib.error.HTTPError as e:
+        return f'ERROR: HTTP {e.code} from BMID API: {e.reason}'
+    except Exception as e:
+        return f'ERROR: {e}'
+
+
+def tool_update_submission(submission_id, status, agent_notes):
+    """Update a submission status in the cloud BMID."""
+    import urllib.request
+    import urllib.error
+    agent_key = os.environ.get('BMID_AGENT_KEY', '')
+    if not agent_key:
+        return 'ERROR: BMID_AGENT_KEY not set'
+    url  = f'https://bmid.hoffmanlenses.org/api/v1/submissions/{submission_id}/update'
+    body = json.dumps({'status': status, 'agent_notes': agent_notes}).encode()
+    try:
+        req = urllib.request.Request(url, data=body, method='POST', headers={
+            'Authorization': f'Bearer {agent_key}',
+            'Content-Type': 'application/json'
+        })
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+        print(f'  [tool] updated submission {submission_id} -> {status}')
+        return json.dumps(data)
+    except urllib.error.HTTPError as e:
+        return f'ERROR: HTTP {e.code}: {e.reason}'
+    except Exception as e:
+        return f'ERROR: {e}'
+
+
+def tool_seed_cloud_bmid(fishermen, motives, catches, evidence):
+    """Push verified records directly to the cloud BMID database."""
+    import urllib.request
+    import urllib.error
+    agent_key = os.environ.get('BMID_AGENT_KEY', '')
+    if not agent_key:
+        return 'ERROR: BMID_AGENT_KEY not set'
+    url  = 'https://bmid.hoffmanlenses.org/api/v1/admin/seed'
+    body = json.dumps({
+        'fishermen': fishermen or [],
+        'motives':   motives   or [],
+        'catches':   catches   or [],
+        'evidence':  evidence  or []
+    }).encode()
+    total = len(fishermen or []) + len(motives or []) + len(catches or []) + len(evidence or [])
+    try:
+        req = urllib.request.Request(url, data=body, method='POST', headers={
+            'Authorization': f'Bearer {agent_key}',
+            'Content-Type': 'application/json'
+        })
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode())
+        print(f'  [tool] seeded cloud BMID: {total} records -- {data.get("inserted", {})}')
+        return json.dumps(data)
+    except urllib.error.HTTPError as e:
+        return f'ERROR: HTTP {e.code}: {e.reason}'
+    except Exception as e:
+        return f'ERROR: {e}'
+
+
 def execute_tool(tool_name, tool_input, files_written):
     if tool_name == 'read_file':
         return tool_read_file(tool_input.get('path', ''))
@@ -308,6 +463,21 @@ def execute_tool(tool_name, tool_input, files_written):
             tool_input.get('catches', []),
             tool_input.get('evidence', []),
             files_written
+        )
+    elif tool_name == 'fetch_submissions':
+        return tool_fetch_submissions(tool_input.get('limit', 5))
+    elif tool_name == 'update_submission':
+        return tool_update_submission(
+            tool_input.get('submission_id', ''),
+            tool_input.get('status', ''),
+            tool_input.get('agent_notes', '')
+        )
+    elif tool_name == 'seed_cloud_bmid':
+        return tool_seed_cloud_bmid(
+            tool_input.get('fishermen', []),
+            tool_input.get('motives', []),
+            tool_input.get('catches', []),
+            tool_input.get('evidence', [])
         )
     else:
         return f'ERROR: unknown tool {tool_name}'
@@ -585,12 +755,31 @@ cycle result reporting the exact error. Do not retry the same operation. Do not 
 **Write the file first, report second.** Call write_file to save your findings as
 reports/investigate-{slug}.md. Then write your cycle result.
 
-## YOUR TASK
+## SUBMISSIONS QUEUE (PRIORITY 0 -- DO THIS FIRST EVERY CYCLE)
 
-1. Pick the top investigation from the INVESTIGATION QUEUE
-2. Compile your findings -- primary sources, connections, key facts
-3. Call write_file ONCE to save the intelligence file at reports/investigate-{slug}.md
-4. Write your cycle result
+Before any other task: call fetch_submissions to retrieve pending user submissions.
+
+For each pending submission:
+1. Review the domain and flags submitted by the user
+2. Research the domain: ownership, known manipulation history, funding sources,
+   stated mission vs. observed behavior
+3. If the domain is a legitimate manipulation actor:
+   a. Call seed_cloud_bmid with fisherman, motive, catch, and evidence records
+   b. Call update_submission with status "accepted" and your agent notes
+4. If the submission appears incorrect or the domain is benign:
+   a. Call update_submission with status "rejected" and brief notes explaining why
+5. If you need more investigation cycles to be sure:
+   a. Call update_submission with status "investigating" and your current findings
+
+Process ALL pending submissions before moving to the investigation queue below.
+If fetch_submissions returns an empty list or an error, proceed to the investigation queue.
+
+## INVESTIGATION QUEUE TASK
+
+After submissions: pick the top investigation from the INVESTIGATION QUEUE and:
+1. Compile your findings -- primary sources, connections, key facts
+2. Call write_file ONCE to save the intelligence file at reports/investigate-{slug}.md
+3. Write your cycle result
 
 Do not re-read existing files unless the investigation explicitly requires it.
 Do not loop on planning. Write first, refine later.
@@ -599,8 +788,11 @@ Do not loop on planning. Write first, refine later.
 
 ## CYCLE RESULT -- INVESTIGATE -- {date}
 
+### Submissions processed
+[list each submission domain, your finding (accepted/rejected/investigating), and brief rationale]
+
 ### Investigation target
-[what was investigated]
+[what was investigated from the queue -- NONE if all time was spent on submissions]
 
 ### Key findings
 [factual findings with primary source citations]

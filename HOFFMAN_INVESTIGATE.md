@@ -36,6 +36,19 @@ Every investigation team always maintains awareness of:
 
 ---
 
+## SUBMISSIONS QUEUE (PRIORITY 0)
+
+Every investigation cycle begins by calling `fetch_submissions` to retrieve pending
+user-submitted domains from the BMID cloud. Users who analyze pages with the Hoffman
+Browser and flag them as manipulative can contribute those findings for agent review.
+
+For each submission: research the domain, then call `update_submission` with:
+- `"accepted"` + `seed_cloud_bmid` call if the domain is a verified manipulation actor
+- `"rejected"` + notes if the submission appears incorrect or the domain is benign
+- `"investigating"` + current notes if more cycles are needed
+
+---
+
 ## INVESTIGATION QUEUE
 
 ### Priority 1: Meta Platforms deep file

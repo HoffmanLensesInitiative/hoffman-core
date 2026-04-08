@@ -6,6 +6,7 @@ Stack: Python / Flask / SQLite (via sqlite3)
 
 import os
 import uuid
+import hmac
 import sqlite3
 import json
 from flask import Flask, jsonify, request, g, render_template
@@ -14,7 +15,23 @@ app = Flask(__name__)
 
 # Local dev: bmid.db next to app.py
 # Production (Fly.io): /data/bmid.db on a persistent volume
-DATABASE = os.environ.get('BMID_DATABASE', os.path.join(os.path.dirname(__file__), 'bmid.db'))
+DATABASE  = os.environ.get('BMID_DATABASE', os.path.join(os.path.dirname(__file__), 'bmid.db'))
+
+# Agent API key -- required for investigation endpoints.
+# Set via: fly secrets set BMID_AGENT_KEY=<random-hex-64>
+# Also add as GitHub Actions secret BMID_AGENT_KEY.
+AGENT_KEY = os.environ.get('BMID_AGENT_KEY', '')
+
+
+def _check_agent_key():
+    """Return True if the request carries a valid Bearer agent key."""
+    if not AGENT_KEY:
+        return False
+    auth = request.headers.get('Authorization', '')
+    if auth.startswith('Bearer '):
+        provided = auth[7:].strip()
+        return hmac.compare_digest(provided, AGENT_KEY)
+    return False
 SCHEMA   = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
 
@@ -835,6 +852,150 @@ def submit_analysis():
     db.commit()
 
     return jsonify({"success": True, "submission_id": submission_id}), 201
+
+
+# ===========================================================================
+# AGENT API  (v0.3) -- requires Bearer BMID_AGENT_KEY header
+# Used by the GitHub Actions investigate agent to process submissions.
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/submissions/pending?limit=5
+# Returns the oldest pending submissions for agent investigation.
+# ---------------------------------------------------------------------------
+
+@app.route('/api/v1/submissions/pending')
+def agent_get_pending_submissions():
+    if not _check_agent_key():
+        return jsonify({"error": "unauthorized"}), 401
+
+    limit = min(int(request.args.get('limit', 5)), 20)
+    db    = get_db()
+
+    submissions = rows_to_list(db.execute(
+        "SELECT * FROM submission WHERE status = 'pending' "
+        "ORDER BY submitted_at ASC LIMIT ?", (limit,)
+    ).fetchall())
+
+    for s in submissions:
+        try:
+            s['flags_parsed'] = json.loads(s['flags']) if s.get('flags') else []
+        except Exception:
+            s['flags_parsed'] = []
+
+    return jsonify({"submissions": submissions, "count": len(submissions)})
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/submissions/<submission_id>/update
+# Agent updates status and adds investigation notes.
+# Body: { "status": "accepted"|"rejected"|"investigating", "agent_notes": "..." }
+# ---------------------------------------------------------------------------
+
+@app.route('/api/v1/submissions/<submission_id>/update', methods=['POST'])
+def agent_update_submission(submission_id):
+    if not _check_agent_key():
+        return jsonify({"error": "unauthorized"}), 401
+
+    data        = request.get_json(silent=True) or {}
+    new_status  = (data.get('status') or '').strip()
+    agent_notes = (data.get('agent_notes') or '').strip()
+
+    if new_status not in ('pending', 'investigating', 'accepted', 'rejected'):
+        return jsonify({"error": "invalid status"}), 400
+
+    db = get_db()
+    db.execute(
+        "UPDATE submission SET status = ?, agent_notes = ? WHERE submission_id = ?",
+        (new_status, agent_notes, submission_id)
+    )
+    db.commit()
+    return jsonify({"success": True, "submission_id": submission_id, "status": new_status})
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/admin/seed
+# Agent pushes verified BMID records directly to the cloud database.
+# Accepts the same record shapes as seed.py: fishermen, motives, catches, evidence.
+# Uses INSERT OR IGNORE so re-seeding is safe.
+# ---------------------------------------------------------------------------
+
+@app.route('/api/v1/admin/seed', methods=['POST'])
+def agent_seed_records():
+    if not _check_agent_key():
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    db   = get_db()
+    counts = {'fishermen': 0, 'motives': 0, 'catches': 0, 'evidence': 0}
+
+    for f in data.get('fishermen', []):
+        try:
+            db.execute(
+                "INSERT OR IGNORE INTO fisherman "
+                "(fisherman_id, domain, display_name, owner, parent_company, country, "
+                "founded, business_model, revenue_sources, confidence_score, contributed_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (f.get('fisherman_id'), f.get('domain'), f.get('display_name'),
+                 f.get('owner'), f.get('parent_company'), f.get('country'),
+                 f.get('founded'), f.get('business_model'),
+                 json.dumps(f.get('revenue_sources', [])),
+                 f.get('confidence_score', 0.5), f.get('contributed_by', 'investigate-agent'))
+            )
+            counts['fishermen'] += 1
+        except Exception as e:
+            pass
+
+    for m in data.get('motives', []):
+        try:
+            db.execute(
+                "INSERT OR IGNORE INTO motive "
+                "(motive_id, fisherman_id, motive_type, description, revenue_model, "
+                "beneficiary, documented_evidence, confidence_score, contributed_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (m.get('motive_id'), m.get('fisherman_id'), m.get('motive_type'),
+                 m.get('description'), m.get('revenue_model'), m.get('beneficiary'),
+                 m.get('documented_evidence'), m.get('confidence_score', 0.5),
+                 m.get('contributed_by', 'investigate-agent'))
+            )
+            counts['motives'] += 1
+        except Exception as e:
+            pass
+
+    for c in data.get('catches', []):
+        try:
+            db.execute(
+                "INSERT OR IGNORE INTO catch "
+                "(catch_id, fisherman_id, harm_type, victim_demographic, documented_outcome, "
+                "scale, academic_citation, date_documented, severity_score) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (c.get('catch_id'), c.get('fisherman_id'), c.get('harm_type'),
+                 c.get('victim_demographic'), c.get('documented_outcome'),
+                 c.get('scale'), c.get('academic_citation'),
+                 c.get('date_documented'), c.get('severity_score', 5))
+            )
+            counts['catches'] += 1
+        except Exception as e:
+            pass
+
+    for e in data.get('evidence', []):
+        try:
+            db.execute(
+                "INSERT OR IGNORE INTO evidence "
+                "(evidence_id, entity_id, entity_type, source_type, url, title, "
+                "author, publication, published_date, summary, confidence) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (e.get('evidence_id'), e.get('entity_id'), e.get('entity_type', 'fisherman'),
+                 e.get('source_type', 'secondary'), e.get('url'), e.get('title'),
+                 e.get('author'), e.get('publication'), e.get('published_date'),
+                 e.get('summary'), e.get('confidence', 0.5))
+            )
+            counts['evidence'] += 1
+        except Exception as e:
+            pass
+
+    db.commit()
+    return jsonify({"success": True, "inserted": counts})
 
 
 # ===========================================================================

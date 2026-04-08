@@ -32,6 +32,7 @@ jobs:
       - name: Run investigation cycle
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BMID_AGENT_KEY: ${{ secrets.BMID_AGENT_KEY }}
         run: python scripts/run_cycle.py investigate
 
       - name: Commit results
