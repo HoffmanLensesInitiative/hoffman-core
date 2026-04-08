@@ -1,63 +1,78 @@
 # Hoffman Lenses -- Director Briefing
 ## 2026-04-08
 
+---
+
 ### What got done today
 
-**INTEL** added a full Fox News / Fox Corporation record set to the BMID database — fisherman, motives, catches, and evidence records — with the Dominion lawsuit internal communications as the anchor source. The Dominion political influence record is the highest-confidence entry in the database to date (0.97), grounded in Fox's own disclosed internal communications rather than external reporting.
+**BMID (database/API):** Both morning and midday cycles spent most of their time fighting loop-detection blocks on `schema.sql` and `app.py`. No new files were confirmed written. The agents report that `app.py` already contains all 5 required new endpoints plus a 6th `/api/v1/conspiracy` endpoint from prior cycles, but truncation at 30,000 characters means the tail of the file could not be confirmed intact. A canonical rewrite was attempted each cycle; whether it persisted is uncertain.
 
-**INVESTIGATE** completed a deep research report on the Meta MSI algorithm decision chain — specifically, who received the 2019 internal harm findings and who made the call not to act on them. The report maps exactly what is documented, what is alleged, and where the gap is. It identified a faster path to closing the accountability gap: Meta's SEC 8-K earnings call transcripts are public and searchable without litigation discovery.
+**Browser extension:** Two cycles attempted to create the two missing helper modules (`bmid-context.js` and `bmid-context-builder.js`) that `main.js` already imports. Both cycles were blocked by loop detection on `main.js`, `analyzer.js`, and `panel.html` before any writes could occur. **No files were written in either browser cycle.** The morning cycle produced a detailed specification for what the next agent needs to write. The midday cycle hit the same wall.
 
-**WEBSITE** reviewed and finalized the `/remembrance` page. Fixed one accessibility error (duplicate `contentinfo` landmark) and made one CSS improvement. No content was changed. Eight entries require your approval before the page goes live; two are missing biographical detail entirely.
+**Intel:** Four cycles ran, building BMID records for Fox News/Fox Corporation, TikTok/ByteDance, and Reddit. All records were written to `seed.py`. However, the seed runner is currently failing on a pre-existing error unrelated to this work — a schema mismatch on the `amplifier` table (`no column named contributed_by`). This means **none of the new records have loaded into the live SQLite database yet.** The data is in `seed.py` and preserved, but the Hoffman Browser cannot access it until the blocker is fixed.
 
-**BMID and BROWSER** both hit the loop guard and wrote nothing. See below.
+**Investigate:** Two cycles ran on the Meta MSI (Meaningful Social Interactions) accountability gap. A 43,000-character investigation report was written to `reports/investigate-meta-msi-decision-chain.md`. The key finding: the WSJ Facebook Files establishes that mitigation proposals were presented to senior executives, but the specific named decision-maker is sourced only to unnamed persons — below BMID's evidence standard. Two paths to close the gap were identified; Path B (reviewing public SEC 8-K earnings call transcripts) was prioritized for the next cycle.
+
+**Website:** Two cycles reviewed the `/remembrance` page. The morning cycle made two genuine fixes (ARIA role correction, explicit CSS for `.entry-bio--pending`) and confirmed the page complete pending your review. The midday cycle was blocked by loop detection before doing anything. The `/families` page, which is next in the build queue, was not started.
 
 ---
 
 ### Files created or modified
 
-| Team | File | Status |
-|---|---|---|
-| INTEL | `seed.py` (Fox News records appended) | ✅ Written — loop guard fired on confirmation read; records may need re-verification |
-| INVESTIGATE | `reports/investigate-meta-msi-decision-chain.md` | ✅ Written |
-| WEBSITE | `hoffman-lenses-website/remembrance/index.html` | ✅ Written |
-| WEBSITE | `hoffman-lenses-website/remembrance/remembrance.css` | ✅ Written |
-| BMID | `app.py`, `schema.sql` | ❌ Nothing written — loop guard blocked all reads |
-| BROWSER | `main.js`, `analyzer.js`, `bmid-context.js` | ❌ Nothing written — loop guard blocked all reads |
+| File | Status |
+|---|---|
+| `hoffman-lenses-website/remembrance/index.html` | Written — morning cycle |
+| `hoffman-lenses-website/remembrance/remembrance.css` | Written — morning cycle |
+| `reports/investigate-meta-msi-decision-chain.md` | Written — investigate morning cycle |
+| `seed.py` | Appended — Fox News, TikTok, and Reddit record sets added across three intel cycles |
+| `app.py` | Attempted rewrite — uncertain whether canonical write persisted; loop detection blocked confirmation |
+| `bmid-context.js` | **NOT WRITTEN** — blocked both cycles |
+| `bmid-context-builder.js` | **NOT WRITTEN** — blocked both cycles |
+| `/families` page | **NOT STARTED** |
 
 ---
 
 ### Decisions needed from you
 
-**Remembrance page — eight entries need your sign-off before the page goes live:**
+**Remembrance page — eight entries require your approval before the page goes live:**
 
-| Person | Issue |
+| Entry | What needs your call |
 |---|---|
-| JackLynn Blackwell | Confirm "loved karaoke, wanted to be a star" is from verified public record |
-| Molly Russell | Verify all claims against UK Coroner ruling |
+| JackLynn Blackwell | Confirm "loved karaoke, wanted to be a star" comes from a verified public source |
+| Molly Russell | Verify all claims against the UK Coroner ruling |
 | Nylah Anderson | Verify all claims against public record and court filings |
-| CJ Dawley | No bio written — need verified public-record biographical detail |
 | Amanda Todd | Verify all claims against public record |
-| Sadie Riggs | No bio written — need verified public-record biographical detail |
-| Englyn Roberts | Name only — need all biographical detail |
-| Frankie Thomas | Name only — need all biographical detail |
+| CJ Dawley | Agent has age (14) and Wisconsin from HOFFMAN.md only — you need to supply verified biographical detail before the bio can be written |
+| Sadie Riggs | Agent has age (15), Pennsylvania, and 2015 from HOFFMAN.md only — same situation |
+| Englyn Roberts | Name only in HOFFMAN.md — you need to supply all detail |
+| Frankie Thomas | Name only in HOFFMAN.md — you need to supply all detail |
 
-**INTEL flagged one active legal matter for your review:** The Smartmatic lawsuit against Fox News was unresolved at the time of research. The agent correctly held Smartmatic-specific claims out of the database pending resolution or sworn testimony. No action needed unless you want to change that policy.
+**Reddit / GameStop (r/WallStreetBets):** The intel agent flagged this as a judgment call for you. Reddit's amplification of the January 2021 GameStop short squeeze led to documented financial losses for retail investors who entered after the peak. Does this meet the BMID catch threshold? The intel team is holding on adding it until you weigh in.
+
+**Smartmatic lawsuit:** The intel team is correctly holding all Smartmatic-specific claims against Fox News pending case resolution. No action needed from you — just flagging that this is being handled properly.
 
 ---
 
 ### Things to know
 
-**Two agents were blocked by the loop guard and produced no files.** This is a structural problem, not a one-off error. The loop guard prevents agents from reading the same file more than three times across a conversation thread. Both BMID and BROWSER are now stuck because their core files have hit that threshold. Both agents clearly understood the work to be done and wrote detailed plans — but nothing was built.
+**BLOCKING ISSUE — nothing is loading into the live database.** The `amplifier` table in SQLite is missing a `contributed_by` column that the seed script tries to insert. This is a one-line fix but it is currently preventing every BMID record — Fox News, TikTok, Reddit, and everything before — from seeding into the live database. The Hoffman Browser's "Why is this here?" pipeline has no data to draw from right now. This needs to go to the BUILD team first thing tomorrow.
 
-The agents' recommended fix is correct: these cycles need to run in fresh conversation threads. The BROWSER agent specifically noted it can write `main.js`, `analyzer.js`, and `bmid-context.js` directly from the supervisor document specs without a prior read, which would avoid the loop guard entirely. The BMID agent is in the same position.
+**Browser extension work is stalled.** The two missing helper modules (`bmid-context.js` and `bmid-context-builder.js`) have been blocked for two full cycles. The morning cycle's report is explicit: these files need to be written in a fresh session where the loop guard has no prior read history on `main.js`. Until they exist, the BMID context injection feature — the reason the browser extension exists — does not work.
 
-**INTEL's Fox News records may not have persisted.** The agent appended records to `seed.py` and then attempted to run the seed file. The loop guard fired during confirmation. The agent documented all records in the cycle report as a fallback — if the writes didn't stick, the full record set is captured there and can be re-submitted.
+**The Fox News Dominion records are exceptionally strong.** When they do load, the political influence motive record will be the highest-confidence record in the BMID. Rupert Murdoch's own internal texts are in the court record as a primary source. The intel agent correctly noted this distinction from the TikTok and Reddit records, which rely more on regulatory findings and journalism.
 
 ---
 
 ### What happens tomorrow
 
-- **BMID and BROWSER** restart in fresh threads to clear the loop guard. Both agents know exactly what to build.
-- **INTEL** opens actor records for Rupert Murdoch and Lachlan Murdoch — all required source documentation already exists in the evidence records written today. Then moves to TikTok / ByteDance.
-- **INVESTIGATE** runs Path B on the Meta accountability gap: reviewing Meta's SEC 8-K earnings call transcripts (Q1 2020–Q4 2021) for named-executive statements about MSI made after the 2019 internal harm findings. This is the fastest route to closing the accountability gap without litigation discovery.
-- **WEBSITE** builds the `/families` page.
+**First priority — BUILD:** Fix the `amplifier` table schema mismatch. One-line fix, but it's blocking everything else downstream.
+
+**Second priority — BROWSER:** Run a fresh session (clean loop guard) to write `bmid-context.js` and `bmid-context-builder.js`. The specifications are fully documented in the morning browser cycle report above. The agent should be instructed to write both files directly without a prior read step.
+
+**BMID:** Confirm `app.py` is in its intended final state — the loop blocking has left this uncertain. Then move on to the next build items per HOFFMAN.md Part 13.
+
+**Intel:** Open actor records for Rupert Murdoch and Lachlan Murdoch — all required evidence already exists in the database from the Fox News cycle, no new research needed. Then either Shou Zi Chew (TikTok CEO, sworn Senate testimony already in evidence) or Twitter/X as the next fisherman record.
+
+**Investigate:** Path B on the Meta MSI gap — review Meta's public SEC 8-K earnings call transcripts (Q1 2020 – Q4 2021) for named executives making positive public characterizations of MSI after the 2019 internal harm findings.
+
+**Website:** Build the `/families` page in a fresh session. Content is well-specified: what Hoffman is doing, how families can get involved, link to Social Media Victims Law Center, link to the white paper, contact email as "coming soon."
