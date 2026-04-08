@@ -77,6 +77,13 @@ class SettingsManager {
     this._save();
   }
 
+  getAutoContribute() { return !!this._settings.autoContribute; }
+
+  setAutoContribute(value) {
+    this._settings.autoContribute = !!value;
+    this._save();
+  }
+
   clearApiKey() {
     delete this._settings.apiKey;
     this._save();
@@ -93,9 +100,10 @@ class SettingsManager {
   getPublic() {
     var key = this._settings.apiKey || '';
     return {
-      provider:     this._settings.provider || 'anthropic',
-      hasApiKey:    key.length > 0,
-      apiKeyPreview: key.length > 8 ? key.slice(0, 7) + '…' : (key.length > 0 ? '••••••••' : '')
+      provider:       this._settings.provider || 'anthropic',
+      hasApiKey:      key.length > 0,
+      apiKeyPreview:  key.length > 8 ? key.slice(0, 7) + '…' : (key.length > 0 ? '••••••••' : ''),
+      autoContribute: !!this._settings.autoContribute
     };
   }
 }

@@ -5,13 +5,16 @@ Stack: Python / Flask / SQLite (via sqlite3)
 """
 
 import os
+import uuid
 import sqlite3
 import json
 from flask import Flask, jsonify, request, g, render_template
 
 app = Flask(__name__)
 
-DATABASE = os.path.join(os.path.dirname(__file__), 'bmid.db')
+# Local dev: bmid.db next to app.py
+# Production (Fly.io): /data/bmid.db on a persistent volume
+DATABASE = os.environ.get('BMID_DATABASE', os.path.join(os.path.dirname(__file__), 'bmid.db'))
 SCHEMA   = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
 
@@ -703,6 +706,123 @@ def get_conspiracy(fisherman_id_1, fisherman_id_2):
         "shared_investors":  shared_investors,
         "shared_harm_types": shared_harm_types,
     })
+
+
+# ===========================================================================
+# SUBMISSIONS API  (v0.3)
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/submit
+# Accepts a Hoffman Browser analysis result as a crowdsourced submission.
+# contributor_token = SHA-256(provider:apikey) -- anonymous identity for
+# rate limiting. Raw API key is never transmitted.
+# Rate limit: 50 submissions per token per 24 hours.
+# ---------------------------------------------------------------------------
+
+SUBMISSION_DAILY_LIMIT = 50
+
+@app.route('/api/v1/submit', methods=['POST'])
+def submit_analysis():
+    data  = request.get_json(silent=True) or {}
+
+    domain            = (data.get('domain') or '').strip()
+    contributor_token = (data.get('contributor_token') or '').strip()
+    flags             = data.get('flags') or []
+    summary           = (data.get('summary') or '').strip()
+    url               = (data.get('url') or '').strip()
+
+    if not domain:
+        return jsonify({"error": "domain is required"}), 400
+    if not contributor_token or len(contributor_token) < 16:
+        return jsonify({"error": "valid contributor_token is required"}), 400
+    if not flags:
+        return jsonify({"error": "no flags to submit -- only analyses with findings are accepted"}), 400
+
+    db = get_db()
+
+    # Rate limit: count submissions from this token in the last 24 hours
+    recent = db.execute(
+        "SELECT COUNT(*) AS n FROM submission "
+        "WHERE contributor_token = ? AND submitted_at > datetime('now', '-1 day')",
+        (contributor_token,)
+    ).fetchone()['n']
+
+    if recent >= SUBMISSION_DAILY_LIMIT:
+        return jsonify({
+            "error":   "rate_limit_exceeded",
+            "message": "Daily submission limit reached. Submissions reset every 24 hours."
+        }), 429
+
+    submission_id = 'sub-' + str(uuid.uuid4())[:12]
+
+    db.execute(
+        "INSERT INTO submission "
+        "(submission_id, domain, url, contributor_token, flags, summary, technique_count) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (submission_id, domain, url, contributor_token,
+         json.dumps(flags), summary, len(flags))
+    )
+    db.commit()
+
+    return jsonify({"success": True, "submission_id": submission_id}), 201
+
+
+# ---------------------------------------------------------------------------
+# Admin: submissions queue
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/submissions')
+def admin_submissions():
+    db            = get_db()
+    filter_status = request.args.get('status', 'pending').strip()
+
+    submissions = rows_to_list(db.execute(
+        "SELECT * FROM submission WHERE status = ? ORDER BY submitted_at DESC",
+        (filter_status,)
+    ).fetchall())
+
+    # Parse flags JSON for template rendering
+    for s in submissions:
+        try:
+            s['flags_parsed'] = json.loads(s['flags']) if s.get('flags') else []
+        except Exception:
+            s['flags_parsed'] = []
+
+    counts = {
+        status: db.execute(
+            "SELECT COUNT(*) AS n FROM submission WHERE status = ?", (status,)
+        ).fetchone()['n']
+        for status in ('pending', 'investigating', 'accepted', 'rejected')
+    }
+
+    return render_template('admin/submissions.html',
+                           submissions=submissions,
+                           counts=counts,
+                           filter_status=filter_status,
+                           active_page='submissions')
+
+
+# ---------------------------------------------------------------------------
+# Admin: update submission status (POST action from admin GUI)
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/submissions/<submission_id>/status', methods=['POST'])
+def update_submission_status(submission_id):
+    new_status = request.form.get('status', '').strip()
+    agent_notes = request.form.get('agent_notes', '').strip()
+
+    if new_status not in ('pending', 'investigating', 'accepted', 'rejected'):
+        return "Invalid status", 400
+
+    db = get_db()
+    db.execute(
+        "UPDATE submission SET status = ?, agent_notes = ? WHERE submission_id = ?",
+        (new_status, agent_notes, submission_id)
+    )
+    db.commit()
+
+    return '', 204
 
 
 # ===========================================================================

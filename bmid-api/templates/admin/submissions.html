@@ -1,0 +1,118 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Submissions{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Submissions Queue</h2>
+  <p>Crowdsourced analysis catches from Hoffman Browser users. Pending items are leads for agent investigation.</p>
+</div>
+
+<!-- Status tabs -->
+<div style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;">
+  {% for status, label in [('pending','Pending'), ('investigating','Investigating'), ('accepted','Accepted'), ('rejected','Rejected')] %}
+  <a href="/admin/submissions?status={{ status }}"
+     style="padding:6px 14px; border-radius:4px; font-size:13px; text-decoration:none;
+            {% if filter_status == status %}
+              background:#1F6FEB; color:#fff;
+            {% else %}
+              background:#161B22; color:#8B949E; border:1px solid #30363D;
+            {% endif %}">
+    {{ label }}
+    <span style="margin-left:6px; background:rgba(255,255,255,0.15); border-radius:10px;
+                 padding:1px 7px; font-size:11px;">{{ counts[status] }}</span>
+  </a>
+  {% endfor %}
+</div>
+
+{% if submissions %}
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>Domain</th>
+        <th>Techniques</th>
+        <th>Summary</th>
+        <th>Submitted</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in submissions %}
+      <tr>
+        <td>
+          <strong>{{ s.domain }}</strong><br>
+          {% if s.url %}
+          <span class="text-muted text-small" title="{{ s.url }}">
+            {{ s.url[:60] }}{% if s.url|length > 60 %}…{% endif %}
+          </span>
+          {% endif %}
+        </td>
+        <td>
+          {% for flag in s.flags_parsed %}
+          <span class="badge
+            {% if flag.severity|lower == 'high' or flag.severity|lower == 'critical' %}badge-high
+            {% elif flag.severity|lower == 'medium' %}badge-medium
+            {% else %}badge-low{% endif %}"
+            style="display:inline-block; margin:2px 2px 2px 0; font-size:10px;"
+            title="{{ flag.explanation or '' }}">
+            {{ flag.technique or 'unknown' }}
+          </span>
+          {% endfor %}
+        </td>
+        <td style="max-width:280px;">
+          <span class="text-small" style="color:#8B949E; line-height:1.5;">
+            {{ (s.summary or '')[:180] }}{% if (s.summary or '')|length > 180 %}…{% endif %}
+          </span>
+          {% if s.agent_notes %}
+          <div style="margin-top:6px; padding:6px 8px; background:#161B22;
+                      border-left:3px solid #30363D; font-size:11px; color:#8B949E;">
+            <em>Agent notes:</em> {{ s.agent_notes }}
+          </div>
+          {% endif %}
+        </td>
+        <td class="text-muted text-small">{{ s.submitted_at[:16] }}</td>
+        <td>
+          <form method="POST" action="/admin/submissions/{{ s.submission_id }}/status"
+                style="display:inline;">
+            {% if filter_status == 'pending' %}
+            <button name="status" value="investigating" class="btn btn-sm"
+                    style="background:rgba(31,111,235,0.15); border-color:rgba(31,111,235,0.4);
+                           color:#58A6FF; margin-bottom:4px; display:block; width:100%;">
+              Investigate
+            </button>
+            <button name="status" value="rejected" class="btn btn-sm"
+                    style="background:rgba(248,81,73,0.1); border-color:rgba(248,81,73,0.3);
+                           color:#F85149; display:block; width:100%;">
+              Reject
+            </button>
+            {% elif filter_status == 'investigating' %}
+            <button name="status" value="accepted" class="btn btn-sm"
+                    style="background:rgba(63,185,80,0.15); border-color:rgba(63,185,80,0.4);
+                           color:#3FB950; margin-bottom:4px; display:block; width:100%;">
+              Accept
+            </button>
+            <button name="status" value="rejected" class="btn btn-sm"
+                    style="background:rgba(248,81,73,0.1); border-color:rgba(248,81,73,0.3);
+                           color:#F85149; display:block; width:100%;">
+              Reject
+            </button>
+            {% else %}
+            <button name="status" value="pending" class="btn btn-sm"
+                    style="color:#8B949E; display:block; width:100%;">
+              Re-queue
+            </button>
+            {% endif %}
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card" style="text-align:center; padding:40px; color:#8B949E;">
+  No {{ filter_status }} submissions.
+</div>
+{% endif %}
+{% endblock %}

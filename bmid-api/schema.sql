@@ -152,6 +152,31 @@ CREATE TABLE IF NOT EXISTS actor_political (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- ---------------------------------------------------------------------------
+-- CROWDSOURCED SUBMISSIONS (added 2026-04-08)
+-- User-contributed catches from the Hoffman Browser.
+-- Status: pending → investigating → accepted | rejected
+-- contributor_token = SHA-256(provider:apikey) -- anonymous, rate-limited.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS submission (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  submission_id     TEXT UNIQUE NOT NULL,
+  domain            TEXT NOT NULL,
+  url               TEXT,
+  contributor_token TEXT NOT NULL,
+  flags             TEXT NOT NULL,       -- JSON array of flag objects
+  summary           TEXT,
+  technique_count   INTEGER DEFAULT 0,
+  submitted_at      TEXT DEFAULT (datetime('now')),
+  status            TEXT DEFAULT 'pending',  -- pending|investigating|accepted|rejected
+  agent_notes       TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_submission_status ON submission(status);
+CREATE INDEX IF NOT EXISTS idx_submission_domain  ON submission(domain);
+CREATE INDEX IF NOT EXISTS idx_submission_token   ON submission(contributor_token, submitted_at);
+
 -- Known moments of documented awareness of harm
 CREATE TABLE IF NOT EXISTS actor_knowledge (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

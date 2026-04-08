@@ -10,6 +10,7 @@ const path = require('path');
 const ModelManager    = require('./model-manager');
 const SettingsManager = require('./settings-manager');
 const { analyzeWithCloud } = require('./cloud-analyzer');
+const { submitAnalysis }   = require('./bmid-submit');
 const { buildSystemPrompt, truncateText, synthesizeFlagsFromSummary } = require('./analyzer');
 const { getBmidEnrichment } = require('./bmid-context');
 const { isTechniqueNovel } = require('./bmid-context-builder');
@@ -236,10 +237,14 @@ ipcMain.handle('get-settings', () => {
   return settingsManager.getPublic();
 });
 
-ipcMain.handle('save-settings', (event, { provider, apiKey }) => {
+ipcMain.handle('save-settings', (event, { provider, apiKey, autoContribute }) => {
   settingsManager.saveApiSettings(provider, apiKey);
+  if (typeof autoContribute === 'boolean') {
+    settingsManager.setAutoContribute(autoContribute);
+  }
   console.log('[Hoffman] Settings saved: provider=' + provider +
-    ', hasKey=' + settingsManager.hasApiKey());
+    ', hasKey=' + settingsManager.hasApiKey() +
+    ', autoContribute=' + settingsManager.getAutoContribute());
   return settingsManager.getPublic();
 });
 
@@ -247,6 +252,30 @@ ipcMain.handle('clear-api-key', () => {
   settingsManager.clearApiKey();
   console.log('[Hoffman] API key cleared');
   return settingsManager.getPublic();
+});
+
+ipcMain.handle('submit-to-bmid', async (event, { domain, url, flags, summary }) => {
+  if (!settingsManager.hasApiKey()) {
+    return { error: 'No API key configured -- cannot generate contributor token' };
+  }
+  if (!flags || flags.length === 0) {
+    return { error: 'No flags to submit' };
+  }
+  try {
+    const result = await submitAnalysis({
+      domain,
+      url,
+      flags,
+      summary,
+      provider: settingsManager.getProvider(),
+      apiKey:   settingsManager.getApiKey()
+    });
+    console.log('[Hoffman] Submitted to BMID:', result.submission_id, 'for', domain);
+    return result;
+  } catch (err) {
+    console.error('[Hoffman] BMID submission error:', err.message);
+    return { error: err.message };
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -354,6 +383,24 @@ ipcMain.on('analyze-page', async () => {
       result.synthesizedFromSummary ? '| (synthesized)' : '');
 
     sendToPanel('analysis-complete', result);
+
+    // Auto-submit if user has opted in and there are flags to report
+    if (settingsManager.getAutoContribute() &&
+        settingsManager.hasApiKey() &&
+        result.flags.length > 0) {
+      submitAnalysis({
+        domain,
+        url:      currentUrl,
+        flags:    result.flags,
+        summary:  result.summary,
+        provider: settingsManager.getProvider(),
+        apiKey:   settingsManager.getApiKey()
+      }).then(function(r) {
+        console.log('[Hoffman] Auto-submitted to BMID:', r.submission_id);
+      }).catch(function(err) {
+        console.log('[Hoffman] Auto-submit failed (non-fatal):', err.message);
+      });
+    }
 
   } catch (err) {
     console.error('[Hoffman] Analysis error:', err);

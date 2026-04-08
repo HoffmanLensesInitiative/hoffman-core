@@ -520,6 +520,18 @@
       <button class="btn-clear" id="settings-clear">Clear key</button>
     </div>
 
+    <div class="settings-label" style="margin-top:20px;">Contribute to BMID</div>
+    <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+      <input type="checkbox" id="auto-contribute-toggle" style="width:14px; height:14px; cursor:pointer; accent-color:#5A9AEE;">
+      <span style="font-size:11px; color:#A8C4C4; line-height:1.5;">
+        Auto-submit catches to the shared intelligence database
+      </span>
+    </label>
+    <div style="font-size:10px; color:#3A5060; margin-top:5px; line-height:1.6;">
+      Off by default. When on, analyses with flags are automatically contributed.<br>
+      Domain and techniques only — your browsing is never tracked.
+    </div>
+
     <div class="settings-note">
       Your key is stored locally and encrypted on this device.<br>
       It is only sent to the provider you choose, with your page text.<br><br>
@@ -599,6 +611,7 @@
     providerSelect.value = s.provider || 'anthropic';
     apiKeyInput.value    = '';
     keyStatus.textContent = s.hasApiKey ? ('Key saved: ' + s.apiKeyPreview) : '';
+    document.getElementById('auto-contribute-toggle').checked = !!s.autoContribute;
   });
 
   settingsClose.addEventListener('click', () => {
@@ -607,9 +620,10 @@
   });
 
   settingsSave.addEventListener('click', async () => {
-    const provider = providerSelect.value;
-    const key      = apiKeyInput.value.trim();
-    const s        = await window.hoffman.saveSettings(provider, key);
+    const provider     = providerSelect.value;
+    const key          = apiKeyInput.value.trim();
+    const autoContrib  = document.getElementById('auto-contribute-toggle').checked;
+    const s            = await window.hoffman.saveSettings(provider, key, autoContrib);
     keyStatus.textContent = s.hasApiKey ? ('Saved: ' + s.apiKeyPreview) : 'No key saved';
     applyCloudMode(s);
     settingsOverlay.style.display = 'none';
@@ -702,6 +716,7 @@
   // ── Page navigation ─────────────────────────────────────
   window.hoffman.onPageChanged((data) => {
     currentHostname = data.hostname || '';
+    _lastUrl        = data.url || '';
     hostnameEl.textContent = currentHostname || data.url;
     // Clear results on navigation
     resultsEl.innerHTML = '<div class="state-idle">Navigate to any page.<br>Click <strong>Analyze</strong> to read the room.</div>';
@@ -719,6 +734,7 @@
     analyzeBtn.disabled = false;
     analyzeBtn.className = '';
     analyzeBtn.textContent = 'Analyze this page';
+    _lastResult = results;
     renderResults(results);
   });
 
@@ -780,9 +796,55 @@
       html += '</div>';
     });
 
+    // Contribute button (only when flags found and API key configured)
+    if (flags.length > 0 && cloudMode) {
+      html += '<div id="contribute-wrap" style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06);">';
+      html += '<button id="contribute-btn" onclick="contribute()" '
+           +  'style="width:100%; padding:8px; background:rgba(90,154,238,0.08); '
+           +  'border:1px solid rgba(90,154,238,0.25); border-radius:4px; '
+           +  'color:#5A9AEE; font-family:ui-monospace,monospace; font-size:10px; '
+           +  'cursor:pointer; letter-spacing:0.05em; transition:all 0.15s;">'
+           +  'Contribute to BMID</button>';
+      html += '</div>';
+    }
+
     // Open first flag automatically
     resultsEl.innerHTML = html;
     if (flags.length > 0) toggleFlag(0);
+  }
+
+  // Store last result for contribution
+  let _lastResult = null;
+  let _lastUrl    = '';
+
+  async function contribute() {
+    const btn = document.getElementById('contribute-btn');
+    if (!btn || !_lastResult) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Contributing…';
+
+    try {
+      const res = await window.hoffman.submitToBmid(
+        currentHostname,
+        _lastUrl,
+        _lastResult.flags,
+        _lastResult.summary
+      );
+      if (res && res.success) {
+        btn.textContent = '✓ Contributed';
+        btn.style.color = '#5ABF8A';
+        btn.style.borderColor = 'rgba(90,191,138,0.3)';
+      } else {
+        btn.textContent = 'Error: ' + ((res && res.error) || 'unknown');
+        btn.style.color = '#FF5555';
+        btn.disabled = false;
+      }
+    } catch (err) {
+      btn.textContent = 'Error — try again';
+      btn.style.color = '#FF5555';
+      btn.disabled = false;
+    }
   }
 
   function toggleFlag(i) {
