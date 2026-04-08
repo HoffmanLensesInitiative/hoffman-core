@@ -1,6 +1,6 @@
 // hoffman-browser/src/main.js
 // Hoffman Browser -- Electron main process
-// Handles: browser window, BrowserView, IPC handlers, LLM analysis pipeline, BMID integration
+// Handles: browser window, BrowserView, panel window, IPC, LLM pipeline, BMID
 
 'use strict';
 
@@ -30,35 +30,59 @@ let panelWindow  = null;
 let modelManager = null;
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Window bounds helpers
 // ---------------------------------------------------------------------------
 
 function getViewBounds(win) {
-  const [width, height] = win.getContentSize();
-  return {
-    x: 0,
-    y: TOOLBAR_HEIGHT,
-    width: width - PANEL_WIDTH,
-    height: height - TOOLBAR_HEIGHT
-  };
+  const [w, h] = win.getContentSize();
+  return { x: 0, y: TOOLBAR_HEIGHT, width: w - PANEL_WIDTH, height: h - TOOLBAR_HEIGHT };
 }
 
-function getPanelBounds(win) {
-  const [width, height] = win.getContentSize();
-  return {
-    x: width - PANEL_WIDTH,
-    y: TOOLBAR_HEIGHT,
-    width: PANEL_WIDTH,
-    height: height - TOOLBAR_HEIGHT
-  };
+// Position the panel flush against the right edge of the main window.
+// Called on create, resize, and move.
+function updatePanelBounds() {
+  if (!mainWindow || !panelWindow) return;
+  if (mainWindow.isDestroyed() || panelWindow.isDestroyed()) return;
+  const b = mainWindow.getBounds();
+  panelWindow.setBounds({
+    x:      b.x + b.width - PANEL_WIDTH,
+    y:      b.y + TOOLBAR_HEIGHT,
+    width:  PANEL_WIDTH,
+    height: b.height - TOOLBAR_HEIGHT
+  });
 }
 
-// Extract hostname from a URL string, stripping www.
+// ---------------------------------------------------------------------------
+// Utility
+// ---------------------------------------------------------------------------
+
 function hostnameFromUrl(urlString) {
+  try { return new URL(urlString).hostname.replace(/^www\./, ''); }
+  catch (e) { return null; }
+}
+
+// ---------------------------------------------------------------------------
+// Model loading -- user-triggered, with progress events to panel
+// ---------------------------------------------------------------------------
+
+function sendToPanel(channel, payload) {
+  if (panelWindow && !panelWindow.isDestroyed()) {
+    panelWindow.webContents.send(channel, payload);
+  }
+}
+
+async function loadModel() {
+  sendToPanel('model-loading', { stage: 'loading', message: 'Loading model...' });
+
   try {
-    return new URL(urlString).hostname.replace(/^www\./, '');
-  } catch (e) {
-    return null;
+    await modelManager.load((progress) => {
+      sendToPanel('model-loading', progress);
+    });
+    sendToPanel('model-ready');
+    console.log('[Hoffman] Model ready.');
+  } catch (err) {
+    console.error('[Hoffman] Model load failed:', err.message);
+    sendToPanel('model-error', err.message);
   }
 }
 
@@ -72,9 +96,6 @@ app.whenReady().then(async () => {
   const modelsDir = path.join(app.getPath('userData'), 'models');
   modelManager = new ModelManager(modelsDir);
 
-  await modelManager.load();
-  console.log('[Hoffman] Model loaded.');
-
   // Main window (toolbar)
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -82,14 +103,14 @@ app.whenReady().then(async () => {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, '../preload/toolbar-preload.js')
+      preload: path.join(__dirname, 'toolbar-preload.js')
     },
     titleBarStyle: 'hiddenInset'
   });
 
-  mainWindow.loadFile(path.join(__dirname, '../toolbar/toolbar.html'));
+  mainWindow.loadFile(path.join(__dirname, '../panel/toolbar.html'));
 
-  // BrowserView for web content
+  // BrowserView for web content (left side)
   browserView = new BrowserView({
     webPreferences: {
       nodeIntegration: false,
@@ -102,23 +123,43 @@ app.whenReady().then(async () => {
   browserView.setAutoResize({ width: true, height: true });
   browserView.webContents.loadURL('https://www.google.com');
 
-  // Panel window (child)
+  // Panel window -- positioned flush to the right edge of mainWindow
   panelWindow = new BrowserWindow({
     parent: mainWindow,
-    width: PANEL_WIDTH,
+    width:  PANEL_WIDTH,
     height: 900,
-    frame: false,
+    frame:  false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, '../panel/panel-preload.js')
+      preload: path.join(__dirname, 'panel-preload.js')
     }
   });
 
   panelWindow.loadFile(path.join(__dirname, '../panel/panel.html'));
 
+  // Position panel once it has loaded (bounds are stable after load)
+  panelWindow.webContents.once('did-finish-load', () => {
+    updatePanelBounds();
+
+    // Send initial model status so panel shows correct state immediately
+    const status = modelManager.getStatus();
+    sendToPanel('model-status', status);
+
+    // If model file already exists, auto-load it without user needing to click
+    if (status.downloaded && !status.ready) {
+      loadModel();
+    }
+  });
+
+  // Keep panel anchored to the right edge on resize and move
   mainWindow.on('resize', () => {
     browserView.setBounds(getViewBounds(mainWindow));
+    updatePanelBounds();
+  });
+
+  mainWindow.on('move', () => {
+    updatePanelBounds();
   });
 
   mainWindow.on('closed', () => {
@@ -142,26 +183,26 @@ ipcMain.on('navigate', (event, url) => {
     target = 'https://' + target;
   }
   browserView.webContents.loadURL(target);
-  panelWindow.webContents.send('panel-reset');
+  sendToPanel('panel-reset');
 });
 
 ipcMain.on('navigate-back', () => {
   if (browserView.webContents.canGoBack()) {
     browserView.webContents.goBack();
-    panelWindow.webContents.send('panel-reset');
+    sendToPanel('panel-reset');
   }
 });
 
 ipcMain.on('navigate-forward', () => {
   if (browserView.webContents.canGoForward()) {
     browserView.webContents.goForward();
-    panelWindow.webContents.send('panel-reset');
+    sendToPanel('panel-reset');
   }
 });
 
 ipcMain.on('navigate-reload', () => {
   browserView.webContents.reload();
-  panelWindow.webContents.send('panel-reset');
+  sendToPanel('panel-reset');
 });
 
 ipcMain.handle('get-current-url', () => {
@@ -169,20 +210,37 @@ ipcMain.handle('get-current-url', () => {
 });
 
 // ---------------------------------------------------------------------------
+// IPC: Model management
+// ---------------------------------------------------------------------------
+
+ipcMain.on('get-model-status', () => {
+  sendToPanel('model-status', modelManager.getStatus());
+});
+
+ipcMain.on('load-model', () => {
+  loadModel();
+});
+
+// ---------------------------------------------------------------------------
 // IPC: Analysis pipeline
 // ---------------------------------------------------------------------------
 
-ipcMain.handle('analyze-page', async () => {
+ipcMain.on('analyze-page', async () => {
+  if (!modelManager.isReady()) {
+    sendToPanel('analysis-error', 'Model not loaded. Click "Download Hoffman model" first.');
+    return;
+  }
+
   const currentUrl = browserView.webContents.getURL();
   const domain     = hostnameFromUrl(currentUrl);
 
   console.log('[Hoffman] Analysis requested for:', currentUrl);
-  panelWindow.webContents.send('analysis-started');
+  sendToPanel('analysis-started');
 
   try {
-    // Step 1: Extract page text and query BMID in parallel.
+    // Extract page text and query BMID in parallel.
     // getBmidEnrichment makes one HTTP call and returns both the context string
-    // and the list of known techniques -- no second BMID request needed.
+    // and the known techniques list -- no second BMID request needed.
     const [pageText, enrichment] = await Promise.all([
       browserView.webContents.executeJavaScript(`
         (function() {
@@ -203,9 +261,8 @@ ipcMain.handle('analyze-page', async () => {
       console.log('[Hoffman] BMID context injected for:', domain);
     }
 
-    // Step 2: Build prompt and run model.
-    // Text is truncated to 2400 chars to fit the 4096-token context window.
-    // System prompt includes BMID context if available; model still detects independently.
+    // Build prompt and run model.
+    // 2400 chars fits the 4096-token context window alongside the system prompt.
     const truncated    = truncateText(pageText, 2400);
     const systemPrompt = buildSystemPrompt(enrichment.context);
     const userMessage  = 'Analyze this web page text for manipulation:\n\n' + truncated;
@@ -222,7 +279,7 @@ ipcMain.handle('analyze-page', async () => {
     const elapsed = Date.now() - startTime;
     console.log('[Hoffman] Model returned in ' + elapsed + 'ms');
 
-    // Step 3: Normalize result.
+    // Normalize result.
     const result = {
       manipulation_found: !!parsed.manipulation_found,
       summary:            parsed.summary || '',
@@ -230,25 +287,24 @@ ipcMain.handle('analyze-page', async () => {
       processingTimeMs:   elapsed
     };
 
-    // Workaround: 3B model sometimes sets manipulation_found:false but writes a
-    // contradictory summary. Synthesize a flag from the summary signal.
+    // Workaround: 3B model sometimes sets manipulation_found:false but writes
+    // a contradictory summary. Synthesize a flag from the summary signal.
     if (!result.manipulation_found && result.flags.length === 0) {
-      var synthesized = synthesizeFlagsFromSummary(result.summary);
+      const synthesized = synthesizeFlagsFromSummary(result.summary);
       if (synthesized.length > 0) {
-        result.manipulation_found    = true;
-        result.flags                 = synthesized;
+        result.manipulation_found     = true;
+        result.flags                  = synthesized;
         result.synthesizedFromSummary = true;
       }
     }
 
-    // Step 4: Annotate novel techniques.
-    // A flag is "novel" if its technique is not in BMID's documented patterns for this domain.
+    // Annotate novel techniques -- flags not in BMID's documented patterns.
     if (enrichment.knownTechniques.length > 0 && result.flags.length > 0) {
-      result.flags = result.flags.map(function(flag) {
-        return Object.assign({}, flag, {
+      result.flags = result.flags.map((flag) =>
+        Object.assign({}, flag, {
           novel: isTechniqueNovel(flag.technique, enrichment.knownTechniques)
-        });
-      });
+        })
+      );
     }
 
     console.log('[Hoffman] Analysis complete |',
@@ -256,13 +312,11 @@ ipcMain.handle('analyze-page', async () => {
       '| flags:', result.flags.length,
       result.synthesizedFromSummary ? '| (synthesized)' : '');
 
-    panelWindow.webContents.send('analysis-complete', result);
-    return result;
+    sendToPanel('analysis-complete', result);
 
   } catch (err) {
     console.error('[Hoffman] Analysis error:', err);
-    panelWindow.webContents.send('analysis-error', { message: err.message });
-    throw err;
+    sendToPanel('analysis-error', err.message);
   }
 });
 
@@ -270,7 +324,7 @@ ipcMain.handle('analyze-page', async () => {
 // IPC: BMID "Why is this here?" query (panel button)
 // ---------------------------------------------------------------------------
 
-ipcMain.handle('query-bmid', async (event, domain, technique) => {
+ipcMain.handle('query-bmid', async (event, domain) => {
   try {
     return await bmidClient.queryExplain(domain);
   } catch (err) {
