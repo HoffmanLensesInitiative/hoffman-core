@@ -83,7 +83,7 @@ def get_fisherman(domain):
     if not fisherman:
         return jsonify({"error": "fisherman not found", "domain": domain}), 404
 
-    fid = fisherman['id']
+    fid = fisherman['fisherman_id']
     fisherman['motives']  = rows_to_list(db.execute(
         "SELECT * FROM motive WHERE fisherman_id = ?", (fid,)).fetchall())
     fisherman['catches']  = rows_to_list(db.execute(
@@ -112,7 +112,7 @@ def explain():
     if not fisherman:
         return jsonify({"known": False, "domain": domain})
 
-    fid = fisherman['id']
+    fid = fisherman['fisherman_id']
     motives      = rows_to_list(db.execute(
         "SELECT * FROM motive WHERE fisherman_id = ?", (fid,)).fetchall())
     catch_count  = db.execute(
@@ -310,154 +310,14 @@ def admin_catches():
 
 
 # ===========================================================================
-# NETWORK AND ACTOR API ENDPOINTS  (v0.2 — new)
+# NETWORK AND ACTOR API ENDPOINTS  (v0.2 — added this cycle)
 # ===========================================================================
-
-# ---------------------------------------------------------------------------
-# GET /api/v1/network/<domain>
-# All documented relationships for a fisherman domain.
-# ---------------------------------------------------------------------------
-
-@app.route('/api/v1/network/<domain>')
-def get_network(domain):
-    db = get_db()
-
-    fisherman = row_to_dict(
-        db.execute("SELECT * FROM fisherman WHERE domain = ?", (domain,)).fetchone()
-    )
-    if not fisherman:
-        return jsonify({"error": "fisherman not found", "domain": domain}), 404
-
-    fid = fisherman['id']
-
-    # Relationships where this fisherman is the parent
-    as_parent = rows_to_list(db.execute("""
-        SELECT n.*,
-               f_child.domain  AS child_domain,
-               f_child.display_name AS child_name
-        FROM   network n
-        JOIN   fisherman f_child ON n.child_fisherman_id = f_child.id
-        WHERE  n.parent_fisherman_id = ?
-    """, (fid,)).fetchall())
-
-    # Relationships where this fisherman is the child
-    as_child = rows_to_list(db.execute("""
-        SELECT n.*,
-               f_parent.domain  AS parent_domain,
-               f_parent.display_name AS parent_name
-        FROM   network n
-        JOIN   fisherman f_parent ON n.parent_fisherman_id = f_parent.id
-        WHERE  n.child_fisherman_id = ?
-    """, (fid,)).fetchall())
-
-    # Actors currently associated with this fisherman
-    actors = rows_to_list(db.execute("""
-        SELECT a.id, a.name, a.current_role, a.documented_knowledge_of_harm,
-               a.knowledge_date, a.confidence
-        FROM   actor a
-        WHERE  a.current_fisherman_id = ?
-    """, (fid,)).fetchall())
-
-    return jsonify({
-        "domain":      domain,
-        "fisherman_id": fid,
-        "display_name": fisherman.get('display_name'),
-        "as_parent":   as_parent,
-        "as_child":    as_child,
-        "actors":      actors,
-    })
-
-
-# ---------------------------------------------------------------------------
-# GET /api/v1/actor/search?name=<name>
-# Must be registered BEFORE /api/v1/actor/<actor_id> to avoid route collision.
-# ---------------------------------------------------------------------------
-
-@app.route('/api/v1/actor/search')
-def search_actors():
-    name = request.args.get('name', '').strip()
-    if not name:
-        return jsonify({"error": "name parameter required"}), 400
-
-    db   = get_db()
-    like = f"%{name}%"
-    actors = rows_to_list(db.execute(
-        "SELECT * FROM actor WHERE name LIKE ? OR name_aliases LIKE ?",
-        (like, like)).fetchall())
-
-    for actor in actors:
-        actor_id = actor['id']
-        actor['roles'] = rows_to_list(db.execute(
-            "SELECT ar.*, f.domain, f.display_name "
-            "FROM actor_role ar JOIN fisherman f ON ar.fisherman_id = f.id "
-            "WHERE ar.actor_id = ? ORDER BY ar.date_start DESC",
-            (actor_id,)).fetchall())
-
-    return jsonify({"query": name, "count": len(actors), "actors": actors})
-
-
-# ---------------------------------------------------------------------------
-# GET /api/v1/actor/<actor_id>
-# Full profile for a documented actor.
-# ---------------------------------------------------------------------------
-
-@app.route('/api/v1/actor/<int:actor_id>')
-def get_actor(actor_id):
-    db    = get_db()
-    actor = row_to_dict(
-        db.execute("SELECT * FROM actor WHERE id = ?", (actor_id,)).fetchone()
-    )
-    if not actor:
-        return jsonify({"error": "actor not found", "actor_id": actor_id}), 404
-
-    # Current fisherman (if any)
-    if actor.get('current_fisherman_id'):
-        current_fisherman = row_to_dict(db.execute(
-            "SELECT domain, display_name FROM fisherman WHERE id = ?",
-            (actor['current_fisherman_id'],)).fetchone())
-        actor['current_fisherman'] = current_fisherman
-
-    # All roles across platforms
-    actor['roles'] = rows_to_list(db.execute("""
-        SELECT ar.*, f.domain, f.display_name
-        FROM   actor_role ar
-        JOIN   fisherman f ON ar.fisherman_id = f.id
-        WHERE  ar.actor_id = ?
-        ORDER  BY ar.date_start DESC
-    """, (actor_id,)).fetchall())
-
-    # Investment positions
-    actor['investments'] = rows_to_list(db.execute("""
-        SELECT ai.*, f.domain, f.display_name
-        FROM   actor_investment ai
-        JOIN   fisherman f ON ai.fisherman_id = f.id
-        WHERE  ai.actor_id = ?
-        ORDER  BY ai.date_start DESC
-    """, (actor_id,)).fetchall())
-
-    # Political relationships
-    actor['political'] = rows_to_list(db.execute(
-        "SELECT * FROM actor_political WHERE actor_id = ? ORDER BY date DESC",
-        (actor_id,)).fetchall())
-
-    # Documented knowledge moments
-    actor['knowledge'] = rows_to_list(db.execute("""
-        SELECT ak.*, f.domain, f.display_name
-        FROM   actor_knowledge ak
-        LEFT   JOIN fisherman f ON ak.fisherman_id = f.id
-        WHERE  ak.actor_id = ?
-        ORDER  BY ak.date DESC
-    """, (actor_id,)).fetchall())
-
-    return jsonify(actor)
-
 
 # ---------------------------------------------------------------------------
 # GET /api/v1/network/map
 # Full network graph as JSON (nodes + edges) suitable for visualisation.
-# Must be registered AFTER the specific /network/ routes to avoid ambiguity,
-# but Flask resolves static path segments before parameterised ones so this
-# ordering is safe.
+# Registered BEFORE /api/v1/network/<domain> so Flask resolves the static
+# path segment "map" before the parameterised segment.
 # ---------------------------------------------------------------------------
 
 @app.route('/api/v1/network/map')
@@ -490,17 +350,171 @@ def network_map():
     nodes = [{"type": "fisherman", **f} for f in fishermen] + \
             [{"type": "actor",     **a} for a in actors]
 
-    edges = [{"edge_type": "network",     **e} for e in network_edges] + \
-            [{"edge_type": "actor_role",  **e} for e in actor_role_edges]
+    edges = [{"edge_type": "network",    **e} for e in network_edges] + \
+            [{"edge_type": "actor_role", **e} for e in actor_role_edges]
 
-    return jsonify({"nodes": nodes, "edges": edges})
+    return jsonify({
+        "node_count": len(nodes),
+        "edge_count": len(edges),
+        "nodes": nodes,
+        "edges": edges,
+    })
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/network/<domain>
+# All documented relationships for a fisherman domain.
+# ---------------------------------------------------------------------------
+
+@app.route('/api/v1/network/<domain>')
+def get_network(domain):
+    db = get_db()
+
+    fisherman = row_to_dict(
+        db.execute("SELECT * FROM fisherman WHERE domain = ?", (domain,)).fetchone()
+    )
+    if not fisherman:
+        return jsonify({"error": "fisherman not found", "domain": domain}), 404
+
+    fid = fisherman['id']
+
+    # Relationships where this fisherman is the parent (owns/funds children)
+    as_parent = rows_to_list(db.execute("""
+        SELECT n.*,
+               f_child.domain       AS child_domain,
+               f_child.display_name AS child_name
+        FROM   network n
+        JOIN   fisherman f_child ON n.child_fisherman_id = f_child.id
+        WHERE  n.parent_fisherman_id = ?
+        ORDER  BY n.confidence DESC
+    """, (fid,)).fetchall())
+
+    # Relationships where this fisherman is the child (owned/funded by parents)
+    as_child = rows_to_list(db.execute("""
+        SELECT n.*,
+               f_parent.domain       AS parent_domain,
+               f_parent.display_name AS parent_name
+        FROM   network n
+        JOIN   fisherman f_parent ON n.parent_fisherman_id = f_parent.id
+        WHERE  n.child_fisherman_id = ?
+        ORDER  BY n.confidence DESC
+    """, (fid,)).fetchall())
+
+    # Actors currently associated with this fisherman
+    actors = rows_to_list(db.execute("""
+        SELECT a.id, a.name, a.current_role,
+               a.documented_knowledge_of_harm,
+               a.knowledge_date, a.confidence
+        FROM   actor a
+        WHERE  a.current_fisherman_id = ?
+        ORDER  BY a.documented_knowledge_of_harm DESC, a.confidence DESC
+    """, (fid,)).fetchall())
+
+    return jsonify({
+        "domain":       domain,
+        "fisherman_id": fid,
+        "display_name": fisherman.get('display_name'),
+        "as_parent":    as_parent,
+        "as_child":     as_child,
+        "actors":       actors,
+    })
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/actor/search?name=<name>
+# Registered BEFORE /api/v1/actor/<actor_id> to prevent Flask treating
+# "search" as an integer actor_id.
+# ---------------------------------------------------------------------------
+
+@app.route('/api/v1/actor/search')
+def search_actors():
+    name = request.args.get('name', '').strip()
+    if not name:
+        return jsonify({"error": "name parameter required"}), 400
+
+    db   = get_db()
+    like = f"%{name}%"
+    actors = rows_to_list(db.execute(
+        "SELECT * FROM actor WHERE name LIKE ? OR name_aliases LIKE ?",
+        (like, like)).fetchall())
+
+    for actor in actors:
+        actor_id = actor['id']
+        actor['roles'] = rows_to_list(db.execute("""
+            SELECT ar.*, f.domain, f.display_name
+            FROM   actor_role ar
+            JOIN   fisherman f ON ar.fisherman_id = f.id
+            WHERE  ar.actor_id = ?
+            ORDER  BY ar.date_start DESC
+        """, (actor_id,)).fetchall())
+
+    return jsonify({"query": name, "count": len(actors), "actors": actors})
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/actor/<actor_id>
+# Full profile for a documented actor — roles, investments, political ties,
+# and all documented knowledge-of-harm moments.
+# ---------------------------------------------------------------------------
+
+@app.route('/api/v1/actor/<int:actor_id>')
+def get_actor(actor_id):
+    db    = get_db()
+    actor = row_to_dict(
+        db.execute("SELECT * FROM actor WHERE id = ?", (actor_id,)).fetchone()
+    )
+    if not actor:
+        return jsonify({"error": "actor not found", "actor_id": actor_id}), 404
+
+    # Current fisherman (if any)
+    if actor.get('current_fisherman_id'):
+        current_fisherman = row_to_dict(db.execute(
+            "SELECT domain, display_name FROM fisherman WHERE id = ?",
+            (actor['current_fisherman_id'],)).fetchone())
+        actor['current_fisherman'] = current_fisherman
+    else:
+        actor['current_fisherman'] = None
+
+    # All roles across platforms over time
+    actor['roles'] = rows_to_list(db.execute("""
+        SELECT ar.*, f.domain, f.display_name
+        FROM   actor_role ar
+        JOIN   fisherman f ON ar.fisherman_id = f.id
+        WHERE  ar.actor_id = ?
+        ORDER  BY ar.date_start DESC
+    """, (actor_id,)).fetchall())
+
+    # Investment positions
+    actor['investments'] = rows_to_list(db.execute("""
+        SELECT ai.*, f.domain, f.display_name
+        FROM   actor_investment ai
+        JOIN   fisherman f ON ai.fisherman_id = f.id
+        WHERE  ai.actor_id = ?
+        ORDER  BY ai.date_start DESC
+    """, (actor_id,)).fetchall())
+
+    # Political relationships
+    actor['political'] = rows_to_list(db.execute(
+        "SELECT * FROM actor_political WHERE actor_id = ? ORDER BY date DESC",
+        (actor_id,)).fetchall())
+
+    # Documented knowledge-of-harm moments
+    actor['knowledge'] = rows_to_list(db.execute("""
+        SELECT ak.*, f.domain, f.display_name
+        FROM   actor_knowledge ak
+        LEFT   JOIN fisherman f ON ak.fisherman_id = f.id
+        WHERE  ak.actor_id = ?
+        ORDER  BY ak.date ASC
+    """, (actor_id,)).fetchall())
+
+    return jsonify(actor)
 
 
 # ---------------------------------------------------------------------------
 # GET /api/v1/accountability/<domain>
 # Full accountability chain for a domain:
-#   parent companies → key actors → knowledge moments → political relationships
-#   → documented harm.
+#   ownership chain → key actors → knowledge moments →
+#   political relationships → documented harm → motives
 # ---------------------------------------------------------------------------
 
 @app.route('/api/v1/accountability/<domain>')
@@ -515,12 +529,13 @@ def get_accountability(domain):
 
     fid = fisherman['id']
 
-    # Parent companies / ownership chain
-    parent_relationships = rows_to_list(db.execute("""
+    # Ownership / funding chain (parents of this fisherman)
+    ownership_chain = rows_to_list(db.execute("""
         SELECT n.relationship_type, n.description, n.evidence,
                n.source_url, n.date_established, n.confidence,
-               fp.domain AS parent_domain, fp.display_name AS parent_name,
-               fp.owner  AS parent_owner
+               fp.domain       AS parent_domain,
+               fp.display_name AS parent_name,
+               fp.owner        AS parent_owner
         FROM   network n
         JOIN   fisherman fp ON n.parent_fisherman_id = fp.id
         WHERE  n.child_fisherman_id = ?
@@ -529,8 +544,9 @@ def get_accountability(domain):
     """, (fid,)).fetchall())
 
     # Key actors currently or historically linked to this fisherman
-    actors = rows_to_list(db.execute("""
-        SELECT DISTINCT a.id, a.name, a.current_role,
+    key_actors = rows_to_list(db.execute("""
+        SELECT DISTINCT
+               a.id, a.name, a.current_role,
                a.documented_knowledge_of_harm,
                a.knowledge_date, a.knowledge_source, a.confidence
         FROM   actor a
@@ -540,7 +556,7 @@ def get_accountability(domain):
         ORDER  BY a.documented_knowledge_of_harm DESC, a.confidence DESC
     """, (fid, fid)).fetchall())
 
-    # All documented knowledge moments for this fisherman
+    # All documented knowledge-of-harm moments for this fisherman
     knowledge_moments = rows_to_list(db.execute("""
         SELECT ak.*, a.name AS actor_name
         FROM   actor_knowledge ak
@@ -550,17 +566,19 @@ def get_accountability(domain):
     """, (fid,)).fetchall())
 
     # Political relationships for actors tied to this fisherman
-    political = rows_to_list(db.execute("""
+    political_relationships = rows_to_list(db.execute("""
         SELECT ap.*, a.name AS actor_name
         FROM   actor_political ap
         JOIN   actor a ON ap.actor_id = a.id
         WHERE  a.current_fisherman_id = ?
-           OR  a.id IN (SELECT actor_id FROM actor_role WHERE fisherman_id = ?)
+           OR  a.id IN (
+               SELECT actor_id FROM actor_role WHERE fisherman_id = ?
+           )
         ORDER  BY ap.date DESC
     """, (fid, fid)).fetchall())
 
-    # Documented catches / harm
-    catches = rows_to_list(db.execute(
+    # Documented harm / catches
+    documented_harm = rows_to_list(db.execute(
         "SELECT * FROM catch WHERE fisherman_id = ? ORDER BY severity_score DESC",
         (fid,)).fetchall())
 
@@ -569,14 +587,121 @@ def get_accountability(domain):
         "SELECT * FROM motive WHERE fisherman_id = ?", (fid,)).fetchall())
 
     return jsonify({
-        "domain":               domain,
-        "fisherman":            fisherman,
-        "ownership_chain":      parent_relationships,
-        "key_actors":           actors,
-        "knowledge_moments":    knowledge_moments,
-        "political_relationships": political,
-        "documented_harm":      catches,
-        "motives":              motives,
+        "domain":                   domain,
+        "fisherman":                fisherman,
+        "ownership_chain":          ownership_chain,
+        "key_actors":               key_actors,
+        "knowledge_moments":        knowledge_moments,
+        "political_relationships":  political_relationships,
+        "documented_harm":          documented_harm,
+        "motives":                  motives,
+    })
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/conspiracy/<fisherman_id_1>/<fisherman_id_2>
+# All documented connections between two fishermen:
+# shared ownership, shared investors, shared board members,
+# documented coordination, shared personnel.
+# ---------------------------------------------------------------------------
+
+@app.route('/api/v1/conspiracy/<int:fisherman_id_1>/<int:fisherman_id_2>')
+def get_conspiracy(fisherman_id_1, fisherman_id_2):
+    db = get_db()
+
+    f1 = row_to_dict(
+        db.execute("SELECT * FROM fisherman WHERE id = ?", (fisherman_id_1,)).fetchone()
+    )
+    f2 = row_to_dict(
+        db.execute("SELECT * FROM fisherman WHERE id = ?", (fisherman_id_2,)).fetchone()
+    )
+    if not f1:
+        return jsonify({"error": "fisherman not found", "fisherman_id": fisherman_id_1}), 404
+    if not f2:
+        return jsonify({"error": "fisherman not found", "fisherman_id": fisherman_id_2}), 404
+
+    # Direct network relationships between the two (either direction)
+    direct_links = rows_to_list(db.execute("""
+        SELECT n.*,
+               fp.domain AS parent_domain, fc.domain AS child_domain
+        FROM   network n
+        JOIN   fisherman fp ON n.parent_fisherman_id = fp.id
+        JOIN   fisherman fc ON n.child_fisherman_id  = fc.id
+        WHERE  (n.parent_fisherman_id = ? AND n.child_fisherman_id = ?)
+           OR  (n.parent_fisherman_id = ? AND n.child_fisherman_id = ?)
+        ORDER  BY n.confidence DESC
+    """, (fisherman_id_1, fisherman_id_2,
+          fisherman_id_2, fisherman_id_1)).fetchall())
+
+    # Shared parent fishermen (common owners / investors)
+    shared_parents = rows_to_list(db.execute("""
+        SELECT fp.domain AS shared_parent_domain,
+               fp.display_name AS shared_parent_name,
+               n1.relationship_type AS link_to_f1,
+               n2.relationship_type AS link_to_f2,
+               MIN(n1.confidence, n2.confidence) AS min_confidence
+        FROM   network n1
+        JOIN   network n2
+               ON  n1.parent_fisherman_id = n2.parent_fisherman_id
+        JOIN   fisherman fp ON fp.id = n1.parent_fisherman_id
+        WHERE  n1.child_fisherman_id = ?
+          AND  n2.child_fisherman_id = ?
+        ORDER  BY min_confidence DESC
+    """, (fisherman_id_1, fisherman_id_2)).fetchall())
+
+    # Shared actors (people who have worked at / invested in both)
+    shared_actors = rows_to_list(db.execute("""
+        SELECT DISTINCT
+               a.id, a.name, a.current_role, a.confidence,
+               ar1.role AS role_at_f1, ar1.date_start AS start_at_f1, ar1.date_end AS end_at_f1,
+               ar2.role AS role_at_f2, ar2.date_start AS start_at_f2, ar2.date_end AS end_at_f2
+        FROM   actor a
+        JOIN   actor_role ar1 ON ar1.actor_id = a.id AND ar1.fisherman_id = ?
+        JOIN   actor_role ar2 ON ar2.actor_id = a.id AND ar2.fisherman_id = ?
+        ORDER  BY a.confidence DESC
+    """, (fisherman_id_1, fisherman_id_2)).fetchall())
+
+    # Shared investment actors (investors in both)
+    shared_investors = rows_to_list(db.execute("""
+        SELECT DISTINCT
+               a.id, a.name, a.current_role, a.confidence,
+               ai1.position_type AS position_at_f1,
+               ai2.position_type AS position_at_f2
+        FROM   actor a
+        JOIN   actor_investment ai1 ON ai1.actor_id = a.id AND ai1.fisherman_id = ?
+        JOIN   actor_investment ai2 ON ai2.actor_id = a.id AND ai2.fisherman_id = ?
+        ORDER  BY a.confidence DESC
+    """, (fisherman_id_1, fisherman_id_2)).fetchall())
+
+    # Shared harm patterns (same harm_type documented at both)
+    shared_harm_types = rows_to_list(db.execute("""
+        SELECT c1.harm_type,
+               COUNT(DISTINCT c1.id) AS count_at_f1,
+               COUNT(DISTINCT c2.id) AS count_at_f2
+        FROM   catch c1
+        JOIN   catch c2 ON c1.harm_type = c2.harm_type
+        WHERE  c1.fisherman_id = ?
+          AND  c2.fisherman_id = ?
+        GROUP  BY c1.harm_type
+        ORDER  BY (count_at_f1 + count_at_f2) DESC
+    """, (f1['fisherman_id'], f2['fisherman_id'])).fetchall())
+
+    connection_count = (
+        len(direct_links) +
+        len(shared_parents) +
+        len(shared_actors) +
+        len(shared_investors)
+    )
+
+    return jsonify({
+        "fisherman_1":       {"id": fisherman_id_1, "domain": f1['domain'], "display_name": f1.get('display_name')},
+        "fisherman_2":       {"id": fisherman_id_2, "domain": f2['domain'], "display_name": f2.get('display_name')},
+        "connection_count":  connection_count,
+        "direct_links":      direct_links,
+        "shared_parents":    shared_parents,
+        "shared_actors":     shared_actors,
+        "shared_investors":  shared_investors,
+        "shared_harm_types": shared_harm_types,
     })
 
 
