@@ -826,8 +826,8 @@
 
     try {
       const res = await window.hoffman.submitToBmid(
-        currentHostname,
-        _lastUrl,
+        _lastResult.domain,
+        _lastResult.url,
         _lastResult.flags,
         _lastResult.summary
       );

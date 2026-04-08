@@ -354,7 +354,9 @@ ipcMain.on('analyze-page', async () => {
       summary:            parsed.summary || '',
       flags:              Array.isArray(parsed.flags) ? parsed.flags : [],
       processingTimeMs:   elapsed,
-      via:                useCloud ? settingsManager.getProvider() : 'local'
+      via:                useCloud ? settingsManager.getProvider() : 'local',
+      domain:             domain      || '',
+      url:                currentUrl  || ''
     };
 
     // Workaround: small models sometimes set manipulation_found:false but write
