@@ -312,8 +312,70 @@ def admin_catches():
                            active_page='catches')
 
 
+# ---------------------------------------------------------------------------
+# Admin: submissions queue
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/submissions')
+def admin_submissions():
+    db            = get_db()
+    filter_status = request.args.get('status', 'pending').strip()
+
+    submissions = rows_to_list(db.execute(
+        "SELECT * FROM submission WHERE status = ? ORDER BY submitted_at DESC",
+        (filter_status,)
+    ).fetchall())
+
+    # Parse flags JSON for template rendering
+    for s in submissions:
+        try:
+            s['flags_parsed'] = json.loads(s['flags']) if s.get('flags') else []
+        except (json.JSONDecodeError, TypeError):
+            s['flags_parsed'] = []
+
+    total_pending      = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'pending'").fetchone()['n']
+    total_investigating = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'investigating'").fetchone()['n']
+    total_accepted     = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'accepted'").fetchone()['n']
+    total_rejected     = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'rejected'").fetchone()['n']
+
+    return render_template('admin/submissions.html',
+                           submissions=submissions,
+                           filter_status=filter_status,
+                           total_pending=total_pending,
+                           total_investigating=total_investigating,
+                           total_accepted=total_accepted,
+                           total_rejected=total_rejected,
+                           active_page='submissions')
+
+
+@app.route('/admin/submissions/<submission_id>/status', methods=['POST'])
+def admin_update_submission_status(submission_id):
+    db         = get_db()
+    new_status = request.form.get('status', '').strip()
+    agent_notes = request.form.get('agent_notes', '').strip()
+
+    valid_statuses = {'pending', 'investigating', 'accepted', 'rejected'}
+    if new_status not in valid_statuses:
+        return jsonify({"error": f"invalid status '{new_status}'"}), 400
+
+    sub = db.execute(
+        "SELECT id FROM submission WHERE submission_id = ?", (submission_id,)
+    ).fetchone()
+    if not sub:
+        return "Not found", 404
+
+    db.execute(
+        "UPDATE submission SET status = ?, agent_notes = ? WHERE submission_id = ?",
+        (new_status, agent_notes, submission_id)
+    )
+    db.commit()
+
+    from flask import redirect, url_for
+    return redirect(url_for('admin_submissions', status=new_status))
+
+
 # ===========================================================================
-# NETWORK AND ACTOR API ENDPOINTS  (v0.2 — added this cycle)
+# NETWORK AND ACTOR API ENDPOINTS  (v0.2)
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
@@ -530,7 +592,8 @@ def get_accountability(domain):
     if not fisherman:
         return jsonify({"error": "fisherman not found", "domain": domain}), 404
 
-    fid = fisherman['id']
+    fid      = fisherman['id']
+    fid_text = fisherman['fisherman_id']
 
     # Ownership / funding chain (parents of this fisherman)
     ownership_chain = rows_to_list(db.execute("""
@@ -583,11 +646,11 @@ def get_accountability(domain):
     # Documented harm / catches
     documented_harm = rows_to_list(db.execute(
         "SELECT * FROM catch WHERE fisherman_id = ? ORDER BY severity_score DESC",
-        (fid,)).fetchall())
+        (fid_text,)).fetchall())
 
     # Motives
     motives = rows_to_list(db.execute(
-        "SELECT * FROM motive WHERE fisherman_id = ?", (fid,)).fetchall())
+        "SELECT * FROM motive WHERE fisherman_id = ?", (fid_text,)).fetchall())
 
     return jsonify({
         "domain":                   domain,
@@ -606,6 +669,7 @@ def get_accountability(domain):
 # All documented connections between two fishermen:
 # shared ownership, shared investors, shared board members,
 # documented coordination, shared personnel.
+# Uses integer primary key ids (fisherman.id), not fisherman_id text keys.
 # ---------------------------------------------------------------------------
 
 @app.route('/api/v1/conspiracy/<int:fisherman_id_1>/<int:fisherman_id_2>')
@@ -652,12 +716,16 @@ def get_conspiracy(fisherman_id_1, fisherman_id_2):
         ORDER  BY min_confidence DESC
     """, (fisherman_id_1, fisherman_id_2)).fetchall())
 
-    # Shared actors (people who have worked at / invested in both)
+    # Shared actors (people who have held roles at both fishermen)
     shared_actors = rows_to_list(db.execute("""
         SELECT DISTINCT
                a.id, a.name, a.current_role, a.confidence,
-               ar1.role AS role_at_f1, ar1.date_start AS start_at_f1, ar1.date_end AS end_at_f1,
-               ar2.role AS role_at_f2, ar2.date_start AS start_at_f2, ar2.date_end AS end_at_f2
+               ar1.role       AS role_at_f1,
+               ar1.date_start AS start_at_f1,
+               ar1.date_end   AS end_at_f1,
+               ar2.role       AS role_at_f2,
+               ar2.date_start AS start_at_f2,
+               ar2.date_end   AS end_at_f2
         FROM   actor a
         JOIN   actor_role ar1 ON ar1.actor_id = a.id AND ar1.fisherman_id = ?
         JOIN   actor_role ar2 ON ar2.actor_id = a.id AND ar2.fisherman_id = ?
@@ -676,7 +744,8 @@ def get_conspiracy(fisherman_id_1, fisherman_id_2):
         ORDER  BY a.confidence DESC
     """, (fisherman_id_1, fisherman_id_2)).fetchall())
 
-    # Shared harm patterns (same harm_type documented at both)
+    # Shared harm patterns (same harm_type documented at both fishermen)
+    # NOTE: catch.fisherman_id is the TEXT fisherman_id key, not the integer id.
     shared_harm_types = rows_to_list(db.execute("""
         SELECT c1.harm_type,
                COUNT(DISTINCT c1.id) AS count_at_f1,
@@ -715,7 +784,7 @@ def get_conspiracy(fisherman_id_1, fisherman_id_2):
 # ---------------------------------------------------------------------------
 # POST /api/v1/submit
 # Accepts a Hoffman Browser analysis result as a crowdsourced submission.
-# contributor_token = SHA-256(provider:apikey) -- anonymous identity for
+# contributor_token = SHA-256(provider:apikey) — anonymous identity for
 # rate limiting. Raw API key is never transmitted.
 # Rate limit: 50 submissions per token per 24 hours.
 # ---------------------------------------------------------------------------
@@ -737,7 +806,7 @@ def submit_analysis():
     if not contributor_token or len(contributor_token) < 16:
         return jsonify({"error": "valid contributor_token is required"}), 400
     if not flags:
-        return jsonify({"error": "no flags to submit -- only analyses with findings are accepted"}), 400
+        return jsonify({"error": "no flags to submit — only analyses with findings are accepted"}), 400
 
     db = get_db()
 
@@ -768,66 +837,9 @@ def submit_analysis():
     return jsonify({"success": True, "submission_id": submission_id}), 201
 
 
-# ---------------------------------------------------------------------------
-# Admin: submissions queue
-# ---------------------------------------------------------------------------
-
-@app.route('/admin/submissions')
-def admin_submissions():
-    db            = get_db()
-    filter_status = request.args.get('status', 'pending').strip()
-
-    submissions = rows_to_list(db.execute(
-        "SELECT * FROM submission WHERE status = ? ORDER BY submitted_at DESC",
-        (filter_status,)
-    ).fetchall())
-
-    # Parse flags JSON for template rendering
-    for s in submissions:
-        try:
-            s['flags_parsed'] = json.loads(s['flags']) if s.get('flags') else []
-        except Exception:
-            s['flags_parsed'] = []
-
-    counts = {
-        status: db.execute(
-            "SELECT COUNT(*) AS n FROM submission WHERE status = ?", (status,)
-        ).fetchone()['n']
-        for status in ('pending', 'investigating', 'accepted', 'rejected')
-    }
-
-    return render_template('admin/submissions.html',
-                           submissions=submissions,
-                           counts=counts,
-                           filter_status=filter_status,
-                           active_page='submissions')
-
-
-# ---------------------------------------------------------------------------
-# Admin: update submission status (POST action from admin GUI)
-# ---------------------------------------------------------------------------
-
-@app.route('/admin/submissions/<submission_id>/status', methods=['POST'])
-def update_submission_status(submission_id):
-    new_status = request.form.get('status', '').strip()
-    agent_notes = request.form.get('agent_notes', '').strip()
-
-    if new_status not in ('pending', 'investigating', 'accepted', 'rejected'):
-        return "Invalid status", 400
-
-    db = get_db()
-    db.execute(
-        "UPDATE submission SET status = ?, agent_notes = ? WHERE submission_id = ?",
-        (new_status, agent_notes, submission_id)
-    )
-    db.commit()
-
-    return '', 204
-
-
 # ===========================================================================
 # Entry point
 # ===========================================================================
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)
