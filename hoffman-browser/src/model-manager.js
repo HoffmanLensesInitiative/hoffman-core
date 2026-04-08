@@ -79,19 +79,24 @@ class ModelManager {
       const { getLlama, LlamaChatSession } = llama;
       this._Session = LlamaChatSession;
 
-      // CPU only -- bypasses VRAM entirely, works on any machine
-      this._llama = await getLlama({ gpu: false });
+      // Auto-detect GPU (Metal/CUDA/Vulkan); falls back to CPU if none available.
+      // On machines with a GPU this is 10-20x faster than CPU-only.
+      this._llama = await getLlama();
 
       this._model = await this._llama.loadModel({
         modelPath: this.modelPath
       });
 
+      // Context created once and kept alive. completeJson() reuses it by
+      // disposing only the sequence after each call -- avoids the cost of
+      // reallocating the KV cache on every analysis.
       this._context = await this._model.createContext({
-        contextSize: 4096
+        contextSize: 2048
       });
 
       this._status = 'ready';
-      console.log('[Hoffman] Model loaded on CPU, context 4096');
+      const gpuInfo = this._llama.gpu ? ('GPU (' + this._llama.gpu + ')') : 'CPU';
+      console.log('[Hoffman] Model loaded on ' + gpuInfo + ', context 2048');
 
       if (progressCallback) {
         progressCallback({ stage: 'ready', message: 'Model ready' });
@@ -106,21 +111,26 @@ class ModelManager {
   async complete(systemPrompt, userMessage) {
     if (!this.isReady()) throw new Error('Model not ready');
 
-    // Recreate context for each analysis to avoid 'no sequences left'
-    if (this._context) {
-      try { await this._context.dispose(); } catch(e) {}
+    if (!this._context) {
+      this._context = await this._model.createContext({ contextSize: 2048 });
     }
-    this._context = await this._model.createContext({ contextSize: 4096 });
 
+    const sequence = this._context.getSequence();
     const session = new this._Session({
-      contextSequence: this._context.getSequence(),
+      contextSequence: sequence,
       systemPrompt
     });
 
-    return await session.prompt(userMessage, {
-      maxTokens:   1024,
-      temperature: 0.1
-    });
+    let result;
+    try {
+      result = await session.prompt(userMessage, {
+        maxTokens:   1024,
+        temperature: 0.1
+      });
+    } finally {
+      try { await sequence.dispose(); } catch(e) {}
+    }
+    return result;
   }
 
   // completeJson -- forces valid JSON output at the grammar level
@@ -152,25 +162,33 @@ class ModelManager {
       }
     });
 
-    // Recreate context for each call to avoid 'no sequences left'
-    if (this._context) {
-      try { await this._context.dispose(); } catch(e) {}
+    // Reuse the persistent context -- only dispose the sequence after each call.
+    // Avoids reallocating the KV cache (createContext) on every analysis.
+    // If the context was somehow lost, recreate it once.
+    if (!this._context) {
+      this._context = await this._model.createContext({ contextSize: 2048 });
     }
-    // 2048 tokens is sufficient for the system prompt + 2400 chars of page text
-    this._context = await this._model.createContext({ contextSize: 2048 });
+
+    const sequence = this._context.getSequence();
 
     const session = new this._Session({
-      contextSequence: this._context.getSequence(),
+      contextSequence: sequence,
       systemPrompt
     });
 
-    const raw = await session.prompt(userMessage, {
-      // A full analysis (summary + 3-4 flags) is ~200-400 tokens.
-      // 600 gives headroom for verbose explanations without the old 1024 waste.
-      maxTokens:   600,
-      temperature: 0.1,
-      grammar
-    });
+    let raw;
+    try {
+      raw = await session.prompt(userMessage, {
+        // A full analysis (summary + 3-4 flags) is ~200-400 tokens.
+        // 600 gives headroom for verbose explanations.
+        maxTokens:   600,
+        temperature: 0.1,
+        grammar
+      });
+    } finally {
+      // Always free the sequence slot back to the context, even on error.
+      try { await sequence.dispose(); } catch(e) {}
+    }
 
     return grammar.parse(raw);
   }

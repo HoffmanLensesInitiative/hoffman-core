@@ -75,8 +75,8 @@ Llama 3.2 3B Instruct (Q4_K_M, ~2.2GB) stored at Electron `userData` path. Downl
 
 ### Important constraints
 
-- **Context recreation**: `model-manager.js` recreates the llama context on every `completeJson()` call. This is intentional to prevent the "no sequences left" error — do not refactor to reuse a single context.
+- **Context reuse**: `model-manager.js` creates the context once at load time and reuses it across calls. Each call gets a fresh sequence via `context.getSequence()` and disposes it in a `finally` block. Do not call `context.dispose()` inside `completeJson()` — that destroys the shared context.
 - **2400-char text limit**: The analyzer truncates page text to fit within the 4096-token context window alongside the system prompt. Increasing this requires also increasing the context size in model-manager.js.
 - **Grammar-constrained JSON**: `completeJson()` uses `LlamaJsonSchemaGrammar` so the model physically cannot output non-JSON tokens. Do not revert to `complete()` + string parsing.
-- **CPU-only inference**: `getLlama({gpu: false})` is intentional for universal hardware compatibility.
+- **GPU auto-detection**: `getLlama()` (no args) auto-detects Metal/CUDA/Vulkan and falls back to CPU. Do not hardcode `gpu: false`.
 - **No build step for UI**: `panel/toolbar.html` and `panel/panel.html` are standalone files with inline CSS/JS — there is no bundler or transpiler.
