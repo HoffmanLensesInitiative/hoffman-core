@@ -32,7 +32,9 @@ def _check_agent_key():
         provided = auth[7:].strip()
         return hmac.compare_digest(provided, AGENT_KEY)
     return False
-SCHEMA   = os.path.join(os.path.dirname(__file__), 'schema.sql')
+
+
+SCHEMA = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
 
 # ---------------------------------------------------------------------------
@@ -157,7 +159,7 @@ def explain():
 
 @app.route('/api/v1/bait/<technique>')
 def get_bait(technique):
-    db  = get_db()
+    db   = get_db()
     rows = rows_to_list(db.execute(
         "SELECT * FROM motive WHERE motive_type = ?", (technique,)).fetchall())
     return jsonify({"technique": technique, "count": len(rows), "motives": rows})
@@ -315,8 +317,8 @@ def admin_catches():
         params.append(filter_harm)
     query += " ORDER BY c.severity_score DESC"
 
-    catches   = rows_to_list(db.execute(query, params).fetchall())
-    fishermen = rows_to_list(db.execute("SELECT domain FROM fisherman ORDER BY domain").fetchall())
+    catches    = rows_to_list(db.execute(query, params).fetchall())
+    fishermen  = rows_to_list(db.execute("SELECT domain FROM fisherman ORDER BY domain").fetchall())
     harm_types = [r['harm_type'] for r in rows_to_list(
         db.execute("SELECT DISTINCT harm_type FROM catch ORDER BY harm_type").fetchall())]
 
@@ -350,10 +352,10 @@ def admin_submissions():
         except (json.JSONDecodeError, TypeError):
             s['flags_parsed'] = []
 
-    total_pending      = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'pending'").fetchone()['n']
+    total_pending       = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'pending'").fetchone()['n']
     total_investigating = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'investigating'").fetchone()['n']
-    total_accepted     = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'accepted'").fetchone()['n']
-    total_rejected     = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'rejected'").fetchone()['n']
+    total_accepted      = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'accepted'").fetchone()['n']
+    total_rejected      = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'rejected'").fetchone()['n']
 
     return render_template('admin/submissions.html',
                            submissions=submissions,
@@ -367,8 +369,8 @@ def admin_submissions():
 
 @app.route('/admin/submissions/<submission_id>/status', methods=['POST'])
 def admin_update_submission_status(submission_id):
-    db         = get_db()
-    new_status = request.form.get('status', '').strip()
+    db          = get_db()
+    new_status  = request.form.get('status', '').strip()
     agent_notes = request.form.get('agent_notes', '').strip()
 
     valid_statuses = {'pending', 'investigating', 'accepted', 'rejected'}
@@ -670,14 +672,14 @@ def get_accountability(domain):
         "SELECT * FROM motive WHERE fisherman_id = ?", (fid_text,)).fetchall())
 
     return jsonify({
-        "domain":                   domain,
-        "fisherman":                fisherman,
-        "ownership_chain":          ownership_chain,
-        "key_actors":               key_actors,
-        "knowledge_moments":        knowledge_moments,
-        "political_relationships":  political_relationships,
-        "documented_harm":          documented_harm,
-        "motives":                  motives,
+        "domain":                  domain,
+        "fisherman":               fisherman,
+        "ownership_chain":         ownership_chain,
+        "key_actors":              key_actors,
+        "knowledge_moments":       knowledge_moments,
+        "political_relationships": political_relationships,
+        "documented_harm":         documented_harm,
+        "motives":                 motives,
     })
 
 
@@ -761,7 +763,7 @@ def get_conspiracy(fisherman_id_1, fisherman_id_2):
         ORDER  BY a.confidence DESC
     """, (fisherman_id_1, fisherman_id_2)).fetchall())
 
-    # Shared harm patterns (same harm_type documented at both fishermen)
+    # Shared harm patterns (same harm_type documented at both fishermen).
     # NOTE: catch.fisherman_id is the TEXT fisherman_id key, not the integer id.
     shared_harm_types = rows_to_list(db.execute("""
         SELECT c1.harm_type,
@@ -783,247 +785,148 @@ def get_conspiracy(fisherman_id_1, fisherman_id_2):
     )
 
     return jsonify({
-        "fisherman_1":       {"id": fisherman_id_1, "domain": f1['domain'], "display_name": f1.get('display_name')},
-        "fisherman_2":       {"id": fisherman_id_2, "domain": f2['domain'], "display_name": f2.get('display_name')},
-        "connection_count":  connection_count,
-        "direct_links":      direct_links,
-        "shared_parents":    shared_parents,
-        "shared_actors":     shared_actors,
-        "shared_investors":  shared_investors,
+        "fisherman_1":      {"id": fisherman_id_1, "domain": f1['domain'], "display_name": f1.get('display_name')},
+        "fisherman_2":      {"id": fisherman_id_2, "domain": f2['domain'], "display_name": f2.get('display_name')},
+        "connection_count": connection_count,
+        "direct_links":     direct_links,
+        "shared_parents":   shared_parents,
+        "shared_actors":    shared_actors,
+        "shared_investors": shared_investors,
         "shared_harm_types": shared_harm_types,
     })
 
 
 # ===========================================================================
-# SUBMISSIONS API  (v0.3)
+# AMPLIFIER API ENDPOINTS  (v0.2)
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/amplifiers
+# List all amplifier records (summary view).
+# ---------------------------------------------------------------------------
+
+@app.route('/api/v1/amplifiers')
+def list_amplifiers():
+    db = get_db()
+    amplifiers = rows_to_list(db.execute(
+        "SELECT amplifier_id, name, parent_entity, domains, optimization_target, "
+        "confidence_score, created_at FROM amplifier ORDER BY confidence_score DESC"
+    ).fetchall())
+
+    # Parse domains JSON for each record
+    for a in amplifiers:
+        try:
+            a['domains'] = json.loads(a['domains']) if a.get('domains') else []
+        except (json.JSONDecodeError, TypeError):
+            a['domains'] = []
+
+    return jsonify({"count": len(amplifiers), "amplifiers": amplifiers})
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/amplifier/<amplifier_id>
+# Full amplifier record by amplifier_id slug.
+# ---------------------------------------------------------------------------
+
+@app.route('/api/v1/amplifier/<amplifier_id>')
+def get_amplifier(amplifier_id):
+    db = get_db()
+    amplifier = row_to_dict(
+        db.execute("SELECT * FROM amplifier WHERE amplifier_id = ?", (amplifier_id,)).fetchone()
+    )
+    if not amplifier:
+        return jsonify({"error": "amplifier not found", "amplifier_id": amplifier_id}), 404
+
+    # Parse JSON fields
+    for field in ('domains', 'sources'):
+        try:
+            amplifier[field] = json.loads(amplifier[field]) if amplifier.get(field) else []
+        except (json.JSONDecodeError, TypeError):
+            amplifier[field] = []
+
+    return jsonify(amplifier)
+
+
+# ===========================================================================
+# SUBMISSION API ENDPOINTS  (v0.2 — crowdsourced catches from the browser)
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
 # POST /api/v1/submit
-# Accepts a Hoffman Browser analysis result as a crowdsourced submission.
-# contributor_token = SHA-256(provider:apikey) — anonymous identity for
-# rate limiting. Raw API key is never transmitted.
-# Rate limit: 50 submissions per token per 24 hours.
+# Accepts a browser-generated analysis submission.
+# Body: { domain, url, contributor_token, flags, summary, technique_count }
 # ---------------------------------------------------------------------------
-
-SUBMISSION_DAILY_LIMIT = 50
 
 @app.route('/api/v1/submit', methods=['POST'])
-def submit_analysis():
-    data  = request.get_json(silent=True) or {}
+def submit_catch():
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "JSON body required"}), 400
 
-    domain            = (data.get('domain') or '').strip()
-    contributor_token = (data.get('contributor_token') or '').strip()
-    flags             = data.get('flags') or []
-    summary           = (data.get('summary') or '').strip()
-    url               = (data.get('url') or '').strip()
+    required = ('domain', 'contributor_token', 'flags')
+    missing  = [f for f in required if not data.get(f)]
+    if missing:
+        return jsonify({"error": f"missing required fields: {', '.join(missing)}"}), 400
 
-    if not domain:
-        return jsonify({"error": "domain is required"}), 400
-    if not contributor_token or len(contributor_token) < 16:
-        return jsonify({"error": "valid contributor_token is required"}), 400
-    if not flags:
-        return jsonify({"error": "no flags to submit — only analyses with findings are accepted"}), 400
+    flags = data['flags']
+    if isinstance(flags, list):
+        flags_json = json.dumps(flags)
+    elif isinstance(flags, str):
+        flags_json = flags
+    else:
+        return jsonify({"error": "flags must be a JSON array or JSON string"}), 400
 
+    submission_id = f"sub-{uuid.uuid4().hex[:12]}"
     db = get_db()
-
-    # Rate limit: count submissions from this token in the last 24 hours
-    recent = db.execute(
-        "SELECT COUNT(*) AS n FROM submission "
-        "WHERE contributor_token = ? AND submitted_at > datetime('now', '-1 day')",
-        (contributor_token,)
-    ).fetchone()['n']
-
-    if recent >= SUBMISSION_DAILY_LIMIT:
-        return jsonify({
-            "error":   "rate_limit_exceeded",
-            "message": "Daily submission limit reached. Submissions reset every 24 hours."
-        }), 429
-
-    submission_id = 'sub-' + str(uuid.uuid4())[:12]
-
-    db.execute(
-        "INSERT INTO submission "
-        "(submission_id, domain, url, contributor_token, flags, summary, technique_count) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (submission_id, domain, url, contributor_token,
-         json.dumps(flags), summary, len(flags))
-    )
+    db.execute("""
+        INSERT INTO submission
+               (submission_id, domain, url, contributor_token, flags,
+                summary, technique_count, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+    """, (
+        submission_id,
+        data['domain'],
+        data.get('url', ''),
+        data['contributor_token'],
+        flags_json,
+        data.get('summary', ''),
+        data.get('technique_count', 0),
+    ))
     db.commit()
 
-    return jsonify({"success": True, "submission_id": submission_id}), 201
+    return jsonify({"status": "accepted", "submission_id": submission_id}), 201
 
-
-# ===========================================================================
-# AGENT API  (v0.3) -- requires Bearer BMID_AGENT_KEY header
-# Used by the GitHub Actions investigate agent to process submissions.
-# ===========================================================================
 
 # ---------------------------------------------------------------------------
-# GET /api/v1/submissions/pending?limit=5
-# Returns the oldest pending submissions for agent investigation.
+# GET /api/v1/submissions?status=<status>
+# Agent-only endpoint: list submissions by status.
+# Requires Bearer BMID_AGENT_KEY header.
 # ---------------------------------------------------------------------------
 
-@app.route('/api/v1/submissions/pending')
-def agent_get_pending_submissions():
+@app.route('/api/v1/submissions')
+def list_submissions():
     if not _check_agent_key():
         return jsonify({"error": "unauthorized"}), 401
 
-    limit = min(int(request.args.get('limit', 5)), 20)
-    db    = get_db()
-
-    submissions = rows_to_list(db.execute(
-        "SELECT * FROM submission WHERE status = 'pending' "
-        "ORDER BY submitted_at ASC LIMIT ?", (limit,)
+    status = request.args.get('status', 'pending').strip()
+    db     = get_db()
+    rows   = rows_to_list(db.execute(
+        "SELECT * FROM submission WHERE status = ? ORDER BY submitted_at DESC",
+        (status,)
     ).fetchall())
 
-    for s in submissions:
+    for row in rows:
         try:
-            s['flags_parsed'] = json.loads(s['flags']) if s.get('flags') else []
-        except Exception:
-            s['flags_parsed'] = []
+            row['flags'] = json.loads(row['flags']) if row.get('flags') else []
+        except (json.JSONDecodeError, TypeError):
+            row['flags'] = []
 
-    return jsonify({"submissions": submissions, "count": len(submissions)})
-
-
-# ---------------------------------------------------------------------------
-# POST /api/v1/submissions/<submission_id>/update
-# Agent updates status and adds investigation notes.
-# Body: { "status": "accepted"|"rejected"|"investigating", "agent_notes": "..." }
-# ---------------------------------------------------------------------------
-
-@app.route('/api/v1/submissions/<submission_id>/update', methods=['POST'])
-def agent_update_submission(submission_id):
-    if not _check_agent_key():
-        return jsonify({"error": "unauthorized"}), 401
-
-    data        = request.get_json(silent=True) or {}
-    new_status  = (data.get('status') or '').strip()
-    agent_notes = (data.get('agent_notes') or '').strip()
-
-    if new_status not in ('pending', 'investigating', 'accepted', 'rejected'):
-        return jsonify({"error": "invalid status"}), 400
-
-    db = get_db()
-    db.execute(
-        "UPDATE submission SET status = ?, agent_notes = ? WHERE submission_id = ?",
-        (new_status, agent_notes, submission_id)
-    )
-    db.commit()
-    return jsonify({"success": True, "submission_id": submission_id, "status": new_status})
-
-
-# ---------------------------------------------------------------------------
-# POST /api/v1/admin/seed
-# Agent pushes verified BMID records directly to the cloud database.
-# Accepts the same record shapes as seed.py: fishermen, motives, catches, evidence.
-# Uses INSERT OR IGNORE so re-seeding is safe.
-# ---------------------------------------------------------------------------
-
-@app.route('/api/v1/admin/seed', methods=['POST'])
-def agent_seed_records():
-    if not _check_agent_key():
-        return jsonify({"error": "unauthorized"}), 401
-
-    data = request.get_json(silent=True) or {}
-    db   = get_db()
-    counts = {'amplifiers': 0, 'fishermen': 0, 'motives': 0, 'catches': 0, 'evidence': 0}
-
-    for a in data.get('amplifiers', []):
-        try:
-            db.execute(
-                "INSERT OR IGNORE INTO amplifier "
-                "(amplifier_id, name, parent_entity, domains, optimization_target, "
-                "amplification_mechanism, documented_motive, knowing_element, knowing_date, "
-                "co_evolutionary_note, regulatory_status, default_reach, "
-                "public_alternatives, alternative_feasibility, confidence_score, sources, contributed_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (a.get('amplifier_id'), a.get('name'), a.get('parent_entity'),
-                 json.dumps(a.get('domains', [])) if isinstance(a.get('domains'), list) else a.get('domains'),
-                 a.get('optimization_target'), a.get('amplification_mechanism'),
-                 a.get('documented_motive'), a.get('knowing_element'), a.get('knowing_date'),
-                 a.get('co_evolutionary_note'), a.get('regulatory_status'), a.get('default_reach'),
-                 a.get('public_alternatives'), a.get('alternative_feasibility'),
-                 a.get('confidence_score', 0.5),
-                 json.dumps(a.get('sources', [])) if isinstance(a.get('sources'), list) else a.get('sources'),
-                 a.get('contributed_by', 'investigate-agent'))
-            )
-            counts['amplifiers'] += 1
-        except Exception:
-            pass
-
-    for f in data.get('fishermen', []):
-        try:
-            db.execute(
-                "INSERT OR IGNORE INTO fisherman "
-                "(fisherman_id, domain, display_name, owner, parent_company, country, "
-                "founded, business_model, revenue_sources, confidence_score, contributed_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (f.get('fisherman_id'), f.get('domain'), f.get('display_name'),
-                 f.get('owner'), f.get('parent_company'), f.get('country'),
-                 f.get('founded'), f.get('business_model'),
-                 json.dumps(f.get('revenue_sources', [])),
-                 f.get('confidence_score', 0.5), f.get('contributed_by', 'investigate-agent'))
-            )
-            counts['fishermen'] += 1
-        except Exception as e:
-            pass
-
-    for m in data.get('motives', []):
-        try:
-            db.execute(
-                "INSERT OR IGNORE INTO motive "
-                "(motive_id, fisherman_id, motive_type, description, revenue_model, "
-                "beneficiary, documented_evidence, confidence_score, contributed_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (m.get('motive_id'), m.get('fisherman_id'), m.get('motive_type'),
-                 m.get('description'), m.get('revenue_model'), m.get('beneficiary'),
-                 m.get('documented_evidence'), m.get('confidence_score', 0.5),
-                 m.get('contributed_by', 'investigate-agent'))
-            )
-            counts['motives'] += 1
-        except Exception as e:
-            pass
-
-    for c in data.get('catches', []):
-        try:
-            db.execute(
-                "INSERT OR IGNORE INTO catch "
-                "(catch_id, fisherman_id, harm_type, victim_demographic, documented_outcome, "
-                "scale, academic_citation, date_documented, severity_score) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (c.get('catch_id'), c.get('fisherman_id'), c.get('harm_type'),
-                 c.get('victim_demographic'), c.get('documented_outcome'),
-                 c.get('scale'), c.get('academic_citation'),
-                 c.get('date_documented'), c.get('severity_score', 5))
-            )
-            counts['catches'] += 1
-        except Exception as e:
-            pass
-
-    for e in data.get('evidence', []):
-        try:
-            db.execute(
-                "INSERT OR IGNORE INTO evidence "
-                "(evidence_id, entity_id, entity_type, source_type, url, title, "
-                "author, publication, published_date, summary, confidence) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (e.get('evidence_id'), e.get('entity_id'), e.get('entity_type', 'fisherman'),
-                 e.get('source_type', 'secondary'), e.get('url'), e.get('title'),
-                 e.get('author'), e.get('publication'), e.get('published_date'),
-                 e.get('summary'), e.get('confidence', 0.5))
-            )
-            counts['evidence'] += 1
-        except Exception as e:
-            pass
-
-    db.commit()
-    return jsonify({"success": True, "inserted": counts})
+    return jsonify({"status": status, "count": len(rows), "submissions": rows})
 
 
 # ===========================================================================
-# Entry point
+# ENTRY POINT
 # ===========================================================================
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True)
