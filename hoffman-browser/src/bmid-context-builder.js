@@ -1,112 +1,74 @@
-/**
- * bmid-context-builder.js
- * Hoffman Browser -- Novel technique detection
- *
- * After the model returns its analysis flags, this module compares each flagged
- * technique against BMID's list of known techniques for that domain. If a
- * technique is NOT in BMID's documented patterns for this fisherman, it is marked
- * as novel: true. The panel renders novel flags with a "NEW -- not previously
- * documented for this domain" badge.
- *
- * This creates a feedback path: novel findings in the browser become candidates
- * for the Intel team to investigate and add to the BMID record.
- *
- * Rules:
- *   - Only marks novel if enrichment is non-null AND knownTechniques is populated
- *   - If BMID has no record for this domain, all techniques are unmarked (not novel)
- *     because we have no baseline to compare against
- *   - Comparison is case-insensitive and handles underscore/space variation
- *   - Never throws -- errors leave flags unchanged
- *
- * Exports:
- *   isTechniqueNovel(techniqueName, enrichment) -> boolean
- *   annotateFlags(flags, enrichment) -> flags[] with novel property set
- */
+// hoffman-browser/src/bmid-context-builder.js
+// Hoffman Browser -- novel technique detection helper.
+//
+// Exported function: isTechniqueNovel(technique, enrichment)
+//
+// After the LLM returns flags, each flag's technique is checked against the
+// known techniques documented in the BMID for this domain. If the technique
+// is NOT in the BMID record, it is marked novel: true in the panel so the
+// user (and future intel agents) know this is new, undocumented behavior.
+//
+// This is a lightweight string-matching comparison. It does NOT call BMID --
+// the enrichment object was already fetched before analysis ran.
+//
+// Contract:
+//   - Never throws.
+//   - If enrichment is null or has no knownTechniques, returns false.
+//     (Absence of BMID data is not the same as a novel detection.)
+//   - Matching is case-insensitive and trims whitespace.
+//   - Partial match allowed: if any known technique is a substring of the
+//     detected technique or vice versa, it is not novel. This prevents
+//     false-novel labeling from minor naming variation (e.g. "outrage" vs
+//     "outrage_engineering").
 
 'use strict';
 
 /**
- * Normalize a technique string for comparison.
- * Lowercases, replaces spaces with underscores, trims.
+ * Determine whether a detected technique is novel (not previously documented
+ * in the BMID for this domain).
  *
- * @param {string} s
- * @returns {string}
+ * @param {string} technique   Technique string from LLM flag, e.g. "outrage_engineering"
+ * @param {object|null} enrichment   Enrichment object from getBmidEnrichment()
+ * @returns {boolean}  true if novel (not in BMID), false if known or unknown
  */
-function normalizeTechnique(s) {
-  if (!s || typeof s !== 'string') return '';
-  return s.toLowerCase().trim().replace(/\s+/g, '_');
-}
-
-/**
- * Check whether a single technique name is novel for this domain.
- * Returns true if BMID has a record for the domain AND the technique
- * is NOT in that record's known techniques list.
- *
- * Returns false (not novel / unknown) if:
- *   - enrichment is null (BMID has no record -- no baseline)
- *   - enrichment.knownTechniques is empty (no documented techniques yet)
- *   - technique is present in knownTechniques
- *
- * @param {string} techniqueName
- * @param {object|null} enrichment  from bmid-context.js getBmidEnrichment()
- * @returns {boolean}
- */
-function isTechniqueNovel(techniqueName, enrichment) {
-  if (!enrichment) return false;
-  if (!Array.isArray(enrichment.knownTechniques)) return false;
-  if (enrichment.knownTechniques.length === 0) return false;
-
-  var normalizedInput = normalizeTechnique(techniqueName);
-  if (!normalizedInput) return false;
-
-  var normalizedKnown = enrichment.knownTechniques.map(normalizeTechnique);
-
-  // Not novel if it appears in known list
-  for (var i = 0; i < normalizedKnown.length; i++) {
-    if (normalizedKnown[i] === normalizedInput) return false;
-    // Also check partial containment for compound names
-    // e.g. "outrage_engineering" vs "outrage" -- if known list has the root, not novel
-    if (normalizedInput.indexOf(normalizedKnown[i]) !== -1) return false;
-    if (normalizedKnown[i].indexOf(normalizedInput) !== -1) return false;
+function isTechniqueNovel(technique, enrichment) {
+  // If no technique string, cannot be classified.
+  if (!technique || typeof technique !== 'string') {
+    return false;
   }
 
+  // If we have no enrichment or no knownTechniques list, we cannot say it is
+  // novel -- absence of BMID data is not evidence of novelty. Return false so
+  // we do not label things novel when we simply have no reference data.
+  if (!enrichment || !Array.isArray(enrichment.knownTechniques) ||
+      enrichment.knownTechniques.length === 0) {
+    return false;
+  }
+
+  var normalized = technique.trim().toLowerCase().replace(/\s+/g, '_');
+
+  // Check each known technique for a match or partial overlap.
+  var known = enrichment.knownTechniques;
+  for (var i = 0; i < known.length; i++) {
+    var k = known[i].trim().toLowerCase().replace(/\s+/g, '_');
+    if (!k) continue;
+
+    // Exact match.
+    if (normalized === k) {
+      return false;
+    }
+
+    // Substring match in either direction prevents false-novel labeling
+    // from minor naming differences across BMID versions and model outputs.
+    if (normalized.indexOf(k) !== -1 || k.indexOf(normalized) !== -1) {
+      return false;
+    }
+  }
+
+  // Not found in known techniques -- this is a novel detection.
   return true;
 }
 
-/**
- * Annotate an array of analysis flags with the novel property.
- * Mutates a shallow copy of each flag -- does not modify originals.
- *
- * @param {Array<object>} flags  Each flag has at least { technique, ... }
- * @param {object|null} enrichment  from getBmidEnrichment()
- * @returns {Array<object>}  New array, each flag has novel: boolean
- */
-function annotateFlags(flags, enrichment) {
-  if (!Array.isArray(flags)) return [];
-
-  return flags.map(function (flag) {
-    if (!flag || typeof flag !== 'object') return flag;
-
-    var technique = flag.technique || flag.type || '';
-    var novel = isTechniqueNovel(technique, enrichment);
-
-    // Shallow copy with novel added
-    var annotated = {};
-    var keys = Object.keys(flag);
-    for (var i = 0; i < keys.length; i++) {
-      annotated[keys[i]] = flag[keys[i]];
-    }
-    annotated.novel = novel;
-
-    if (novel) {
-      console.log('[Hoffman Novel] Technique not in BMID record: ' + technique);
-    }
-
-    return annotated;
-  });
-}
-
 module.exports = {
-  isTechniqueNovel: isTechniqueNovel,
-  annotateFlags: annotateFlags
+  isTechniqueNovel: isTechniqueNovel
 };

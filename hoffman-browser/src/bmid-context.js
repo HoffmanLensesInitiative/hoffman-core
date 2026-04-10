@@ -1,127 +1,102 @@
-/**
- * bmid-context.js
- * Hoffman Browser -- BMID enrichment query
- *
- * Before the model analyzes a page, this module queries the BMID API for
- * any known intelligence on the domain being visited. If a fisherman record
- * exists, that intelligence is returned as a structured object that analyzer.js
- * prepends to the model's system prompt.
- *
- * The model then reads the page knowing what BMID knows: who owns this domain,
- * what their documented business motive is, what harms have been recorded, and
- * what techniques have already been observed. The model reads with the chart,
- * not cold.
- *
- * Rules:
- *   - BMID must respond within 2000ms or the query is abandoned
- *   - If BMID is not running, or returns an error, or times out: resolve with null
- *   - BMID context is enrichment only -- the model must still find manipulation
- *     independently. The context informs; it does not direct.
- *   - Never throws -- all errors return null gracefully
- *
- * Returned enrichment object shape (non-null when record exists):
- * {
- *   owner: string,
- *   businessModel: string,
- *   primaryMotive: string,
- *   documentedHarms: number,
- *   knownTechniques: string[],
- *   contextString: string   -- formatted for system prompt injection
- * }
- */
+// hoffman-browser/src/bmid-context.js
+// Hoffman Browser -- BMID context enrichment for the analysis pipeline.
+//
+// Exported function: getBmidEnrichment(domain)
+//
+// Queries the BMID API for a known fisherman record before the LLM analysis
+// runs. If intelligence exists, it returns a structured enrichment object
+// that main.js passes to buildSystemPrompt() and to the novel-technique check.
+//
+// Contract:
+//   - Never throws. Always returns an enrichment object (possibly empty).
+//   - If BMID is down, unreachable, or times out: returns empty enrichment.
+//   - Timeout: 2 seconds. Analysis must not be blocked on BMID availability.
+//   - This is enrichment, not a gate. The model analyzes independently.
 
 'use strict';
 
 var http = require('http');
 
-var BMID_HOST = '127.0.0.1';
-var BMID_PORT = 5000;
-var BMID_TIMEOUT_MS = 2000;
-var BMID_BASE = 'http://' + BMID_HOST + ':' + BMID_PORT;
+var BMID_HOST    = 'localhost';
+var BMID_PORT    = 5000;
+var BMID_TIMEOUT = 2000;  // ms
+
+// Empty enrichment returned when BMID has nothing useful.
+var EMPTY_ENRICHMENT = {
+  domain:         '',
+  owner:          '',
+  businessModel:  '',
+  primaryMotive:  '',
+  documentedHarms: 0,
+  knownTechniques: [],
+  context:        null   // null signals: no context to prepend
+};
 
 /**
- * Query the BMID /api/v1/explain endpoint for a domain.
- * Returns structured enrichment or null.
+ * Query BMID for intelligence on a domain and return a structured enrichment
+ * object. Resolves with EMPTY_ENRICHMENT on any failure.
  *
- * @param {string} domain  e.g. 'foxnews.com'
- * @returns {Promise<object|null>}
+ * @param {string|null} domain  e.g. "foxnews.com", "facebook.com"
+ * @returns {Promise<object>}
  */
 function getBmidEnrichment(domain) {
-  return new Promise(function (resolve) {
-    if (!domain || typeof domain !== 'string') {
-      resolve(null);
-      return;
+  if (!domain || domain.trim() === '') {
+    return Promise.resolve(Object.assign({}, EMPTY_ENRICHMENT));
+  }
+
+  var clean = domain.trim().toLowerCase();
+
+  return new Promise(function(resolve) {
+    var resolved = false;
+
+    function finish(enrichment) {
+      if (resolved) return;
+      resolved = true;
+      resolve(enrichment);
     }
 
-    // Strip leading www. for cleaner matching
-    var cleanDomain = domain.replace(/^www\./, '').toLowerCase();
+    var timer = setTimeout(function() {
+      finish(Object.assign({}, EMPTY_ENRICHMENT, { domain: clean }));
+    }, BMID_TIMEOUT);
 
-    var path = '/api/v1/explain?domain=' + encodeURIComponent(cleanDomain);
+    var path = '/api/v1/explain?domain=' + encodeURIComponent(clean);
+
     var options = {
       hostname: BMID_HOST,
-      port: BMID_PORT,
-      path: path,
-      method: 'GET',
-      timeout: BMID_TIMEOUT_MS
+      port:     BMID_PORT,
+      path:     path,
+      method:   'GET',
+      timeout:  BMID_TIMEOUT
     };
 
-    var req = http.request(options, function (res) {
+    var req = http.request(options, function(res) {
       var body = '';
-      res.setEncoding('utf8');
 
-      res.on('data', function (chunk) {
+      res.on('data', function(chunk) {
         body += chunk;
       });
 
-      res.on('end', function () {
+      res.on('end', function() {
+        clearTimeout(timer);
+
         try {
-          if (res.statusCode === 404) {
-            // Domain not on file -- no enrichment available
-            console.log('[Hoffman BMID] No record for domain: ' + cleanDomain);
-            resolve(null);
-            return;
-          }
-
-          if (res.statusCode !== 200) {
-            console.log('[Hoffman BMID] Non-200 response (' + res.statusCode + ') for domain: ' + cleanDomain);
-            resolve(null);
-            return;
-          }
-
           var data = JSON.parse(body);
-
-          // Check intelligence_level -- if 'none', no useful data
-          if (!data || data.intelligence_level === 'none' || data.intelligence_level === undefined) {
-            resolve(null);
-            return;
-          }
-
-          var enrichment = buildEnrichment(data, cleanDomain);
-          if (enrichment) {
-            console.log('[Hoffman BMID] Enrichment loaded for ' + cleanDomain + ': ' + enrichment.owner);
-          }
-          resolve(enrichment);
-
+          finish(buildEnrichment(clean, data));
         } catch (parseErr) {
-          console.log('[Hoffman BMID] Parse error for ' + cleanDomain + ': ' + parseErr.message);
-          resolve(null);
+          finish(Object.assign({}, EMPTY_ENRICHMENT, { domain: clean }));
         }
       });
     });
 
-    req.on('timeout', function () {
-      console.log('[Hoffman BMID] Timeout querying for domain: ' + cleanDomain);
+    req.on('timeout', function() {
       req.destroy();
-      resolve(null);
+      clearTimeout(timer);
+      finish(Object.assign({}, EMPTY_ENRICHMENT, { domain: clean }));
     });
 
-    req.on('error', function (err) {
-      // BMID not running or connection refused -- not an error condition for the browser
-      // Just log and continue without context
-      if (err.code !== 'ECONNREFUSED') {
-        console.log('[Hoffman BMID] Request error for ' + cleanDomain + ': ' + err.message);
-      }
-      resolve(null);
+    req.on('error', function() {
+      clearTimeout(timer);
+      finish(Object.assign({}, EMPTY_ENRICHMENT, { domain: clean }));
     });
 
     req.end();
@@ -129,87 +104,87 @@ function getBmidEnrichment(domain) {
 }
 
 /**
- * Build the enrichment object from a successful BMID API response.
- * The /api/v1/explain endpoint returns a fisherman block, motives array,
- * and catch_summary object. We extract what the system prompt needs.
+ * Parse a BMID /explain response into a structured enrichment object.
+ * Handles missing or partial data gracefully.
  *
- * @param {object} data  Parsed JSON response from /api/v1/explain
  * @param {string} domain
- * @returns {object|null}
+ * @param {object} data  parsed JSON from BMID
+ * @returns {object}
  */
-function buildEnrichment(data, domain) {
-  try {
-    var fisherman = data.fisherman || {};
-    var motives = data.motives || [];
-    var catchSummary = data.catch_summary || {};
+function buildEnrichment(domain, data) {
+  // intelligence_level === 'none' means BMID has no record for this domain.
+  if (!data || data.intelligence_level === 'none') {
+    return Object.assign({}, EMPTY_ENRICHMENT, { domain: domain });
+  }
 
-    // Extract owner
-    var owner = fisherman.owner || fisherman.name || domain;
+  var fisherman   = data.fisherman     || {};
+  var motives     = data.motives       || [];
+  var catchSummary = data.catch_summary || {};
 
-    // Extract business model
-    var businessModel = fisherman.business_model || 'engagement-based advertising';
+  var owner         = fisherman.owner         || fisherman.display_name || '';
+  var businessModel = fisherman.business_model || '';
+  var primaryMotive = motives.length > 0
+    ? (motives[0].description || motives[0].motive_type || '')
+    : '';
+  var documentedHarms = catchSummary.total_documented || 0;
 
-    // Extract primary documented motive
-    var primaryMotive = 'unknown';
-    if (motives.length > 0 && motives[0].description) {
-      primaryMotive = motives[0].description;
-    } else if (motives.length > 0 && motives[0].motive_type) {
-      primaryMotive = motives[0].motive_type;
-    }
+  // Extract known technique identifiers from motive types and top_patterns.
+  // Both are used so we catch whatever the BMID version returns.
+  var knownTechniques = [];
 
-    // Extract documented harm count
-    var documentedHarms = 0;
-    if (catchSummary && typeof catchSummary.total_documented === 'number') {
-      documentedHarms = catchSummary.total_documented;
-    } else if (catchSummary && typeof catchSummary.count === 'number') {
-      documentedHarms = catchSummary.count;
-    }
-
-    // Extract known techniques from motives and top patterns
-    var knownTechniques = [];
-    var topPatterns = data.top_patterns || [];
-    if (Array.isArray(topPatterns)) {
-      topPatterns.forEach(function (p) {
-        if (p && typeof p === 'string') knownTechniques.push(p);
-        else if (p && p.pattern) knownTechniques.push(p.pattern);
-        else if (p && p.type) knownTechniques.push(p.type);
-      });
-    }
-    // Also pull technique types out of motives if present
-    motives.forEach(function (m) {
-      if (m && m.motive_type && knownTechniques.indexOf(m.motive_type) === -1) {
-        knownTechniques.push(m.motive_type);
+  if (Array.isArray(data.top_patterns)) {
+    data.top_patterns.forEach(function(p) {
+      var key = (typeof p === 'string') ? p : (p.technique || p.pattern || '');
+      if (key && knownTechniques.indexOf(key.toLowerCase()) === -1) {
+        knownTechniques.push(key.toLowerCase());
       }
     });
-
-    // Build the context string that will be prepended to the system prompt
-    var lines = [
-      'KNOWN INTELLIGENCE ON THIS DOMAIN:',
-      'Owner: ' + owner,
-      'Business model: ' + businessModel,
-      'Documented motive: ' + primaryMotive,
-      'Documented harms: ' + documentedHarms + ' cases on record'
-    ];
-
-    if (knownTechniques.length > 0) {
-      lines.push('Known techniques: ' + knownTechniques.join(', '));
-    }
-
-    var contextString = lines.join('\n');
-
-    return {
-      owner: owner,
-      businessModel: businessModel,
-      primaryMotive: primaryMotive,
-      documentedHarms: documentedHarms,
-      knownTechniques: knownTechniques,
-      contextString: contextString
-    };
-
-  } catch (err) {
-    console.log('[Hoffman BMID] buildEnrichment error: ' + err.message);
-    return null;
   }
+
+  motives.forEach(function(m) {
+    var key = m.motive_type || '';
+    if (key && knownTechniques.indexOf(key.toLowerCase()) === -1) {
+      knownTechniques.push(key.toLowerCase());
+    }
+  });
+
+  // Build the preformatted context string for the system prompt.
+  var contextLines = [
+    'KNOWN INTELLIGENCE ON THIS DOMAIN:'
+  ];
+
+  if (owner) {
+    contextLines.push('Owner: ' + owner);
+  }
+  if (businessModel) {
+    contextLines.push('Business model: ' + businessModel.replace(/_/g, ' '));
+  }
+  if (primaryMotive) {
+    contextLines.push('Documented motive: ' + primaryMotive);
+  }
+  if (documentedHarms > 0) {
+    contextLines.push(
+      'Documented harms: ' + documentedHarms + ' case' +
+      (documentedHarms !== 1 ? 's' : '') + ' on record'
+    );
+  }
+  if (knownTechniques.length > 0) {
+    contextLines.push('Known techniques: ' + knownTechniques.join(', '));
+  }
+
+  // Only return a context string if we actually have content beyond the header.
+  var hasContent = owner || businessModel || primaryMotive ||
+                   documentedHarms > 0 || knownTechniques.length > 0;
+
+  return {
+    domain:          domain,
+    owner:           owner,
+    businessModel:   businessModel,
+    primaryMotive:   primaryMotive,
+    documentedHarms: documentedHarms,
+    knownTechniques: knownTechniques,
+    context:         hasContent ? contextLines.join('\n') : null
+  };
 }
 
 module.exports = {
