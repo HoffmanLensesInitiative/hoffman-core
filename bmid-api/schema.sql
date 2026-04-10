@@ -1,6 +1,6 @@
 -- BMID Database Schema
 -- Behavioral Manipulation Intelligence Database
--- Version: 0.2.0 (extended with network and actor tables March 30, 2026)
+-- Version: 0.2.1 (contributed_by added to amplifier table 2026-04-10)
 
 -- Core fisherman record: a platform or operator that runs a BMS
 CREATE TABLE IF NOT EXISTS fisherman (
@@ -178,7 +178,7 @@ CREATE INDEX IF NOT EXISTS idx_submission_domain  ON submission(domain);
 CREATE INDEX IF NOT EXISTS idx_submission_token   ON submission(contributor_token, submitted_at);
 
 -- ---------------------------------------------------------------------------
--- AMPLIFIER (added 2026-04-08)
+-- AMPLIFIER (added 2026-04-08, contributed_by added 2026-04-10)
 -- Infrastructure platforms that systematically amplify manipulative content.
 -- Distinct from fishermen: amplifiers do not create content.
 -- They profit from routing users to manipulative content via algorithm design.
@@ -203,6 +203,7 @@ CREATE TABLE IF NOT EXISTS amplifier (
   public_alternatives      TEXT,                    -- what responsible design would look like
   alternative_feasibility  TEXT,                    -- assessment of viability/cost
   confidence_score         REAL DEFAULT 0.5,
+  contributed_by           TEXT,                    -- agent or researcher who created record
   sources                  TEXT,                    -- JSON array of source objects
   created_at               TEXT DEFAULT (datetime('now')),
   updated_at               TEXT DEFAULT (datetime('now'))
