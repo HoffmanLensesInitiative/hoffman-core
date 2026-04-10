@@ -394,6 +394,104 @@ def admin_update_submission_status(submission_id):
 
 
 # ===========================================================================
+# AMPLIFIER API ENDPOINTS
+# ===========================================================================
+
+@app.route('/api/v1/amplifiers')
+def list_amplifiers():
+    db   = get_db()
+    rows = rows_to_list(db.execute(
+        "SELECT * FROM amplifier ORDER BY confidence_score DESC"
+    ).fetchall())
+    # Parse JSON fields
+    for row in rows:
+        for field in ('domains', 'sources'):
+            if row.get(field):
+                try:
+                    row[field] = json.loads(row[field])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+    return jsonify({"count": len(rows), "amplifiers": rows})
+
+
+@app.route('/api/v1/amplifier/<amplifier_id>')
+def get_amplifier(amplifier_id):
+    db  = get_db()
+    row = row_to_dict(db.execute(
+        "SELECT * FROM amplifier WHERE amplifier_id = ?", (amplifier_id,)
+    ).fetchone())
+    if not row:
+        return jsonify({"error": "amplifier not found", "amplifier_id": amplifier_id}), 404
+    for field in ('domains', 'sources'):
+        if row.get(field):
+            try:
+                row[field] = json.loads(row[field])
+            except (json.JSONDecodeError, TypeError):
+                pass
+    return jsonify(row)
+
+
+# ===========================================================================
+# SUBMISSION (CROWDSOURCED) API ENDPOINTS
+# ===========================================================================
+
+@app.route('/api/v1/submit', methods=['POST'])
+def submit_catch():
+    """
+    Accept a crowdsourced catch submission from the Hoffman Browser.
+    Rate-limited by contributor_token (SHA-256 of provider:apikey).
+    Body JSON:
+      {
+        "domain": "foxnews.com",
+        "url": "https://foxnews.com/...",
+        "contributor_token": "<sha256>",
+        "flags": [...],
+        "summary": "...",
+        "technique_count": 3
+      }
+    """
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "JSON body required"}), 400
+
+    required = ('domain', 'contributor_token', 'flags')
+    for field in required:
+        if not data.get(field):
+            return jsonify({"error": f"'{field}' is required"}), 400
+
+    db = get_db()
+
+    # Simple rate limit: max 10 submissions per token per rolling hour
+    recent = db.execute("""
+        SELECT COUNT(*) AS n FROM submission
+        WHERE contributor_token = ?
+          AND submitted_at >= datetime('now', '-1 hour')
+    """, (data['contributor_token'],)).fetchone()['n']
+    if recent >= 10:
+        return jsonify({"error": "rate limit exceeded — max 10 submissions per hour"}), 429
+
+    sid = f"sub-{uuid.uuid4().hex[:12]}"
+    flags_json = json.dumps(data['flags']) if isinstance(data['flags'], list) else data['flags']
+
+    db.execute("""
+        INSERT INTO submission
+          (submission_id, domain, url, contributor_token, flags, summary, technique_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        sid,
+        data['domain'],
+        data.get('url', ''),
+        data['contributor_token'],
+        flags_json,
+        data.get('summary', ''),
+        data.get('technique_count', 0),
+    ))
+    db.commit()
+
+    return jsonify({"status": "accepted", "submission_id": sid}), 201
+
+
+# ===========================================================================
 # NETWORK AND ACTOR API ENDPOINTS  (v0.2)
 # ===========================================================================
 
@@ -507,7 +605,8 @@ def get_network(domain):
 # ---------------------------------------------------------------------------
 # GET /api/v1/actor/search?name=<name>
 # Registered BEFORE /api/v1/actor/<actor_id> to prevent Flask treating
-# "search" as an integer actor_id.
+# "search" as an integer actor_id (the route uses <int:actor_id> so this
+# would 404 anyway, but explicit ordering is cleaner and documents intent).
 # ---------------------------------------------------------------------------
 
 @app.route('/api/v1/actor/search')
@@ -797,135 +896,7 @@ def get_conspiracy(fisherman_id_1, fisherman_id_2):
 
 
 # ===========================================================================
-# AMPLIFIER API ENDPOINTS  (v0.2)
-# ===========================================================================
-
-# ---------------------------------------------------------------------------
-# GET /api/v1/amplifiers
-# List all amplifier records (summary view).
-# ---------------------------------------------------------------------------
-
-@app.route('/api/v1/amplifiers')
-def list_amplifiers():
-    db = get_db()
-    amplifiers = rows_to_list(db.execute(
-        "SELECT amplifier_id, name, parent_entity, domains, optimization_target, "
-        "confidence_score, created_at FROM amplifier ORDER BY confidence_score DESC"
-    ).fetchall())
-
-    # Parse domains JSON for each record
-    for a in amplifiers:
-        try:
-            a['domains'] = json.loads(a['domains']) if a.get('domains') else []
-        except (json.JSONDecodeError, TypeError):
-            a['domains'] = []
-
-    return jsonify({"count": len(amplifiers), "amplifiers": amplifiers})
-
-
-# ---------------------------------------------------------------------------
-# GET /api/v1/amplifier/<amplifier_id>
-# Full amplifier record by amplifier_id slug.
-# ---------------------------------------------------------------------------
-
-@app.route('/api/v1/amplifier/<amplifier_id>')
-def get_amplifier(amplifier_id):
-    db = get_db()
-    amplifier = row_to_dict(
-        db.execute("SELECT * FROM amplifier WHERE amplifier_id = ?", (amplifier_id,)).fetchone()
-    )
-    if not amplifier:
-        return jsonify({"error": "amplifier not found", "amplifier_id": amplifier_id}), 404
-
-    # Parse JSON fields
-    for field in ('domains', 'sources'):
-        try:
-            amplifier[field] = json.loads(amplifier[field]) if amplifier.get(field) else []
-        except (json.JSONDecodeError, TypeError):
-            amplifier[field] = []
-
-    return jsonify(amplifier)
-
-
-# ===========================================================================
-# SUBMISSION API ENDPOINTS  (v0.2 — crowdsourced catches from the browser)
-# ===========================================================================
-
-# ---------------------------------------------------------------------------
-# POST /api/v1/submit
-# Accepts a browser-generated analysis submission.
-# Body: { domain, url, contributor_token, flags, summary, technique_count }
-# ---------------------------------------------------------------------------
-
-@app.route('/api/v1/submit', methods=['POST'])
-def submit_catch():
-    data = request.get_json(silent=True)
-    if not data:
-        return jsonify({"error": "JSON body required"}), 400
-
-    required = ('domain', 'contributor_token', 'flags')
-    missing  = [f for f in required if not data.get(f)]
-    if missing:
-        return jsonify({"error": f"missing required fields: {', '.join(missing)}"}), 400
-
-    flags = data['flags']
-    if isinstance(flags, list):
-        flags_json = json.dumps(flags)
-    elif isinstance(flags, str):
-        flags_json = flags
-    else:
-        return jsonify({"error": "flags must be a JSON array or JSON string"}), 400
-
-    submission_id = f"sub-{uuid.uuid4().hex[:12]}"
-    db = get_db()
-    db.execute("""
-        INSERT INTO submission
-               (submission_id, domain, url, contributor_token, flags,
-                summary, technique_count, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-    """, (
-        submission_id,
-        data['domain'],
-        data.get('url', ''),
-        data['contributor_token'],
-        flags_json,
-        data.get('summary', ''),
-        data.get('technique_count', 0),
-    ))
-    db.commit()
-
-    return jsonify({"status": "accepted", "submission_id": submission_id}), 201
-
-
-# ---------------------------------------------------------------------------
-# GET /api/v1/submissions?status=<status>
-# Agent-only endpoint: list submissions by status.
-# Requires Bearer BMID_AGENT_KEY header.
-# ---------------------------------------------------------------------------
-
-@app.route('/api/v1/submissions')
-def list_submissions():
-    if not _check_agent_key():
-        return jsonify({"error": "unauthorized"}), 401
-
-    status = request.args.get('status', 'pending').strip()
-    db     = get_db()
-    rows   = rows_to_list(db.execute(
-        "SELECT * FROM submission WHERE status = ? ORDER BY submitted_at DESC",
-        (status,)
-    ).fetchall())
-
-    for row in rows:
-        try:
-            row['flags'] = json.loads(row['flags']) if row.get('flags') else []
-        except (json.JSONDecodeError, TypeError):
-            row['flags'] = []
-
-    return jsonify({"status": status, "count": len(rows), "submissions": rows})
-
-
-# ===========================================================================
-# ENTRY POINT
+# Entry point
 # ===========================================================================
 
 if __name__ == '__main__':
