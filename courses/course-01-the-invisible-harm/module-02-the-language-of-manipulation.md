@@ -288,7 +288,9 @@ At the same time, content creators discovered that these patterns get amplified.
 
 The result is a self-reinforcing system. The BMS amplifies what works. What works is what exploits psychological vulnerabilities. The content landscape fills with exploitation because exploitation is what the machine rewards.
 
-This is not a conspiracy. No one sat in a room and decided to maximize human suffering for profit. But the outcome is the same as if they had.
+The co-evolution was not designed. But the conditions that made it possible were — and its continuation, after the harm was documented, was a choice.
+
+No one sat in a room and decided to maximize human suffering for profit. But once the research came back showing what the system was doing to people, continuing to run it was a decision. That decision was made by named people in named roles with documented financial motives. That is what the accountability record examines — and it is the subject of Module 3.
 
 ---
 
