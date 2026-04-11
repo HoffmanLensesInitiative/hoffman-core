@@ -3,24 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>For Families — Hoffman Lenses Initiative</title>
+
+  <title>For Families — Hoffman Lenses</title>
   <meta name="description"
-        content="Resources for families affected by algorithmic harm. What the Hoffman Lenses Initiative is doing, how to get involved, and where to find legal support." />
+    content="Resources for families affected by algorithmic harm. What Hoffman is doing, how to get involved, and where to find legal support." />
+
+  <!-- Open Graph -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:url"         content="https://hoffmanlenses.org/families" />
+  <meta property="og:title"       content="For Families — Hoffman Lenses" />
+  <meta property="og:description" content="Resources for families affected by algorithmic harm." />
+  <meta property="og:site_name"   content="Hoffman Lenses" />
+
+  <!-- Fonts & global styles -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+        rel="stylesheet" />
+
   <link rel="stylesheet" href="/styles/global.css" />
   <link rel="stylesheet" href="/families/families.css" />
-</head>
-<body>
 
-  <!-- ============================================================
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+
+<body class="page-families">
+
+  <!-- ═══════════════════════════════════════════════════════
        SITE HEADER
-       ============================================================ -->
+       ═══════════════════════════════════════════════════════ -->
   <header class="site-header" role="banner">
     <div class="site-header__inner">
-      <a href="/" class="site-header__logo" aria-label="Hoffman Lenses Initiative — home">
+      <a href="/" class="site-logo" aria-label="Hoffman Lenses — home">
         Hoffman Lenses
       </a>
       <nav class="site-nav" aria-label="Main navigation">
-        <ul role="list">
+        <ul>
           <li><a href="/">Home</a></li>
           <li><a href="/whitepaper">White Paper</a></li>
           <li><a href="/remembrance">Remembrance</a></li>
@@ -32,274 +50,271 @@
   </header>
 
 
-  <!-- ============================================================
+  <!-- ═══════════════════════════════════════════════════════
        MAIN CONTENT
-       ============================================================ -->
+       ═══════════════════════════════════════════════════════ -->
   <main id="main-content">
 
-
-    <!-- PAGE HEADER ─────────────────────────────────────────── -->
+    <!-- Page header -->
     <header class="families-header">
       <h1>For Families</h1>
       <p class="families-lede">
-        If you have lost someone to algorithmic harm — this page is for you.
+        If you have lost someone to algorithmic harm — or if someone you love
+        is being harmed right now — this page is for you.
       </p>
       <p class="families-lede">
-        What happened to your family was not an accident.
-        It was not a mystery. It was foreseeable, documented, and in many
-        cases known to the companies responsible before your loss occurred.
-        This page exists to tell you what we know, what we are building,
-        and how you can be part of holding that accountable.
+        You are not imagining it. You are not alone. And you are not without options.
       </p>
     </header>
 
 
-    <!-- SECTION 1: WHAT HAPPENED WAS FORESEEABLE ─────────────── -->
-    <section class="families-section" aria-labelledby="section-foreseeable">
-      <div class="families-section__inner">
-        <h2 id="section-foreseeable">What happened to your family was foreseeable</h2>
-        <p>
-          The platforms that shaped your loved one's experience were not
-          neutral tools. They were designed — with enormous resources and
-          sophisticated engineering — to maximize the time people spend on
-          them. That objective, pursued without obligation to human wellbeing,
-          is what behavioral manipulation systems do.
-        </p>
-        <p>
-          The companies behind these systems had access to their own internal
-          research documenting the harm. In some cases that research was
-          suppressed. In some cases executives received findings showing the
-          harm was worsening and continued the practices anyway.
-          In some cases they testified under oath about platform safety
-          while internal documents told a different story.
-        </p>
-        <p>
-          This is on the public record. Court filings. Whistleblower
-          disclosures. Coroner rulings. Congressional testimony transcripts.
-          The Hoffman Lenses Initiative is building a structured,
-          evidence-based database of all of it.
-        </p>
-        <p>
-          If you want to understand what the documented record shows,
-          the white paper is the place to start:
-          <a href="/whitepaper" class="inline-link">
-            The Algorithm and the Child: A Human Rights Case for Abolishing
-            Behavioral Manipulation Systems
-          </a>.
-        </p>
-      </div>
+    <!-- ──────────────────────────────────────────────────────
+         SECTION: You are not alone
+         ────────────────────────────────────────────────────── -->
+    <section class="families-section" aria-labelledby="section-not-alone">
+      <h2 id="section-not-alone">You are not alone in this</h2>
+      <p>
+        The families of Molly Russell, Nylah Anderson, Amanda Todd, and many others
+        have faced what you are facing. Their children were harmed by systems designed
+        by engineers, approved by executives, and optimized for profit — not for the
+        wellbeing of the children using them.
+      </p>
+      <p>
+        Those families did not stay silent. They testified before Congress. They brought
+        cases to court. They forced coroner inquiries. They changed the public record.
+        Some of them changed the law.
+      </p>
+      <p>
+        Their names are on our <a href="/remembrance" class="inline-link">Remembrance page</a>.
+        Their work is part of why Hoffman exists.
+      </p>
     </section>
 
 
-    <!-- SECTION 2: WHAT WE ARE DOING ─────────────────────────── -->
-    <section class="families-section" aria-labelledby="section-doing">
-      <div class="families-section__inner">
-        <h2 id="section-doing">What the Hoffman Lenses Initiative is doing</h2>
-        <p>
-          We are building tools and research infrastructure designed to make
-          manipulation visible and to document accountability. Here is what
-          is being built:
-        </p>
-        <ul class="families-list">
-          <li>
-            <strong>The Hoffman Browser</strong> — A desktop browser that
-            reads the text on every page you visit and tells you, in plain
-            language, what manipulation techniques are present and who is
-            deploying them. It runs entirely on your device. Nothing leaves
-            your machine. It works on every platform because it reads
-            rendered language, not platform code.
-          </li>
-          <li>
-            <strong>The Behavioral Manipulation Intelligence Database (BMID)</strong>
-            — A structured, evidence-based database documenting the operators,
-            techniques, business models, and documented harms of behavioral
-            manipulation systems. Every entry requires primary source
-            documentation: court filings, sworn testimony, internal documents
-            disclosed through legal proceedings, named journalism.
-            No speculation. No inference without documentation.
-          </li>
-          <li>
-            <strong>The white paper</strong> — A documented human rights case
-            establishing that behavioral manipulation systems cause foreseeable
-            harm and that the companies responsible had knowledge of that harm.
-            Fully cited. Written to be useful to lawyers, researchers,
-            journalists, and families.
-          </li>
-          <li>
-            <strong>The Remembrance page</strong> — A record of individuals
-            whose deaths have been linked by coroner findings, court
-            proceedings, or documented public record to algorithmic harm.
-            Not statistics. People. Names, ages, who they were.
-            <a href="/remembrance" class="inline-link">Read it here.</a>
-          </li>
-        </ul>
-      </div>
+    <!-- ──────────────────────────────────────────────────────
+         SECTION: What Hoffman is doing
+         ────────────────────────────────────────────────────── -->
+    <section class="families-section" aria-labelledby="section-what-hoffman">
+      <h2 id="section-what-hoffman">What Hoffman is doing</h2>
+      <p>
+        Hoffman is a browser — a piece of software — that reads manipulation the
+        way an expert reads it. It works on every website, every platform, every page,
+        because manipulation is a property of language, not of any single platform.
+      </p>
+      <p>
+        When you browse with Hoffman, it reads alongside you. It identifies patterns
+        that are designed to keep you on a page, make you afraid, make you angry, or
+        make you feel like you are missing something. It shows you what it finds.
+        It does not censor. It does not hide anything. It makes visible.
+      </p>
+      <p>
+        Hoffman also maintains the Behavioral Manipulation Intelligence Database —
+        a documented record of which platforms use which techniques, what evidence
+        exists for the harm they have caused, and who made the decisions.
+        This is not advocacy. It is a structured evidence base, built to the standard
+        that holds up in court and in academic peer review.
+      </p>
+      <p>
+        We are building Hoffman because the harm is real, it is documented,
+        and the people responsible have not been held accountable.
+        That is what we are working to change.
+      </p>
+      <p>
+        <a href="/whitepaper" class="inline-link">
+          Read the full case — The Algorithm and the Child: A Human Rights Case
+          for Abolishing Behavioral Manipulation Systems →
+        </a>
+      </p>
     </section>
 
 
-    <!-- SECTION 3: HOW TO GET INVOLVED ───────────────────────── -->
-    <section class="families-section" aria-labelledby="section-involved">
-      <div class="families-section__inner">
-        <h2 id="section-involved">How you can get involved</h2>
-        <p>
-          If your family has been affected by algorithmic harm, there are
-          things you can do. The most important one, if you have not already
-          done it, is to speak to a lawyer who specializes in this area.
-          See the legal resources section below.
-        </p>
-        <p>
-          If you are willing to share your experience for research purposes,
-          we want to hear from you. Documentation of real harm, from families
-          who lived it, is part of the evidentiary record that makes
-          accountability possible. Any communication with the Hoffman Lenses
-          Initiative is treated with strict confidentiality. We will not
-          share your information without your explicit permission.
-        </p>
-        <p>
-          If you have documentation — records of your loved one's device use,
-          social media archives, communications with platforms, or legal
-          proceedings — that documentation may be valuable. A lawyer can
-          advise you on how to preserve and use it.
-        </p>
-
-        <div class="contact-placeholder" role="note">
-          <p class="contact-placeholder__label">Contact</p>
-          <p class="contact-placeholder__value">
-            families@hoffmanlenses.org
-            <span class="contact-coming-soon">— coming soon</span>
-          </p>
-          <p class="contact-placeholder__note">
-            Our dedicated families contact is not yet active. We are setting
-            up secure email infrastructure before opening communications.
-            Check back here — this page will be updated when the address
-            is live.
-          </p>
-        </div>
-      </div>
-    </section>
-
-
-    <!-- SECTION 4: LEGAL RESOURCES ───────────────────────────── -->
+    <!-- ──────────────────────────────────────────────────────
+         SECTION: Legal resources
+         ────────────────────────────────────────────────────── -->
     <section class="families-section" aria-labelledby="section-legal">
-      <div class="families-section__inner">
-        <h2 id="section-legal">Legal resources</h2>
+      <h2 id="section-legal">Legal resources</h2>
+      <p>
+        If you are considering legal action, or if you simply want to understand
+        your options, the following organizations have experience with social media
+        harm cases specifically. We have no financial relationship with any of them.
+        We list them because they are doing the work.
+      </p>
+
+      <ul class="resource-list" aria-label="Legal resources">
+
+        <li class="resource-item">
+          <h3 class="resource-name">Social Media Victims Law Center</h3>
+          <p class="resource-description">
+            A law firm focused specifically on harm caused by social media platforms.
+            They have represented families of children harmed by algorithmic content,
+            including cases involving Facebook, Instagram, TikTok, and Snapchat.
+            They offer free consultations for families who have lost a child or have
+            a child who has been seriously harmed.
+          </p>
+          <a href="https://socialmediavictims.org"
+             class="resource-link"
+             rel="noopener noreferrer"
+             target="_blank"
+             aria-label="Social Media Victims Law Center (opens in new tab)">
+            socialmediavictims.org →
+          </a>
+        </li>
+
+        <li class="resource-item">
+          <h3 class="resource-name">Institute for Justice</h3>
+          <p class="resource-description">
+            A public interest law firm that litigates cases at the intersection of
+            technology, civil liberties, and corporate accountability. Not specific
+            to social media harm, but active in platform liability cases.
+          </p>
+          <a href="https://ij.org"
+             class="resource-link"
+             rel="noopener noreferrer"
+             target="_blank"
+             aria-label="Institute for Justice (opens in new tab)">
+            ij.org →
+          </a>
+        </li>
+
+      </ul>
+
+      <p class="legal-note">
+        We will update this list as we identify additional resources.
+        We do not add organizations without direct verification that they are
+        actively working in this area.
+      </p>
+    </section>
+
+
+    <!-- ──────────────────────────────────────────────────────
+         SECTION: Preserving evidence
+         ────────────────────────────────────────────────────── -->
+    <section class="families-section" aria-labelledby="section-evidence">
+      <h2 id="section-evidence">Preserving evidence</h2>
+      <p>
+        If you believe a platform contributed to harm to someone in your family,
+        the most important thing you can do right now is preserve evidence before
+        it disappears.
+      </p>
+      <p>
+        Platforms delete content. Algorithms change. Accounts get deactivated.
+        What exists today may not exist in thirty days.
+      </p>
+
+      <ul class="guidance-list" aria-label="Evidence preservation steps">
+        <li>
+          <strong>Screenshot everything.</strong> Posts, comments, recommended content,
+          notification history, message threads. Screenshot on a device you control,
+          not just on the platform.
+        </li>
+        <li>
+          <strong>Download your data archive.</strong> Most platforms provide a data
+          download option in account settings. For Facebook and Instagram, this is under
+          Settings → Your Facebook Information → Download Your Information.
+          For TikTok, it is under Settings → Privacy → Personalization and Data.
+          Request the full archive in JSON format if given the option — this preserves
+          machine-readable metadata that screenshots do not capture.
+        </li>
+        <li>
+          <strong>Note dates and times.</strong> When content appeared. When a pattern
+          started. When you first noticed. Write it down while it is fresh.
+        </li>
+        <li>
+          <strong>Do not delete anything.</strong> Even content that is distressing.
+          Evidence that you remove cannot be recovered.
+        </li>
+        <li>
+          <strong>Talk to a lawyer before contacting the platform.</strong> What you say
+          to a platform in writing becomes part of the record. Get legal advice first.
+        </li>
+      </ul>
+
+      <p>
+        This guidance is general information, not legal advice. A qualified attorney
+        familiar with platform liability cases can advise you on your specific situation.
+      </p>
+    </section>
+
+
+    <!-- ──────────────────────────────────────────────────────
+         SECTION: Get involved with Hoffman
+         ────────────────────────────────────────────────────── -->
+    <section class="families-section" aria-labelledby="section-get-involved">
+      <h2 id="section-get-involved">How to get involved</h2>
+      <p>
+        Hoffman is a research tool, and the families of those harmed are among
+        the most important contributors to the research record. If your experience
+        is documented, it belongs in the public record. If your loved one's name
+        should be on the <a href="/remembrance" class="inline-link">Remembrance page</a>,
+        we want to hear from you.
+      </p>
+      <p>
+        We review every entry carefully. We require verified public-record documentation
+        before publishing any name. We will not rush this, and we will not get it wrong.
+      </p>
+      <p>
+        We are also building a research database — anonymized, opt-in — that documents
+        which techniques are deployed by which platforms, in the wild, observed in real
+        browsing sessions. If you are a researcher, journalist, or advocate who wants
+        access to that data, the <a href="/research" class="inline-link">Research page</a>
+        has more information.
+      </p>
+
+      <div class="contact-block" aria-labelledby="contact-heading">
+        <h3 id="contact-heading">Contact</h3>
         <p>
-          Litigation against the major social media platforms is active and
-          growing. Families across the United States and internationally
-          have filed lawsuits against Meta, TikTok, Snapchat, YouTube,
-          and others. There are law firms that specialize in this work and
-          take cases on behalf of families.
+          Our contact infrastructure is not yet active. We are setting up dedicated
+          email addresses for families, press, and research inquiries. We will update
+          this page as soon as they are confirmed live.
         </p>
-
-        <div class="resource-card">
-          <p class="resource-card__name">Social Media Victims Law Center</p>
-          <p class="resource-card__url">
-            <a href="https://www.socialmediavictims.org"
-               class="inline-link"
-               rel="noopener noreferrer"
-               target="_blank">
-              socialmediavictims.org
-            </a>
-          </p>
-          <p class="resource-card__description">
-            The Social Media Victims Law Center represents children and
-            families harmed by social media platforms. They have filed cases
-            against Meta (Facebook, Instagram), TikTok, Snapchat, YouTube,
-            and others on behalf of families who have experienced suicide,
-            self-harm, eating disorders, sexual exploitation, and other
-            documented harms linked to platform use.
-          </p>
-          <p class="resource-card__description">
-            They offer free consultations. Many cases are taken on a
-            contingency basis, meaning families do not pay unless there
-            is a recovery. Their website includes resources for families,
-            a case intake form, and information about pending litigation.
-          </p>
-          <p class="resource-card__disclaimer">
-            The Hoffman Lenses Initiative has no affiliation with the
-            Social Media Victims Law Center. We list them because they
-            represent families in this area and have a documented public
-            record of doing so. We encourage you to do your own research
-            and consult with legal counsel directly.
-          </p>
-        </div>
-
-        <p>
-          If you are outside the United States, laws and available legal
-          remedies will differ by jurisdiction. The UK Molly Russell inquest
-          (2022) established legal precedent regarding platform liability in
-          England and Wales. EU law, including the Digital Services Act,
-          creates additional obligations for large platforms operating in
-          Europe. An attorney in your country can advise you on what applies
-          in your situation.
+        <p class="contact-coming-soon" aria-label="Contact coming soon">
+          <span class="contact-label">Families:</span>
+          <span class="contact-value contact-value--pending">families@hoffmanlenses.org — coming soon</span>
+        </p>
+        <p class="contact-coming-soon" aria-label="General contact coming soon">
+          <span class="contact-label">General:</span>
+          <span class="contact-value contact-value--pending">contact@hoffmanlenses.org — coming soon</span>
         </p>
       </div>
     </section>
 
 
-    <!-- SECTION 5: THE WHITE PAPER ───────────────────────────── -->
-    <section class="families-section" aria-labelledby="section-whitepaper">
-      <div class="families-section__inner">
-        <h2 id="section-whitepaper">The white paper</h2>
-        <p>
-          <em>The Algorithm and the Child: A Human Rights Case for Abolishing
-          Behavioral Manipulation Systems</em> documents the design of
-          behavioral manipulation systems, the evidence of known harm, and
-          the legal framework for accountability under human rights law.
-        </p>
-        <p>
-          It is written to be readable by non-specialists. It is fully cited.
-          It was written to be useful: to families seeking to understand what
-          happened, to lawyers building cases, to journalists covering the
-          story, and to researchers working on solutions.
-        </p>
-        <p>
-          <a href="/whitepaper" class="inline-link">Read the white paper →</a>
-        </p>
-      </div>
-    </section>
-
-
-    <!-- CLOSING NOTE ─────────────────────────────────────────── -->
-    <div class="families-closing" role="note">
+    <!-- ──────────────────────────────────────────────────────
+         CLOSING NOTE
+         ────────────────────────────────────────────────────── -->
+    <!-- role="note" used here: role="contentinfo" is reserved for the
+         site-level footer below and must not appear twice on the same page. -->
+    <aside class="families-footer-note" role="note" aria-label="Closing note">
       <p>
-        The Hoffman Lenses project takes its name from the glasses in John
-        Carpenter's 1988 film <em>They Live</em> — lenses that let the wearer
-        see hidden messages embedded in ordinary reality. Once you put them
-        on, you cannot unsee what they reveal.
+        The harm these systems cause is not your fault. You did not build them.
+        You were not warned. The people who built them knew, and they continued.
+        That is what the evidence shows. That is what Hoffman is documenting.
       </p>
       <p>
-        That is what we are building. Not to expose the hidden messages so
-        people can look away — but so they cannot be used against us, or
-        our children, without our knowledge.
+        We are sorry for what happened to your family.
+        We are going to keep working until the record is complete.
       </p>
-      <p>
-        We are sorry for what your family has been through.
-        You are not alone in this.
-      </p>
-    </div>
-
+    </aside>
 
   </main>
 
 
-  <!-- ============================================================
+  <!-- ═══════════════════════════════════════════════════════
        SITE FOOTER
-       ============================================================ -->
+       ═══════════════════════════════════════════════════════ -->
   <footer class="site-footer" role="contentinfo">
     <div class="site-footer__inner">
       <p class="site-footer__name">Hoffman Lenses Initiative</p>
       <nav class="site-footer__nav" aria-label="Footer navigation">
-        <ul role="list">
-          <li><a href="/">Home</a></li>
-          <li><a href="/whitepaper">White Paper</a></li>
-          <li><a href="/remembrance">Remembrance</a></li>
-          <li><a href="/families" aria-current="page">Families</a></li>
-          <li><a href="/research">Research</a></li>
-        </ul>
+        <a href="/">Home</a>
+        <a href="/whitepaper">White Paper</a>
+        <a href="/remembrance">Remembrance</a>
+        <a href="/families">Families</a>
+        <a href="/research">Research</a>
       </nav>
-      <p class="site-footer__mission">
-        Making manipulation visible.
+      <p class="site-footer__legal">
+        No user data is collected on this site.
+        All Hoffman Browser processing is local and on-device.
       </p>
     </div>
   </footer>

@@ -1,34 +1,37 @@
 /*
- * families.css
- * Styles for /families — For Families page
- * hoffman-lenses-website
- */
+  families.css
+  Scoped styles for /families
+  Inherits: /styles/global.css (color variables, typography, layout shell)
+  Last updated: April 2026
+*/
 
-/* ================================================================
+
+/* ═══════════════════════════════════════════════════════
    PAGE HEADER
-   ================================================================ */
+   ═══════════════════════════════════════════════════════ */
 
 .families-header {
-  max-width: 760px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 3.5rem 1.5rem 2.5rem;
-  border-bottom: 1px solid var(--color-rule, #2a2a2a);
+  padding: 4rem 1.5rem 3rem;
+  border-bottom: 1px solid var(--color-border, #2a2a2a);
 }
 
 .families-header h1 {
-  font-size: 2.4rem;
+  font-size: clamp(2rem, 5vw, 3rem);
   font-weight: 700;
+  color: var(--color-text-primary, #f0ede6);
   letter-spacing: -0.02em;
   margin: 0 0 1.25rem;
-  color: var(--color-text, #f0f0f0);
+  line-height: 1.15;
 }
 
 .families-lede {
   font-size: 1.15rem;
   line-height: 1.7;
-  color: var(--color-text-secondary, #b0b0b0);
-  margin: 0 0 1rem;
-  max-width: 640px;
+  color: var(--color-text-secondary, #b0a99f);
+  margin: 0 0 0.75rem;
+  max-width: 60ch;
 }
 
 .families-lede:last-child {
@@ -36,245 +39,276 @@
 }
 
 
-/* ================================================================
+/* ═══════════════════════════════════════════════════════
    CONTENT SECTIONS
-   ================================================================ */
+   ═══════════════════════════════════════════════════════ */
 
 .families-section {
-  padding: 2.75rem 1.5rem;
-  border-bottom: 1px solid var(--color-rule, #2a2a2a);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+  border-bottom: 1px solid var(--color-border, #2a2a2a);
 }
 
-.families-section__inner {
-  max-width: 760px;
-  margin: 0 auto;
+.families-section:last-of-type {
+  border-bottom: none;
 }
 
 .families-section h2 {
-  font-size: 1.45rem;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
   font-weight: 700;
+  color: var(--color-text-primary, #f0ede6);
   letter-spacing: -0.01em;
   margin: 0 0 1.25rem;
-  color: var(--color-text, #f0f0f0);
+  line-height: 1.3;
 }
 
 .families-section p {
   font-size: 1rem;
   line-height: 1.75;
-  color: var(--color-text-secondary, #b0b0b0);
-  margin: 0 0 1.1rem;
-  max-width: 680px;
+  color: var(--color-text-secondary, #b0a99f);
+  margin: 0 0 1rem;
+  max-width: 65ch;
 }
 
 .families-section p:last-child {
   margin-bottom: 0;
 }
 
-
-/* ================================================================
-   LIST
-   ================================================================ */
-
-.families-list {
-  list-style: none;
-  padding: 0;
-  margin: 1.25rem 0 1.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-}
-
-.families-list li {
-  font-size: 1rem;
-  line-height: 1.75;
-  color: var(--color-text-secondary, #b0b0b0);
-  padding-left: 1.5rem;
-  position: relative;
-  max-width: 680px;
-}
-
-.families-list li::before {
-  content: "—";
-  position: absolute;
-  left: 0;
-  top: 0;
-  color: var(--color-accent, #c0392b);
-  font-weight: 700;
-}
-
-.families-list li strong {
-  color: var(--color-text, #f0f0f0);
-  font-weight: 600;
-}
-
-
-/* ================================================================
-   CONTACT PLACEHOLDER
-   ================================================================ */
-
-.contact-placeholder {
-  margin-top: 2rem;
-  padding: 1.25rem 1.5rem;
-  border-left: 3px solid var(--color-rule, #2a2a2a);
-  background: var(--color-surface-raised, #141414);
-  max-width: 580px;
-}
-
-.contact-placeholder__label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-text-muted, #666);
-  margin: 0 0 0.4rem;
-}
-
-.contact-placeholder__value {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-text, #f0f0f0);
-  margin: 0 0 0.75rem;
-  font-family: var(--font-mono, monospace);
-}
-
-.contact-coming-soon {
-  font-size: 0.85rem;
-  font-weight: 400;
-  font-family: var(--font-body, sans-serif);
-  color: var(--color-text-muted, #666);
-  font-style: italic;
-}
-
-.contact-placeholder__note {
-  font-size: 0.875rem;
-  line-height: 1.6;
-  color: var(--color-text-muted, #666);
-  margin: 0;
-  max-width: 100%;
-}
-
-
-/* ================================================================
-   RESOURCE CARD
-   ================================================================ */
-
-.resource-card {
-  margin: 1.5rem 0 1.5rem;
-  padding: 1.5rem;
-  border: 1px solid var(--color-rule, #2a2a2a);
-  background: var(--color-surface-raised, #141414);
-  max-width: 680px;
-}
-
-.resource-card__name {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--color-text, #f0f0f0);
-  margin: 0 0 0.3rem;
-}
-
-.resource-card__url {
-  font-size: 0.9rem;
-  margin: 0 0 1rem;
-  color: var(--color-text-muted, #666);
-}
-
-.resource-card__description {
-  font-size: 0.95rem;
-  line-height: 1.7;
-  color: var(--color-text-secondary, #b0b0b0);
-  margin: 0 0 0.85rem;
-  max-width: 100%;
-}
-
-.resource-card__disclaimer {
-  font-size: 0.8rem;
-  line-height: 1.6;
-  color: var(--color-text-muted, #666);
-  margin: 0;
-  font-style: italic;
-  border-top: 1px solid var(--color-rule, #2a2a2a);
-  padding-top: 0.85rem;
-  max-width: 100%;
-}
-
-
-/* ================================================================
-   INLINE LINKS
-   ================================================================ */
-
+/* Inline links within body text */
 .inline-link {
-  color: var(--color-accent, #c0392b);
+  color: var(--color-accent, #c9a84c);
   text-decoration: underline;
   text-underline-offset: 3px;
+  transition: color 0.15s ease;
 }
 
 .inline-link:hover,
+.inline-link:focus {
+  color: var(--color-text-primary, #f0ede6);
+  outline: none;
+}
+
 .inline-link:focus-visible {
-  color: var(--color-text, #f0f0f0);
-  text-decoration-color: var(--color-text, #f0f0f0);
+  outline: 2px solid var(--color-accent, #c9a84c);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 
-/* ================================================================
-   CLOSING NOTE
-   ================================================================ */
+/* ═══════════════════════════════════════════════════════
+   RESOURCE LIST
+   ═══════════════════════════════════════════════════════ */
 
-.families-closing {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 2.75rem 1.5rem 3.5rem;
+.resource-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-.families-closing p {
+.resource-item {
+  background: var(--color-surface, #141414);
+  border: 1px solid var(--color-border, #2a2a2a);
+  border-left: 3px solid var(--color-accent, #c9a84c);
+  border-radius: 4px;
+  padding: 1.5rem;
+}
+
+.resource-name {
   font-size: 1rem;
-  line-height: 1.8;
-  color: var(--color-text-secondary, #b0b0b0);
-  margin: 0 0 1.1rem;
-  max-width: 640px;
+  font-weight: 700;
+  color: var(--color-text-primary, #f0ede6);
+  margin: 0 0 0.6rem;
+  letter-spacing: -0.005em;
 }
 
-.families-closing p:last-child {
-  margin-bottom: 0;
-  color: var(--color-text, #f0f0f0);
+.resource-description {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--color-text-secondary, #b0a99f);
+  margin: 0 0 0.85rem;
+  max-width: 60ch;
+}
+
+.resource-link {
+  display: inline-block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-accent, #c9a84c);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+  transition: color 0.15s ease;
+}
+
+.resource-link:hover,
+.resource-link:focus {
+  color: var(--color-text-primary, #f0ede6);
+  outline: none;
+}
+
+.resource-link:focus-visible {
+  outline: 2px solid var(--color-accent, #c9a84c);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.legal-note {
+  font-size: 0.875rem !important;
+  color: var(--color-text-muted, #6b6560) !important;
+  font-style: italic;
+  margin-top: 0.5rem !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   GUIDANCE LIST (evidence preservation)
+   ═══════════════════════════════════════════════════════ */
+
+.guidance-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.guidance-list li {
+  position: relative;
+  padding: 0.9rem 0 0.9rem 1.5rem;
+  border-bottom: 1px solid var(--color-border, #2a2a2a);
+  font-size: 0.975rem;
+  line-height: 1.7;
+  color: var(--color-text-secondary, #b0a99f);
+  max-width: 65ch;
+}
+
+.guidance-list li:first-child {
+  border-top: 1px solid var(--color-border, #2a2a2a);
+}
+
+.guidance-list li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  top: 0.9rem;
+  color: var(--color-accent, #c9a84c);
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+.guidance-list li strong {
+  color: var(--color-text-primary, #f0ede6);
+  font-weight: 600;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   CONTACT BLOCK
+   ═══════════════════════════════════════════════════════ */
+
+.contact-block {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--color-surface, #141414);
+  border: 1px solid var(--color-border, #2a2a2a);
+  border-radius: 4px;
+}
+
+.contact-block h3 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted, #6b6560);
+  margin: 0 0 1rem;
+}
+
+.contact-coming-soon {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0 0 0.5rem !important;
+  font-size: 0.9rem !important;
+  line-height: 1.5 !important;
+  color: var(--color-text-secondary, #b0a99f) !important;
+}
+
+.contact-coming-soon:last-child {
+  margin-bottom: 0 !important;
+}
+
+.contact-label {
+  font-weight: 600;
+  color: var(--color-text-primary, #f0ede6);
+  min-width: 5rem;
+  flex-shrink: 0;
+}
+
+.contact-value {
+  color: var(--color-text-secondary, #b0a99f);
+}
+
+.contact-value--pending {
+  font-style: italic;
+  color: var(--color-text-muted, #6b6560);
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   CLOSING NOTE
+   ═══════════════════════════════════════════════════════ */
+
+.families-footer-note {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 4rem;
+  border-top: 1px solid var(--color-border, #2a2a2a);
+}
+
+.families-footer-note p {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--color-text-secondary, #b0a99f);
+  max-width: 60ch;
+  margin: 0 0 1rem;
   font-style: italic;
 }
 
+.families-footer-note p:last-child {
+  margin-bottom: 0;
+}
 
-/* ================================================================
+
+/* ═══════════════════════════════════════════════════════
    RESPONSIVE
-   ================================================================ */
+   ═══════════════════════════════════════════════════════ */
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
+  .families-header,
+  .families-section,
+  .families-footer-note {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
   .families-header {
-    padding: 2.5rem 1rem 2rem;
+    padding-top: 2.5rem;
   }
 
-  .families-header h1 {
-    font-size: 1.9rem;
+  .resource-item {
+    padding: 1.25rem;
   }
 
-  .families-lede {
-    font-size: 1.05rem;
+  .contact-coming-soon {
+    flex-direction: column;
+    gap: 0.2rem;
   }
 
-  .families-section {
-    padding: 2rem 1rem;
-  }
-
-  .families-section h2 {
-    font-size: 1.25rem;
-  }
-
-  .families-closing {
-    padding: 2rem 1rem 3rem;
-  }
-
-  .contact-placeholder {
-    padding: 1rem 1.1rem;
-  }
-
-  .resource-card {
-    padding: 1.1rem;
+  .contact-label {
+    min-width: auto;
   }
 }
