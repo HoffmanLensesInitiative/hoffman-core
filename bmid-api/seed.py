@@ -38,6 +38,37 @@ def init_schema(db):
     print('[BMID] Schema initialized')
 
 
+def migrate_schema(db):
+    """Add columns introduced after initial schema deployment.
+    Uses try/except so it is safe to re-run against any existing database."""
+    migrations = [
+        ('fisherman', 'ad_networks',           'TEXT'),
+        ('fisherman', 'data_brokers',           'TEXT'),
+        ('fisherman', 'political_affiliation',  'TEXT'),
+        ('fisherman', 'documented_reach',       'TEXT'),
+        ('fisherman', 'legal_status',           "TEXT DEFAULT 'active'"),
+        ('fisherman', 'last_verified',          'TEXT'),
+        ('motive',    'evidence_ids',           'TEXT'),
+        ('catch',     'bait_id',               'TEXT'),
+        ('catch',     'legal_case_id',          'TEXT'),
+        ('catch',     'evidence_ids',           'TEXT'),
+        ('evidence',  'archive_url',            'TEXT'),
+        ('evidence',  'direct_quote',           'TEXT'),
+        ('evidence',  'verified_by',            'TEXT'),
+        ('evidence',  'verified_at',            'TEXT'),
+    ]
+    for table, column, col_type in migrations:
+        try:
+            db.execute(f'ALTER TABLE {table} ADD COLUMN {column} {col_type}')
+            db.commit()
+            print(f'[BMID] Migration: added {table}.{column}')
+        except sqlite3.OperationalError as e:
+            if 'duplicate column name' in str(e).lower():
+                pass  # already present, no-op
+            else:
+                raise
+
+
 def insert_fisherman(db, data):
     for field in ['revenue_sources', 'ad_networks', 'data_brokers']:
         if field in data and isinstance(data[field], list):
@@ -2084,6 +2115,7 @@ if __name__ == '__main__':
     print(f'[BMID] Initializing database at {DB_PATH}')
     db = get_db()
     init_schema(db)
+    migrate_schema(db)
     seed(db)
     report(db)
     db.close()

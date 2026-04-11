@@ -14,6 +14,12 @@ CREATE TABLE IF NOT EXISTS fisherman (
   founded TEXT,
   business_model TEXT,
   revenue_sources TEXT,                -- JSON array
+  ad_networks TEXT,                    -- JSON array
+  data_brokers TEXT,                   -- JSON array
+  political_affiliation TEXT,
+  documented_reach TEXT,
+  legal_status TEXT DEFAULT 'active',
+  last_verified TEXT,
   confidence_score REAL DEFAULT 0.5,
   contributed_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
@@ -32,6 +38,7 @@ CREATE TABLE IF NOT EXISTS motive (
   documented_evidence TEXT,
   confidence_score REAL DEFAULT 0.5,
   contributed_by TEXT,
+  evidence_ids TEXT,                   -- JSON array of evidence_id references
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -40,13 +47,16 @@ CREATE TABLE IF NOT EXISTS catch (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   catch_id TEXT UNIQUE NOT NULL,       -- e.g. "catch-facebook-001"
   fisherman_id TEXT NOT NULL REFERENCES fisherman(fisherman_id),
+  bait_id TEXT,
   harm_type TEXT NOT NULL,
   victim_demographic TEXT,
   documented_outcome TEXT NOT NULL,
   scale TEXT,
+  legal_case_id TEXT,
   academic_citation TEXT,
   date_documented TEXT,
   severity_score INTEGER DEFAULT 5,    -- 1-10
+  evidence_ids TEXT,                   -- JSON array of evidence_id references
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -58,11 +68,15 @@ CREATE TABLE IF NOT EXISTS evidence (
   entity_type TEXT NOT NULL,           -- "fisherman" | "motive" | "catch"
   source_type TEXT NOT NULL,           -- "primary" | "secondary" | "academic"
   url TEXT,
+  archive_url TEXT,
   title TEXT NOT NULL,
   author TEXT,
   publication TEXT,
   published_date TEXT,
   summary TEXT,
+  direct_quote TEXT,
+  verified_by TEXT,
+  verified_at TEXT,
   confidence REAL DEFAULT 0.5,
   created_at TEXT DEFAULT (datetime('now'))
 );
