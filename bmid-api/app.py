@@ -357,13 +357,17 @@ def admin_submissions():
     total_accepted      = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'accepted'").fetchone()['n']
     total_rejected      = db.execute("SELECT COUNT(*) AS n FROM submission WHERE status = 'rejected'").fetchone()['n']
 
+    counts = {
+        'pending':      total_pending,
+        'investigating': total_investigating,
+        'accepted':     total_accepted,
+        'rejected':     total_rejected,
+    }
+
     return render_template('admin/submissions.html',
                            submissions=submissions,
                            filter_status=filter_status,
-                           total_pending=total_pending,
-                           total_investigating=total_investigating,
-                           total_accepted=total_accepted,
-                           total_rejected=total_rejected,
+                           counts=counts,
                            active_page='submissions')
 
 
