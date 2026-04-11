@@ -77,6 +77,11 @@ var BASE_SYSTEM_PROMPT = [
   'war_framing or outrage_engineering. Flag it.',
   'Do NOT flag war_framing when the topic genuinely involves armed conflict, military',
   'operations, or ceasefire negotiations -- those are accurate descriptions, not framing.',
+  'war_framing applies to metaphor (trade wars, price wars, culture wars, political battles).',
+  'It does NOT apply to journalism reporting on actual named conflicts.',
+  'If you are uncertain whether a named conflict (e.g. US-Iran, Russia-Ukraine) involved',
+  'actual military engagement, err toward NOT flagging war_framing. The cost of missing',
+  'a metaphor is low. The cost of labeling accurate war reporting as manipulation is high.',
   'Do NOT return manipulation_found: false if your summary describes the text as',
   'biased, one-sided, or portraying any group negatively.'
 ].join('\n');
