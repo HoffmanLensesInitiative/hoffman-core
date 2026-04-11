@@ -18,6 +18,7 @@ const crypto = require('crypto');
 
 var BMID_CLOUD_HOST = 'bmid.hoffmanlenses.org';
 var BMID_CLOUD_PATH = '/api/v1/submit';
+// Admin: https://bmid.hoffmanlenses.org/admin
 
 /**
  * Derive an anonymous contributor token from the user's API key.
