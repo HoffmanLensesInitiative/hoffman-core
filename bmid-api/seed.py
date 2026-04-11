@@ -20,7 +20,7 @@ import json
 import os
 import sys
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'bmid.db')
+DB_PATH     = os.environ.get('BMID_DATABASE', os.path.join(os.path.dirname(__file__), 'bmid.db'))
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
 
