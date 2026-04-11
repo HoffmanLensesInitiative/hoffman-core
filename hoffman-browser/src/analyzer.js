@@ -73,7 +73,10 @@ var BASE_SYSTEM_PROMPT = [
   'If a text presents one perspective while portraying the opposing view as corrupt,',
   'evil, or illegitimate -- that is suppression_framing. Flag it.',
   'If a text uses words like "mafia", "barbarity", "dominat*", or enemy imagery',
-  'for political/economic topics -- that is war_framing or outrage_engineering. Flag it.',
+  'for political/economic topics where no actual armed conflict exists -- that is',
+  'war_framing or outrage_engineering. Flag it.',
+  'Do NOT flag war_framing when the topic genuinely involves armed conflict, military',
+  'operations, or ceasefire negotiations -- those are accurate descriptions, not framing.',
   'Do NOT return manipulation_found: false if your summary describes the text as',
   'biased, one-sided, or portraying any group negatively.'
 ].join('\n');
