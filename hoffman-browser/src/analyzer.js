@@ -129,13 +129,40 @@ function synthesizeFlagsFromSummary(summary) {
 
   var lower = summary.toLowerCase();
 
+  // If the summary explicitly denies manipulation, don't synthesize.
+  // This prevents false positives when the model correctly describes the
+  // *absence* of manipulation using the same vocabulary as the technique list.
+  var negations = [
+    'no manipulation',
+    'no persuasion',
+    'contains no',
+    'no evidence of',
+    'not manipulative',
+    'purely factual',
+    'straightforward content',
+    'no tactics',
+    'no outrage',
+    'no tribal',
+    'no urgency',
+    'no framing',
+    'no bias',
+    'no propaganda',
+    'without bias',
+    'without framing',
+    'without partisan',
+    'without manipulation',
+    'without persuasion'
+  ];
+  for (var n = 0; n < negations.length; n++) {
+    if (lower.indexOf(negations[n]) !== -1) return [];
+  }
+
   var signals = [
-    'outrage',   'manipul',  'mislead',  'inflam',
-    'fear',      'tribal',   'urgency',  'hook',
-    'framing',   'authority','partisan', 'identity threat',
-    'clickbait', 'war framing',
-    'bias',      'biased',   'one-sided','portray',
-    'war',       'conflict', 'dominat',  'propaganda'
+    'outrage',        'manipul',   'mislead',        'inflam',
+    'fear',           'tribal',    'urgency',         'hook',
+    'partisan',       'identity threat',
+    'clickbait',      'war framing',
+    'biased',         'one-sided', 'dominat',         'propaganda'
   ];
 
   var found = signals.filter(function(sig) {
@@ -150,8 +177,6 @@ function synthesizeFlagsFromSummary(summary) {
     'tribal':          'tribal_activation',
     'urgency':         'false_urgency',
     'hook':            'incomplete_hook',
-    'framing':         'suppression_framing',
-    'authority':       'false_authority',
     'identity threat': 'identity_threat',
     'war framing':     'war_framing',
     'partisan':        'outrage_engineering',
@@ -159,12 +184,8 @@ function synthesizeFlagsFromSummary(summary) {
     'mislead':         'suppression_framing',
     'clickbait':       'incomplete_hook',
     'manipul':         'outrage_engineering',
-    'bias':            'suppression_framing',
     'biased':          'suppression_framing',
     'one-sided':       'suppression_framing',
-    'portray':         'suppression_framing',
-    'war':             'war_framing',
-    'conflict':        'war_framing',
     'dominat':         'outrage_engineering',
     'propaganda':      'suppression_framing'
   };
