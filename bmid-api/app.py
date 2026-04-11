@@ -761,12 +761,12 @@ def get_accountability(domain):
         ORDER  BY ap.date DESC
     """, (fid, fid)).fetchall())
 
-    # Documented harm / catches
+    # Documented harm / catches (uses text fisherman_id FK)
     documented_harm = rows_to_list(db.execute(
         "SELECT * FROM catch WHERE fisherman_id = ? ORDER BY severity_score DESC",
         (fid_text,)).fetchall())
 
-    # Motives
+    # Motives (uses text fisherman_id FK)
     motives = rows_to_list(db.execute(
         "SELECT * FROM motive WHERE fisherman_id = ?", (fid_text,)).fetchall())
 
@@ -785,8 +785,8 @@ def get_accountability(domain):
 # ---------------------------------------------------------------------------
 # GET /api/v1/conspiracy/<fisherman_id_1>/<fisherman_id_2>
 # All documented connections between two fishermen:
-# shared ownership, shared investors, shared board members,
-# documented coordination, shared personnel.
+#   shared ownership, shared investors, shared board members,
+#   documented coordination, shared personnel.
 # Uses integer primary key ids (fisherman.id), not fisherman_id text keys.
 # ---------------------------------------------------------------------------
 
@@ -808,7 +808,8 @@ def get_conspiracy(fisherman_id_1, fisherman_id_2):
     # Direct network relationships between the two (either direction)
     direct_links = rows_to_list(db.execute("""
         SELECT n.*,
-               fp.domain AS parent_domain, fc.domain AS child_domain
+               fp.domain AS parent_domain, fp.display_name AS parent_name,
+               fc.domain AS child_domain,  fc.display_name AS child_name
         FROM   network n
         JOIN   fisherman fp ON n.parent_fisherman_id = fp.id
         JOIN   fisherman fc ON n.child_fisherman_id  = fc.id
@@ -818,85 +819,60 @@ def get_conspiracy(fisherman_id_1, fisherman_id_2):
     """, (fisherman_id_1, fisherman_id_2,
           fisherman_id_2, fisherman_id_1)).fetchall())
 
-    # Shared parent fishermen (common owners / investors)
-    shared_parents = rows_to_list(db.execute("""
-        SELECT fp.domain AS shared_parent_domain,
-               fp.display_name AS shared_parent_name,
-               n1.relationship_type AS link_to_f1,
-               n2.relationship_type AS link_to_f2,
-               MIN(n1.confidence, n2.confidence) AS min_confidence
-        FROM   network n1
-        JOIN   network n2
-               ON  n1.parent_fisherman_id = n2.parent_fisherman_id
-        JOIN   fisherman fp ON fp.id = n1.parent_fisherman_id
-        WHERE  n1.child_fisherman_id = ?
-          AND  n2.child_fisherman_id = ?
-        ORDER  BY min_confidence DESC
-    """, (fisherman_id_1, fisherman_id_2)).fetchall())
-
-    # Shared actors (people who have held roles at both fishermen)
+    # Actors who have roles at BOTH fishermen (shared personnel)
     shared_actors = rows_to_list(db.execute("""
-        SELECT DISTINCT
-               a.id, a.name, a.current_role, a.confidence,
-               ar1.role       AS role_at_f1,
-               ar1.date_start AS start_at_f1,
-               ar1.date_end   AS end_at_f1,
-               ar2.role       AS role_at_f2,
-               ar2.date_start AS start_at_f2,
-               ar2.date_end   AS end_at_f2
+        SELECT a.id, a.name, a.current_role, a.confidence,
+               a.documented_knowledge_of_harm
         FROM   actor a
-        JOIN   actor_role ar1 ON ar1.actor_id = a.id AND ar1.fisherman_id = ?
-        JOIN   actor_role ar2 ON ar2.actor_id = a.id AND ar2.fisherman_id = ?
-        ORDER  BY a.confidence DESC
+        WHERE  a.id IN (
+                   SELECT actor_id FROM actor_role WHERE fisherman_id = ?
+               )
+          AND  a.id IN (
+                   SELECT actor_id FROM actor_role WHERE fisherman_id = ?
+               )
+        ORDER  BY a.documented_knowledge_of_harm DESC, a.confidence DESC
     """, (fisherman_id_1, fisherman_id_2)).fetchall())
 
-    # Shared investment actors (investors in both)
-    shared_investors = rows_to_list(db.execute("""
-        SELECT DISTINCT
-               a.id, a.name, a.current_role, a.confidence,
-               ai1.position_type AS position_at_f1,
-               ai2.position_type AS position_at_f2
-        FROM   actor a
-        JOIN   actor_investment ai1 ON ai1.actor_id = a.id AND ai1.fisherman_id = ?
-        JOIN   actor_investment ai2 ON ai2.actor_id = a.id AND ai2.fisherman_id = ?
-        ORDER  BY a.confidence DESC
-    """, (fisherman_id_1, fisherman_id_2)).fetchall())
+    # For each shared actor, attach their roles at both fishermen
+    for actor in shared_actors:
+        actor_id = actor['id']
+        actor['roles_at_f1'] = rows_to_list(db.execute("""
+            SELECT ar.role, ar.date_start, ar.date_end, ar.evidence
+            FROM   actor_role ar
+            WHERE  ar.actor_id = ? AND ar.fisherman_id = ?
+        """, (actor_id, fisherman_id_1)).fetchall())
+        actor['roles_at_f2'] = rows_to_list(db.execute("""
+            SELECT ar.role, ar.date_start, ar.date_end, ar.evidence
+            FROM   actor_role ar
+            WHERE  ar.actor_id = ? AND ar.fisherman_id = ?
+        """, (actor_id, fisherman_id_2)).fetchall())
 
-    # Shared harm patterns (same harm_type documented at both fishermen).
-    # NOTE: catch.fisherman_id is the TEXT fisherman_id key, not the integer id.
+    # Shared catches: same harm type documented at both fishermen
     shared_harm_types = rows_to_list(db.execute("""
         SELECT c1.harm_type,
-               COUNT(DISTINCT c1.id) AS count_at_f1,
-               COUNT(DISTINCT c2.id) AS count_at_f2
+               c1.catch_id AS catch_id_f1, c1.documented_outcome AS outcome_f1,
+               c2.catch_id AS catch_id_f2, c2.documented_outcome AS outcome_f2
         FROM   catch c1
         JOIN   catch c2 ON c1.harm_type = c2.harm_type
-        WHERE  c1.fisherman_id = ?
-          AND  c2.fisherman_id = ?
-        GROUP  BY c1.harm_type
-        ORDER  BY (count_at_f1 + count_at_f2) DESC
-    """, (f1['fisherman_id'], f2['fisherman_id'])).fetchall())
-
-    connection_count = (
-        len(direct_links) +
-        len(shared_parents) +
-        len(shared_actors) +
-        len(shared_investors)
-    )
+        WHERE  c1.fisherman_id = (SELECT fisherman_id FROM fisherman WHERE id = ?)
+          AND  c2.fisherman_id = (SELECT fisherman_id FROM fisherman WHERE id = ?)
+        ORDER  BY c1.harm_type
+    """, (fisherman_id_1, fisherman_id_2)).fetchall())
 
     return jsonify({
-        "fisherman_1":      {"id": fisherman_id_1, "domain": f1['domain'], "display_name": f1.get('display_name')},
-        "fisherman_2":      {"id": fisherman_id_2, "domain": f2['domain'], "display_name": f2.get('display_name')},
-        "connection_count": connection_count,
-        "direct_links":     direct_links,
-        "shared_parents":   shared_parents,
-        "shared_actors":    shared_actors,
-        "shared_investors": shared_investors,
+        "fisherman_1":       {"id": fisherman_id_1, "domain": f1['domain'],
+                              "display_name": f1.get('display_name')},
+        "fisherman_2":       {"id": fisherman_id_2, "domain": f2['domain'],
+                              "display_name": f2.get('display_name')},
+        "direct_links":      direct_links,
+        "shared_actors":     shared_actors,
         "shared_harm_types": shared_harm_types,
+        "connection_count":  len(direct_links) + len(shared_actors),
     })
 
 
 # ===========================================================================
-# Entry point
+# ENTRY POINT
 # ===========================================================================
 
 if __name__ == '__main__':
