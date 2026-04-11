@@ -42,13 +42,15 @@ def migrate_schema(db):
     """Add columns introduced after initial schema deployment.
     Uses try/except so it is safe to re-run against any existing database."""
     migrations = [
-        ('fisherman', 'ad_networks',           'TEXT'),
-        ('fisherman', 'data_brokers',           'TEXT'),
-        ('fisherman', 'political_affiliation',  'TEXT'),
-        ('fisherman', 'documented_reach',       'TEXT'),
-        ('fisherman', 'legal_status',           "TEXT DEFAULT 'active'"),
-        ('fisherman', 'last_verified',          'TEXT'),
-        ('motive',    'evidence_ids',           'TEXT'),
+        ('fisherman', 'ad_networks',              'TEXT'),
+        ('fisherman', 'data_brokers',             'TEXT'),
+        ('fisherman', 'political_affiliation',    'TEXT'),
+        ('fisherman', 'documented_reach',         'TEXT'),
+        ('fisherman', 'legal_status',             "TEXT DEFAULT 'active'"),
+        ('fisherman', 'last_verified',            'TEXT'),
+        ('fisherman', 'operator_classification',  "TEXT DEFAULT 'unclassified'"),
+        ('fisherman', 'classification_basis',     'TEXT'),
+        ('motive',    'evidence_ids',             'TEXT'),
         ('catch',     'bait_id',               'TEXT'),
         ('catch',     'legal_case_id',          'TEXT'),
         ('catch',     'evidence_ids',           'TEXT'),
@@ -78,8 +80,9 @@ def insert_fisherman(db, data):
            (fisherman_id, domain, display_name, owner, parent_company,
             country, founded, business_model, revenue_sources, ad_networks,
             data_brokers, political_affiliation, documented_reach,
-            legal_status, confidence_score, last_verified, contributed_by)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+            legal_status, confidence_score, last_verified, contributed_by,
+            operator_classification, classification_basis)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
         [data['fisherman_id'], data['domain'], data['display_name'],
          data.get('owner'), data.get('parent_company'), data.get('country'),
          data.get('founded'), data.get('business_model'),
@@ -87,7 +90,9 @@ def insert_fisherman(db, data):
          data.get('data_brokers'), data.get('political_affiliation'),
          data.get('documented_reach'), data.get('legal_status', 'active'),
          data.get('confidence_score', 0.5), data.get('last_verified'),
-         data.get('contributed_by')]
+         data.get('contributed_by'),
+         data.get('operator_classification', 'unclassified'),
+         data.get('classification_basis')]
     )
 
 
@@ -307,7 +312,20 @@ FISHERMEN = [
         'legal_status': 'under_investigation',
         'confidence_score': 0.95,
         'last_verified': '2026-03-27',
-        'contributed_by': 'investigate-agent-cycle-1'
+        'contributed_by': 'investigate-agent-cycle-1',
+        'operator_classification': 'operator',
+        'classification_basis': (
+            'All four operator conditions met. '
+            '(1) Algorithmic differential reach: MSI algorithm (Jan 2018) weighted angry reactions '
+            '5x over other reactions, creating structural advantage for outrage-generating content. '
+            '(2) Documented knowledge: 2019 Teen Mental Health Deep Dive presented to senior '
+            'leadership; WSJ Facebook Files (Sept 2021); Frances Haugen Senate testimony (Oct 2021); '
+            '41-state AG complaint (Oct 2023). '
+            '(3) Aligned financial motive: 97% of $134.9B 2023 revenue from advertising; '
+            'engagement metrics directly drive ad inventory value. '
+            '(4) Continued operation without structural mitigation: Jan 6 "break glass" algorithmic '
+            'dampening reverted within weeks (WSJ Feb 2021); MSI architecture maintained throughout.'
+        ),
     },
     {
         'fisherman_id': 'fisherman-meta-instagram',
@@ -334,7 +352,21 @@ FISHERMEN = [
         'legal_status': 'under_investigation',
         'confidence_score': 0.95,
         'last_verified': '2026-03-27',
-        'contributed_by': 'intel-agent-cycle-2'
+        'contributed_by': 'intel-agent-cycle-2',
+        'operator_classification': 'operator',
+        'classification_basis': (
+            'All four operator conditions met. '
+            '(1) Algorithmic differential reach: Explore and Reels recommendation algorithms '
+            'surface content to users who did not follow the source; Reels optimizes for watch '
+            'time, creating structural advantage for emotionally compelling and addictive content. '
+            '(2) Documented knowledge: 2019 Teen Mental Health Deep Dive (32% of teen girls said '
+            'Instagram worsened body image) presented to senior leadership; WSJ Sept 14 2021; '
+            '41-state AG complaint Oct 2023. '
+            '(3) Aligned financial motive: advertising revenue tied to time-on-app and impressions; '
+            'teen audience acquisition during formative years maximizes lifetime ad revenue per user. '
+            '(4) Continued operation without structural mitigation: Reels algorithm expanded '
+            'after internal teen harm findings existed; no structural algorithmic change documented.'
+        ),
     },
     {
         'fisherman_id': 'fisherman-alphabet-youtube',
@@ -368,7 +400,23 @@ FISHERMEN = [
         'legal_status': 'under_investigation',
         'confidence_score': 0.95,
         'last_verified': '2026-03-28',
-        'contributed_by': 'intel-agent-cycle-4'
+        'contributed_by': 'intel-agent-cycle-4',
+        'operator_classification': 'operator',
+        'classification_basis': (
+            'All four operator conditions met. '
+            '(1) Algorithmic differential reach: recommendation algorithm documented to surface '
+            'increasingly extreme content ("rabbit hole" effect); watch-time optimization creates '
+            'structural advantage for emotionally provocative content over neutral informational content. '
+            '(2) Documented knowledge: Tristan Harris congressional testimony (2019); '
+            'Guillaume Chaslot (former YouTube engineer) public disclosure of radicalization pathway; '
+            '$170M FTC/NY COPPA settlement (2019) for knowing collection of children\'s data; '
+            'internal "Project Aristotle" research. '
+            '(3) Aligned financial motive: watch time drives ad impressions; recommendation '
+            'algorithm maximizes watch time regardless of content impact on user wellbeing. '
+            '(4) Continued operation without structural mitigation: recommendation architecture '
+            'fundamentally unchanged; content moderation removes individual videos but not the '
+            'algorithmic mechanic that surfaces increasingly extreme content.'
+        ),
     }
 ]
 

@@ -1,6 +1,6 @@
 -- BMID Database Schema
 -- Behavioral Manipulation Intelligence Database
--- Version: 0.2.1 (contributed_by added to amplifier table 2026-04-10)
+-- Version: 0.3.0 (operator_classification added to fisherman table 2026-04-11)
 
 -- Core fisherman record: a platform or operator that runs a BMS
 CREATE TABLE IF NOT EXISTS fisherman (
@@ -22,6 +22,18 @@ CREATE TABLE IF NOT EXISTS fisherman (
   last_verified TEXT,
   confidence_score REAL DEFAULT 0.5,
   contributed_by TEXT,
+  -- Platform classification: does the platform's design create differential advantage
+  -- for manipulative content, or does it merely host content neutrally?
+  -- Values: 'operator' | 'venue' | 'partial_operator' | 'unclassified'
+  -- operator:         All four conditions met (algorithmic differential reach +
+  --                   documented knowledge + aligned financial motive +
+  --                   continued operation without structural mitigation)
+  -- partial_operator: Some but not all conditions met; or platform has both
+  --                   algorithmic (operator) and chronological (venue) feed modes
+  -- venue:            Neutral hosting; no algorithmic amplification of manipulative content
+  -- unclassified:     Insufficient evidence to classify
+  operator_classification  TEXT DEFAULT 'unclassified',
+  classification_basis     TEXT,       -- which conditions were/weren't met and why
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );

@@ -48,8 +48,9 @@ def insert_fisherman(db, data):
            (fisherman_id, domain, display_name, owner, parent_company,
             country, founded, business_model, revenue_sources, ad_networks,
             data_brokers, political_affiliation, documented_reach,
-            legal_status, confidence_score, last_verified, contributed_by)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+            legal_status, confidence_score, last_verified, contributed_by,
+            operator_classification, classification_basis)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
         [data['fisherman_id'], data['domain'], data['display_name'],
          data.get('owner'), data.get('parent_company'), data.get('country'),
          data.get('founded'), data.get('business_model'),
@@ -57,7 +58,9 @@ def insert_fisherman(db, data):
          data.get('data_brokers'), data.get('political_affiliation'),
          data.get('documented_reach'), data.get('legal_status', 'active'),
          data.get('confidence_score', 0.5), data.get('last_verified'),
-         data.get('contributed_by')]
+         data.get('contributed_by'),
+         data.get('operator_classification', 'unclassified'),
+         data.get('classification_basis')]
     )
 
 
@@ -132,6 +135,25 @@ X_FISHERMEN = [
         'revenue_sources':    ['advertising', 'X Premium subscriptions', 'data licensing'],
         'confidence_score':   0.90,
         'contributed_by':     'intel-agent-2026-03-31',
+        'operator_classification': 'partial_operator',
+        'classification_basis': (
+            'Partial operator. Three of four conditions met; knowledge condition requires '
+            'additional investigation. '
+            '(1) Algorithmic differential reach: For You algorithmic feed amplifies '
+            'engagement-optimized content beyond followed accounts; amplification of '
+            'outrage-generating content is structurally predicted by the engagement mechanic. '
+            '(2) Knowledge: Post-acquisition moderation rollback (80% trust and safety staff '
+            'reduction, Civic Integrity team dissolved) is documented but constitutes known '
+            'harm-enablement rather than documented algorithmic harm research. CCDH documented '
+            'hate speech response rates falling from ~50% to <2% post-acquisition. '
+            '(3) Aligned financial motive: advertising revenue (majority of revenue pre-acquisition) '
+            'tied to engagement; subscription revenue (X Premium) incentivizes engagement via '
+            'amplified reach for paying subscribers. '
+            '(4) Continued operation: moderation rollback was affirmative, not passive — '
+            'management chose reduced moderation after documented external harm research. '
+            'Classified partial rather than full operator: prior to Musk acquisition, Twitter had '
+            'active trust and safety infrastructure; the operator pattern is primarily post-2022.'
+        ),
     }
 ]
 
@@ -367,6 +389,26 @@ FOX_FISHERMEN = [
                             'digital advertising', 'Fox Nation subscription'],
         'confidence_score': 0.95,
         'contributed_by':  'intel-agent-2026-04-08',
+        'operator_classification': 'operator',
+        'classification_basis': (
+            'All four operator conditions met. Fox News is a content producer, not a '
+            'neutral hosting platform — this distinguishes it from social media venue cases. '
+            '(1) Algorithmic differential reach: Fox News editorial decisions function as the '
+            '"algorithm" — editorial selection systematically amplifies outrage-engineering, '
+            'tribal_activation, and fear_amplification content because those formats drive '
+            'viewership retention. The mechanism is editorial rather than computational but '
+            'the differential amplification effect is identical. '
+            '(2) Documented knowledge: Dominion Voting Systems v. Fox News ($787.5M settlement '
+            '2023) produced internal communications showing hosts and executives knew '
+            'contested election claims were false while continuing to air them. '
+            'Fox Corp 10-K risk disclosures acknowledge regulatory and reputational risks '
+            'from content decisions. '
+            '(3) Aligned financial motive: cable carriage fees and advertising both depend '
+            'on audience size; outrage-driven content retains audience; documented internal '
+            'concern about losing audience to more extreme competitors (OAN, Newsmax). '
+            '(4) Continued operation: settlement resolved the Dominion case but the '
+            'underlying editorial model was not changed.'
+        ),
     }
 ]
 
@@ -697,6 +739,29 @@ REDDIT_FISHERMEN = [
                             'data licensing (AI training data)'],
         'confidence_score': 0.90,
         'contributed_by':  'intel-agent-2026-04-08',
+        'operator_classification': 'partial_operator',
+        'classification_basis': (
+            'Partial operator. Conditions (1), (3) met; knowledge condition (2) partially met; '
+            'condition (4) partially met. '
+            '(1) Algorithmic differential reach: Hot algorithm rewards engagement velocity in '
+            'the first hours of posting; content generating fast angry or tribal reactions '
+            'outperforms neutral informational content on this metric systematically. '
+            'Popular and Home feeds push algorithmically-selected content beyond subscribed '
+            'subreddits. '
+            '(2) Knowledge: Senate Intelligence Committee Vol. 2 (2019) documented Reddit as '
+            'a vector for IRA influence operations — Reddit CEO Huffman testified to Senate '
+            'Judiciary. Platform acknowledged radicalization communities via bans '
+            '(r/The_Donald June 2020, r/Incels Nov 2017) but internal research on '
+            'algorithmic differential harm is not publicly documented at Meta-level specificity. '
+            '(3) Aligned financial motive: 98% advertising revenue per S-1; engagement '
+            'metrics are the explicit business driver; data licensing of user-generated '
+            'content creates secondary incentive to maximize content volume and engagement density. '
+            '(4) Continued operation: engagement-velocity algorithm unchanged; bans remove '
+            'specific communities but not the algorithmic mechanic that grew them. '
+            'Classified partial rather than full operator: Hot algorithm amplification is '
+            'structurally predictable but internal knowledge documentation is less established '
+            'than the Meta precedent.'
+        ),
     }
 ]
 
@@ -1004,6 +1069,26 @@ TIKTOK_FISHERMEN = [
                             'TikTok LIVE gifting', 'brand partnership programs'],
         'confidence_score': 0.95,
         'contributed_by':  'intel-agent-2026-04-08',
+        'operator_classification': 'operator',
+        'classification_basis': (
+            'All four operator conditions met. '
+            '(1) Algorithmic differential reach: For You Page (FYP) algorithm distributes '
+            'content entirely on predicted engagement, without regard for creator follower count. '
+            'This is the purest implementation of engagement-optimized distribution — a new '
+            'user with zero followers can reach millions if the algorithm predicts high '
+            'watch-time response. Content targeting adolescent psychological vulnerabilities '
+            '(body image, identity formation, social comparison) generates high watch-time '
+            'signals and is structurally amplified. '
+            '(2) Documented knowledge: Shou Zi Chew Senate testimony March 2023 '
+            '(acknowledged harm concerns and data handling issues); FDA/CDC documented '
+            'TikTok challenges (Benadryl challenge, blackout challenge) causing adolescent deaths; '
+            'multiple state AG investigations; internal documents reported by Forbes/WSJ. '
+            '(3) Aligned financial motive: advertising revenue tied to watch time; '
+            'FYP algorithm maximizes time-on-app which maximizes ad impressions. '
+            '(4) Continued operation: FYP architecture unchanged; content removal addresses '
+            'individual harmful videos but not the watch-time optimization mechanic that '
+            'surfaces increasingly extreme content to maintain engagement.'
+        ),
     }
 ]
 
