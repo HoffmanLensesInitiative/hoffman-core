@@ -2063,15 +2063,39 @@ def seed(db):
     for f in FISHERMEN:
         insert_fisherman(db, f.copy())
         print(f"  {f['domain']} ({f['display_name']})")
+    db.commit()
+
+    # Agent cycles sometimes use different fisherman_ids for the same domain.
+    # INSERT OR IGNORE keeps the first insert; subsequent cycles' motives/catches
+    # reference IDs that were never inserted. Build a normalization map so all
+    # references resolve to what is actually in the database.
+    fisherman_id_map = {}
+    for f in FISHERMEN:
+        row = db.execute(
+            'SELECT fisherman_id FROM fisherman WHERE domain = ?', (f['domain'],)
+        ).fetchone()
+        if row and row[0] != f['fisherman_id']:
+            fisherman_id_map[f['fisherman_id']] = row[0]
+    if fisherman_id_map:
+        print('[BMID] Normalizing fisherman_id references:')
+        for old, new in sorted(fisherman_id_map.items()):
+            print(f'  {old} -> {new}')
+
+    def resolve_fid(fid):
+        return fisherman_id_map.get(fid, fid)
 
     print('[BMID] Seeding motives...')
     for m in MOTIVES:
-        insert_motive(db, m.copy())
+        m = m.copy()
+        m['fisherman_id'] = resolve_fid(m['fisherman_id'])
+        insert_motive(db, m)
         print(f"  {m['motive_id']}")
 
     print('[BMID] Seeding catches...')
     for c in CATCHES:
-        insert_catch(db, c.copy())
+        c = c.copy()
+        c['fisherman_id'] = resolve_fid(c['fisherman_id'])
+        insert_catch(db, c)
         print(f"  {c['catch_id']}")
 
     print('[BMID] Seeding evidence...')
@@ -2110,19 +2134,6 @@ def report(db):
     ):
         print(f'  [{row[0]}] {row[1]} (sev={row[2]}) -- {row[3]}...')
 
-
-if __name__ == '__main__':
-    print(f'[BMID] Initializing database at {DB_PATH}')
-    db = get_db()
-    init_schema(db)
-    migrate_schema(db)
-    seed(db)
-    report(db)
-    db.close()
-    print('\n[BMID] Seed complete.')
-    print('[BMID] Start API: python app.py')
-    print('[BMID] Test Meta: curl http://localhost:5000/api/v1/explain?domain=facebook.com')
-    print('[BMID] Test YT:   curl http://localhost:5000/api/v1/explain?domain=youtube.com')
 
 # -- appended by intel agent 2026-04-02 --
 FISHERMEN += [
@@ -2702,3 +2713,21 @@ EVIDENCE += [
     {'evidence_id': 'ev-facebook-com-004', 'entity_id': 'fisherman-facebook-com', 'entity_type': 'fisherman', 'source_type': 'primary', 'url': 'https://oag.ca.gov/system/files/media/meta-complaint-2023-10-24.pdf', 'title': 'State of California et al. v. Meta Platforms, Inc. — Complaint', 'author': '41-state Attorney General coalition', 'publication': 'U.S. Federal Court, Case 4:23-cv-05448', 'published_date': '2023-10-24', 'summary': 'Federal court complaint by 41 state attorneys general alleging Meta knowingly deployed features harmful to minors, made public statements inconsistent with internal research, and continued harmful practices after receiving internal documentation of harm. Court filing — highest evidence weight. Allegations not yet adjudicated.', 'confidence': 0.9},
     {'evidence_id': 'ev-facebook-com-005', 'entity_id': 'fisherman-facebook-com', 'entity_type': 'fisherman', 'source_type': 'secondary', 'url': 'https://www.wsj.com/articles/facebook-reverses-special-measures-instituted-after-jan-6-riot-11612807683', 'title': 'Facebook Reverses Special Measures Instituted After Jan. 6 Riot', 'author': 'Jeff Horwitz, Deepa Seetharaman', 'publication': 'Wall Street Journal', 'published_date': '2021-02-08', 'summary': "Documents that Meta applied emergency algorithmic measures after January 6, 2021 to reduce viral resharing of divisive content, then reversed those measures within weeks. Key evidence for the 'knowing conduct' thread: Meta knew a safer algorithmic configuration existed, deployed it temporarily, then reverted to the more dangerous setting.", 'confidence': 0.88},
 ]
+# ---------------------------------------------------------------------------
+# ENTRY POINT -- must remain at the end of this file so all FISHERMEN +=,
+# MOTIVES +=, CATCHES +=, and EVIDENCE += appends above are fully evaluated
+# before seed() is called. Agents: append new data blocks ABOVE this block.
+# ---------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    print(f'[BMID] Initializing database at {DB_PATH}')
+    db = get_db()
+    init_schema(db)
+    migrate_schema(db)
+    seed(db)
+    report(db)
+    db.close()
+    print('\n[BMID] Seed complete.')
+    print('[BMID] Start API: python app.py')
+    print('[BMID] Test Meta: curl http://localhost:5000/api/v1/explain?domain=facebook.com')
+    print('[BMID] Test YT:   curl http://localhost:5000/api/v1/explain?domain=youtube.com')
